@@ -1,0 +1,484 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .prd { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .cover { border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 1.75rem; margin-bottom: 2rem; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #f3e8fb; color: #6b21a8; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; margin-bottom: 1rem; }
+  .cover h1 { font-size: 26px; font-weight: 500; margin-bottom: 0.4rem; }
+  .cover .sub { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; max-width: 580px; margin-bottom: 1.25rem; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .meta-card { background: var(--color-background-secondary); border-radius: 8px; padding: 0.65rem 0.9rem; }
+  .meta-card .label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+  .meta-card .val { font-size: 13px; font-weight: 500; }
+
+  .section { margin-bottom: 2.25rem; padding-bottom: 2.25rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .section:last-child { border-bottom: none; margin-bottom: 0; }
+  .section-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 1.1rem; }
+  .snum { font-size: 11px; font-weight: 500; color: #6b21a8; background: #f3e8fb; border-radius: 4px; padding: 2px 7px; margin-top: 3px; flex-shrink: 0; }
+  .section h2 { font-size: 18px; font-weight: 500; }
+  .section-sub { font-size: 13px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.5; }
+
+  .callout { display: flex; gap: 10px; background: #f3e8fb; border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .callout i { font-size: 17px; color: #6b21a8; flex-shrink: 0; margin-top: 1px; }
+  .callout p { font-size: 13px; color: #3b0764; line-height: 1.55; }
+
+  .callout-warn { background: #faeeda; }
+  .callout-warn i { color: #7a4a0a; }
+  .callout-warn p { color: #5a3208; }
+
+  .callout-green { background: #e8f5ee; }
+  .callout-green i { color: #1a6640; }
+  .callout-green p { color: #1a4a30; }
+
+  .callout-blue { background: #e8f0fb; }
+  .callout-blue i { color: #1a4080; }
+  .callout-blue p { color: #0d2a5e; }
+
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
+  .card-title { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .card-title i { font-size: 15px; color: var(--color-text-secondary); }
+
+  ul.spec { list-style: none; }
+  ul.spec li { font-size: 13px; color: var(--color-text-secondary); padding: 3px 0; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
+  ul.spec li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #9333ea; margin-top: 6px; flex-shrink: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+
+  .schema-block { background: var(--color-background-secondary); border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 0.75rem; }
+  .schema-block .schema-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px; }
+  .schema-block .schema-name span { font-size: 11px; background: #f3e8fb; color: #6b21a8; border-radius: 3px; padding: 1px 5px; font-weight: 400; }
+  .field-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 180px; }
+  .field-type { font-size: 11px; color: #6b21a8; background: #f3e8fb; border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
+  .field-note { font-size: 12px; color: var(--color-text-tertiary); }
+
+  .flow-step { display: flex; gap: 12px; margin-bottom: 0.6rem; align-items: flex-start; }
+  .flow-num { width: 22px; height: 22px; border-radius: 50%; background: #f3e8fb; color: #6b21a8; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .flow-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; padding-top: 2px; }
+  .flow-text strong { color: var(--color-text-primary); font-weight: 500; }
+
+  .route-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .route-row:last-child { border-bottom: none; }
+  .method { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px; min-width: 44px; text-align: center; flex-shrink: 0; }
+  .get { background: #e8f5ee; color: #1a6640; }
+  .post { background: #e8f0fb; color: #1a4080; }
+  .put { background: #faeeda; color: #7a4a0a; }
+  .del { background: #ffeaea; color: #a02020; }
+  .route-path { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 260px; }
+  .route-desc { font-size: 12px; color: var(--color-text-secondary); }
+
+  .screen-block { border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; overflow: hidden; margin-bottom: 0.75rem; }
+  .screen-header { background: var(--color-background-secondary); padding: 0.55rem 0.9rem; display: flex; align-items: center; justify-content: space-between; }
+  .screen-name { font-size: 13px; font-weight: 500; }
+  .screen-role { font-size: 11px; color: var(--color-text-tertiary); }
+  .screen-body { padding: 0.9rem; }
+
+  .stack-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-label { font-size: 13px; font-weight: 500; min-width: 160px; }
+  .stack-val { font-size: 13px; color: var(--color-text-secondary); flex: 1; }
+  .stag { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 500; flex-shrink: 0; }
+  .stag-purple { background: #f3e8fb; color: #6b21a8; }
+  .stag-green { background: #e8f5ee; color: #1a6640; }
+  .stag-warn { background: #faeeda; color: #7a4a0a; }
+
+  .accept-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); align-items: flex-start; }
+  .accept-row:last-child { border-bottom: none; }
+  .ac-role { font-size: 12px; font-weight: 500; min-width: 120px; color: var(--color-text-secondary); }
+  .ac-criteria { font-size: 13px; color: var(--color-text-secondary); line-height: 1.45; }
+
+  .tag-pill { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; margin-right: 4px; }
+  .out { background: #ffeaea; color: #a02020; }
+  .in { background: #f3e8fb; color: #6b21a8; }
+
+  .perm-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 1rem; }
+  .perm-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-tertiary); padding: 6px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .perm-table td { padding: 7px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-secondary); }
+  .perm-table tr:last-child td { border-bottom: none; }
+  .perm-table td:first-child { font-weight: 500; color: var(--color-text-primary); }
+  .yes { color: #1a6640; font-weight: 500; }
+  .no { color: #a02020; }
+  .limited { color: #7a4a0a; font-weight: 500; }
+
+  h3 { font-size: 14px; font-weight: 500; margin-bottom: 0.6rem; margin-top: 0.9rem; }
+  h3:first-child { margin-top: 0; }
+</style>
+
+<div class="prd">
+  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Phase 3 PRD for SignPost Field — Transaction Coordinator accounts and sign inventory management</h2>
+
+  <div class="cover">
+    <div class="badge"><i class="ti ti-users" aria-hidden="true"></i> Phase 3 — TC Accounts & Inventory</div>
+    <h1>SignPost Field — Phase 3 PRD</h1>
+    <p class="sub">Adds Transaction Coordinator multi-agent login, sign inventory tracking for admins and realtors, map view of deployed signs, and low inventory alerting. Builds directly on the Phase 1 + 2 codebase.</p>
+    <div class="meta-grid">
+      <div class="meta-card"><div class="label">Depends on</div><div class="val">Phase 1 + 2 complete</div></div>
+      <div class="meta-card"><div class="label">Phase</div><div class="val">3 of 5</div></div>
+      <div class="meta-card"><div class="label">New roles</div><div class="val">TC (Transaction Coordinator)</div></div>
+      <div class="meta-card"><div class="label">DB changes</div><div class="val">TC relations, Sign models</div></div>
+      <div class="meta-card"><div class="label">New integrations</div><div class="val">Google Maps (map view)</div></div>
+      <div class="meta-card"><div class="label">Status</div><div class="val">Planning</div></div>
+    </div>
+  </div>
+
+  <!-- SCOPE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">01</span>
+      <div><h2>Scope — What's In & Out</h2></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3><span class="tag-pill in">✓ In scope</span></h3>
+        <ul class="spec">
+          <li>TC role fully implemented (stubbed in Phase 1)</li>
+          <li>TC registration and login</li>
+          <li>Realtor → TC invite/link flow</li>
+          <li>TC dashboard with multi-agent switcher</li>
+          <li>TC can place and manage orders for linked agents</li>
+          <li>TC can view invoices for linked agents</li>
+          <li>Admin can link/unlink TCs to realtors</li>
+          <li>Sign inventory database (admin full CRUD)</li>
+          <li>Sign assignment to orders and realtors</li>
+          <li>Realtor inventory view (their signs only)</li>
+          <li>Map view of all deployed signs (admin)</li>
+          <li>Realtor can report lost/damaged signs</li>
+          <li>Low inventory email alert to admin</li>
+          <li>Sign reorder request from realtor portal</li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="tag-pill out">✗ Out of scope (later phases)</span></h3>
+        <ul class="spec">
+          <li>811 email monitoring</li>
+          <li>Field tech mobile view</li>
+          <li>In-app payment processing</li>
+          <li>Analytics / reporting dashboard</li>
+          <li>TC billing (TCs don't pay — their agents do)</li>
+          <li>Automated sign reorder (just a request for now)</li>
+          <li>QR codes on signs</li>
+          <li>Sign condition photo uploads</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout callout-warn" style="margin-top:0.5rem;">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <p>The TC role enum value already exists in the User model from Phase 1. The SignInventory model was stubbed. Before starting, confirm both exist in schema.prisma — if SignInventory was only stubbed with placeholder fields, it will need to be replaced with the full model defined in section 03 of this PRD.</p>
+    </div>
+  </div>
+
+  <!-- TC ROLE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">02</span>
+      <div><h2>Transaction Coordinator Role</h2><p class="section-sub">A TC is a single login that manages orders for multiple realtors. They act on behalf of agents — invoices and ownership always belong to the agent, not the TC.</p></div>
+    </div>
+
+    <h3>Key design decisions</h3>
+    <div class="callout callout-blue">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>A TC account is its own User record with role = TC. It is linked to one or more Realtor User records via a <strong>TCAgentLink</strong> join table. When a TC logs in, they see a context switcher — they pick which agent they're acting as, and the entire session context shifts to that agent. Orders placed by a TC are owned by the selected agent (realtorId = agent's id, not TC's id). The TC's userId is stored separately as placedByTCId for audit purposes.</p>
+    </div>
+
+    <h3>Permission matrix</h3>
+    <table class="perm-table">
+      <thead><tr><th>Action</th><th>Realtor</th><th>TC</th><th>Admin</th></tr></thead>
+      <tbody>
+        <tr><td>Place order for themselves</td><td class="yes">Yes</td><td class="limited">As agent</td><td class="yes">Yes</td></tr>
+        <tr><td>View own orders</td><td class="yes">Yes</td><td class="limited">Agent's orders</td><td class="yes">All</td></tr>
+        <tr><td>Cancel pending orders</td><td class="yes">Yes</td><td class="limited">Agent's only</td><td class="yes">Yes</td></tr>
+        <tr><td>View invoices</td><td class="yes">Yes</td><td class="limited">Agent's only</td><td class="yes">All</td></tr>
+        <tr><td>Pay invoices</td><td class="yes">Yes</td><td class="no">No</td><td class="yes">Yes</td></tr>
+        <tr><td>Manage TC sub-users</td><td class="limited">Invite only</td><td class="no">No</td><td class="yes">Full</td></tr>
+        <tr><td>View sign inventory</td><td class="limited">Own signs</td><td class="limited">Agent's signs</td><td class="yes">All</td></tr>
+        <tr><td>Edit sign inventory</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
+        <tr><td>Access /admin/*</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td></tr>
+      </tbody>
+    </table>
+
+    <h3>TC invite flow (realtor initiates)</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Realtor goes to <strong>/dashboard/account</strong> → "Transaction Coordinators" section → clicks "Invite TC"</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Realtor enters TC's email address and submits</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Server checks: does a User with that email exist with role = TC? If yes → create TCAgentLink immediately. If no → create a pending invite record and send an invitation email to that address.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Invite email contains a link to <strong>/register/tc?token=[invite_token]</strong> — pre-fills email, forces role = TC on registration</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">TC completes registration → TCAgentLink is created automatically → TC can now log in and see that agent</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">Realtor can revoke TC access at any time from their account page — deletes the TCAgentLink</div></div>
+
+    <h3 style="margin-top:1rem;">TC login and agent switcher</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">TC logs in → redirected to <strong>/tc/select-agent</strong> — shows list of all linked agents (name, brokerage, active order count)</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">TC selects an agent → session context set to that agent (stored in session as activeAgentId)</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">TC is redirected to <strong>/tc/dashboard</strong> — identical to realtor dashboard but showing selected agent's data. Header shows "Acting as: [Agent Name]" with a "Switch Agent" button.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">All API calls made while TC is active pass activeAgentId — server validates TC is linked to that agent before executing</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">"Switch Agent" returns to /tc/select-agent without logging out</div></div>
+  </div>
+
+  <!-- DATABASE SCHEMA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">03</span>
+      <div><h2>New & Updated Database Models</h2></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">TCAgentLink <span>new table: tc_agent_links</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">tcUserId</span><span class="field-type">FK → User</span><span class="field-note">the TC account</span></div>
+      <div class="field-row"><span class="field-name">agentUserId</span><span class="field-type">FK → User</span><span class="field-note">the realtor they manage</span></div>
+      <div class="field-row"><span class="field-name">grantedBy</span><span class="field-type">Enum</span><span class="field-note">REALTOR | ADMIN — who created the link</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+      <div class="field-row"><span class="field-name">@@unique([tcUserId, agentUserId])</span><span class="field-note">no duplicate links</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">TCInvite <span>new table: tc_invites</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">email</span><span class="field-type">String</span><span class="field-note">invited TC email</span></div>
+      <div class="field-row"><span class="field-name">invitedByUserId</span><span class="field-type">FK → User</span><span class="field-note">the realtor who sent invite</span></div>
+      <div class="field-row"><span class="field-name">token</span><span class="field-type">String UNIQUE</span><span class="field-note">UUID token for invite link</span></div>
+      <div class="field-row"><span class="field-name">expiresAt</span><span class="field-type">DateTime</span><span class="field-note">48 hours from creation</span></div>
+      <div class="field-row"><span class="field-name">usedAt</span><span class="field-type">DateTime?</span><span class="field-note">set when TC registers via invite</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">Order — additions <span>alter existing</span></div>
+      <div class="field-row"><span class="field-name">placedByTCId</span><span class="field-type">FK → User?</span><span class="field-note">null if placed by realtor directly. Set if a TC placed it.</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">Sign <span>replaces stubbed SignInventory</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">signNumber</span><span class="field-type">String UNIQUE</span><span class="field-note">physical ID on the sign e.g. SPF-S-0042</span></div>
+      <div class="field-row"><span class="field-name">type</span><span class="field-type">String</span><span class="field-note">e.g. "Standard", "Rider", "Open House", "Custom"</span></div>
+      <div class="field-row"><span class="field-name">status</span><span class="field-type">Enum</span><span class="field-note">AVAILABLE | DEPLOYED | DAMAGED | LOST | RETIRED</span></div>
+      <div class="field-row"><span class="field-name">assignedToUserId</span><span class="field-type">FK → User?</span><span class="field-note">which realtor has it deployed</span></div>
+      <div class="field-row"><span class="field-name">assignedToOrderId</span><span class="field-type">FK → Order?</span><span class="field-note">which order it's currently on</span></div>
+      <div class="field-row"><span class="field-name">deployedAddress</span><span class="field-type">String?</span><span class="field-note">current location if deployed</span></div>
+      <div class="field-row"><span class="field-name">deployedLat</span><span class="field-type">Float?</span></div>
+      <div class="field-row"><span class="field-name">deployedLng</span><span class="field-type">Float?</span></div>
+      <div class="field-row"><span class="field-name">notes</span><span class="field-type">String?</span><span class="field-note">admin notes, condition notes</span></div>
+      <div class="field-row"><span class="field-name">purchasedAt</span><span class="field-type">DateTime?</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+      <div class="field-row"><span class="field-name">updatedAt</span><span class="field-type">DateTime</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">SignReport <span>new table: sign_reports</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">signId</span><span class="field-type">FK → Sign</span></div>
+      <div class="field-row"><span class="field-name">reportedByUserId</span><span class="field-type">FK → User</span></div>
+      <div class="field-row"><span class="field-name">type</span><span class="field-type">Enum</span><span class="field-note">LOST | DAMAGED | OTHER</span></div>
+      <div class="field-row"><span class="field-name">description</span><span class="field-type">String</span></div>
+      <div class="field-row"><span class="field-name">resolvedAt</span><span class="field-type">DateTime?</span><span class="field-note">admin marks resolved</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+    </div>
+  </div>
+
+  <!-- API ROUTES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">04</span>
+      <div><h2>New API Routes</h2></div>
+    </div>
+
+    <h3>TC management</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/tc/invite</span><span class="route-desc">Realtor sends TC invite by email. Creates TCInvite record, sends email. Auth: REALTOR.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/tc/invite/[token]</span><span class="route-desc">Validates invite token. Returns: valid/expired, inviting realtor name. Used on /register/tc page.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/tc/agents</span><span class="route-desc">TC gets list of their linked agents. Auth: TC only.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/tc/set-agent</span><span class="route-desc">TC sets activeAgentId in their session. Body: { agentUserId }. Validates link exists.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/dashboard/tc-links</span><span class="route-desc">Realtor sees their linked TCs. Auth: REALTOR.</span></div>
+      <div class="route-row"><span class="method del">DEL</span><span class="route-path">/api/tc/links/[id]</span><span class="route-desc">Realtor or Admin removes a TC link. Realtor can only remove their own links.</span></div>
+    </div>
+
+    <h3>Admin TC management</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/tcs</span><span class="route-desc">All TC accounts with their linked agent count.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/tcs/link</span><span class="route-desc">Admin manually links a TC to an agent. Body: { tcUserId, agentUserId }.</span></div>
+      <div class="route-row"><span class="method del">DEL</span><span class="route-path">/api/admin/tcs/link/[id]</span><span class="route-desc">Admin removes any TC-agent link.</span></div>
+    </div>
+
+    <h3>Sign inventory — admin</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/signs</span><span class="route-desc">All signs. Filters: status, type, assignedToUserId. Includes summary counts by status.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/signs/[id]</span><span class="route-desc">Single sign detail with assignment history.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/signs</span><span class="route-desc">Create sign. Body: signNumber, type, notes, purchasedAt.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/signs/[id]</span><span class="route-desc">Update sign — status, assignment, location, notes. Assigning to an order sets deployedAddress from order address.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/signs/bulk</span><span class="route-desc">Bulk create signs. Body: { type, count, prefix } — generates sequential signNumbers.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/signs/map</span><span class="route-desc">Returns all DEPLOYED signs with lat/lng for map view.</span></div>
+    </div>
+
+    <h3>Sign inventory — realtor / TC</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/signs/mine</span><span class="route-desc">Signs assigned to the logged-in realtor (or active agent if TC). Status, location, order.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/signs/[id]/report</span><span class="route-desc">Realtor reports a sign lost or damaged. Body: type, description. Creates SignReport, emails admin.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/signs/reorder</span><span class="route-desc">Realtor requests more signs. Body: type, quantity, notes. Sends email to admin — no auto-fulfillment.</span></div>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">05</span>
+      <div><h2>New Pages & Screens</h2></div>
+    </div>
+
+    <h3>TC portal (/tc/*)</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/register/tc</span><span class="screen-role">TC only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Accessed via invite link with token in URL</li>
+        <li>Token validated on page load — expired tokens show error</li>
+        <li>Form: first name, last name, email (pre-filled from invite), phone, password</li>
+        <li>Role is forced to TC — no selector shown</li>
+        <li>Shows "You've been invited by [Realtor Name] to manage their orders"</li>
+        <li>On success → creates TCAgentLink → redirect to /tc/select-agent</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/tc/select-agent</span><span class="screen-role">TC only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Grid of linked agent cards: avatar/initials, full name, brokerage, active order count, last order date</li>
+        <li>Click a card → sets activeAgentId in session → redirects to /tc/dashboard</li>
+        <li>If only one agent linked → auto-select and redirect immediately</li>
+        <li>Sign out button in header</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/tc/dashboard + /tc/orders/* + /tc/signs</span><span class="screen-role">TC only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Functionally identical to /dashboard/* but scoped to activeAgentId</li>
+        <li>Persistent banner at top: "Acting as [Agent Name] — [Switch Agent]"</li>
+        <li>Invoices visible but pay button hidden (agent pays, not TC)</li>
+        <li>Can place, view, cancel orders on behalf of agent</li>
+        <li>Can view agent's sign inventory and file reports</li>
+        <li>Reuse realtor dashboard components — don't rebuild, just wrap with TC context</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Realtor account additions</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/account — TC section</span><span class="screen-role">Realtor</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>New "Transaction Coordinators" section on account page</li>
+        <li>List of currently linked TCs: name, email, linked date, revoke button</li>
+        <li>Invite TC input: enter email → send invite button</li>
+        <li>Pending invites shown with expiry time and cancel option</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/signs</span><span class="screen-role">Realtor + TC</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>List of signs currently assigned to this realtor</li>
+        <li>Columns: sign number, type, status badge, current address, assigned order</li>
+        <li>"Report Issue" button per sign → modal: Lost / Damaged / Other + description</li>
+        <li>"Request More Signs" button → modal: type, quantity, notes → submits reorder request</li>
+        <li>Add "Signs" to bottom mobile nav tab bar</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Admin hub additions</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/signs</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Summary cards: Total Signs, Available, Deployed, Damaged/Lost</li>
+        <li>Full signs table: sign #, type, status, assigned realtor, current address, last updated</li>
+        <li>Filter by status, type, assigned realtor</li>
+        <li>Search by sign number or address</li>
+        <li>"Add Sign" button → inline form</li>
+        <li>"Bulk Add" button → specify type, count, prefix → generates signs</li>
+        <li>Click row → sign detail/edit</li>
+        <li>Tab: "Reports" — shows all open SignReports with resolve button</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/signs/map</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Google Maps view with a pin for every DEPLOYED sign</li>
+        <li>Pin click → popover showing: sign number, realtor name, address, order number</li>
+        <li>Color-coded pins: green = deployed, yellow = reported issue</li>
+        <li>Filter panel: by realtor, by sign type</li>
+        <li>Link from each popover to the full sign detail page</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/tcs</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Table of all TC accounts: name, email, # of linked agents, last login</li>
+        <li>Click row → TC detail: their linked agents list with unlink buttons</li>
+        <li>"Link TC to Agent" button → search both TC and agent by name/email, create link</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/signs/[id]</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Full sign detail: all fields editable</li>
+        <li>Status dropdown</li>
+        <li>Assign to realtor (search dropdown) and/or order</li>
+        <li>Address + map pin showing current deployment location</li>
+        <li>Notes field</li>
+        <li>Open reports for this sign (if any) with resolve button</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <!-- LOW INVENTORY ALERT -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">06</span>
+      <div><h2>Low Inventory Alert</h2><p class="section-sub">Server-side check triggered on sign status changes.</p></div>
+    </div>
+    <div class="callout callout-green">
+      <i class="ti ti-bell" aria-hidden="true"></i>
+      <p>After any sign status update that reduces AVAILABLE count, run a check: if AVAILABLE signs of any type drops below the threshold (default: 5 per type), send an admin alert email. Use the existing Nodemailer setup from Phase 1. Store the threshold as an env var <strong>LOW_INVENTORY_THRESHOLD</strong> defaulting to 5. Do not send duplicate alerts — track lastAlertSentAt per sign type, don't re-alert within 24 hours.</p>
+    </div>
+    <ul class="spec">
+      <li>Check runs after: sign status → DEPLOYED, DAMAGED, LOST, RETIRED</li>
+      <li>Email to: admin email (from env var ADMIN_ALERT_EMAIL)</li>
+      <li>Email body: sign type, current available count, threshold</li>
+      <li>Admin dashboard also shows a warning badge on the Signs nav item when any type is low</li>
+    </ul>
+  </div>
+
+  <!-- NEW ENV VARS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">07</span>
+      <div><h2>New Environment Variables</h2></div>
+    </div>
+    <div class="schema-block">
+      <div class="field-row"><span class="field-name">LOW_INVENTORY_THRESHOLD</span><span class="field-note">Default 5 — alert when available signs of a type drops below this</span></div>
+      <div class="field-row"><span class="field-name">ADMIN_ALERT_EMAIL</span><span class="field-note">Your email — receives low inventory and sign report alerts</span></div>
+      <div class="field-row"><span class="field-name">NEXT_PUBLIC_GOOGLE_MAPS_KEY</span><span class="field-note">Already set — confirm it has Maps JavaScript API enabled (needed for map view)</span></div>
+    </div>
+    <div class="callout callout-blue" style="margin-top:0.5rem;">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>In Google Cloud Console, make sure your Maps API key has both <strong>Places API</strong> (already used) and <strong>Maps JavaScript API</strong> enabled. The map view in /admin/signs/map needs the JS API. Same key, just needs the extra permission enabled.</p>
+    </div>
+  </div>
+
+  <!-- ACCEPTANCE CRITERIA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">08</span>
+      <div><h2>Acceptance Criteria</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="accept-row"><span class="ac-role">TC invite</span><span class="ac-criteria">Realtor enters a new email, invite is sent, TC registers via the link, and TCAgentLink is created. Realtor's account page shows the TC as linked.</span></div>
+      <div class="accept-row"><span class="ac-role">TC existing user</span><span class="ac-criteria">Realtor enters email of an existing TC account — TCAgentLink is created immediately with no invite email sent.</span></div>
+      <div class="accept-row"><span class="ac-role">TC login flow</span><span class="ac-criteria">TC logs in, sees their linked agents, selects one, lands on TC dashboard showing that agent's orders and data with the "Acting as" banner visible.</span></div>
+      <div class="accept-row"><span class="ac-role">TC order placement</span><span class="ac-criteria">TC places an order while acting as Agent A. The order's realtorId = Agent A's id. placedByTCId = TC's id. Order appears in Agent A's dashboard.</span></div>
+      <div class="accept-row"><span class="ac-role">TC invoice access</span><span class="ac-criteria">TC can view Agent A's invoices. The pay button is not visible to the TC.</span></div>
+      <div class="accept-row"><span class="ac-role">TC revoke</span><span class="ac-criteria">Realtor revokes TC access. TC can no longer see that agent in their agent list. Existing orders are unaffected.</span></div>
+      <div class="accept-row"><span class="ac-role">Sign inventory</span><span class="ac-criteria">Admin can add a sign, assign it to an order, and the sign appears in the realtor's /dashboard/signs page with the correct address and status.</span></div>
+      <div class="accept-row"><span class="ac-role">Bulk add</span><span class="ac-criteria">Admin bulk-adds 10 "Standard" signs with prefix "SPF-S". Signs SPF-S-001 through SPF-S-010 are created with status AVAILABLE.</span></div>
+      <div class="accept-row"><span class="ac-role">Map view</span><span class="ac-criteria">Admin /admin/signs/map shows a pin for every DEPLOYED sign. Clicking a pin shows sign number, realtor, and address.</span></div>
+      <div class="accept-row"><span class="ac-role">Sign report</span><span class="ac-criteria">Realtor reports a sign as lost. Admin receives an alert email. Sign status changes to LOST. Report appears in /admin/signs under Reports tab.</span></div>
+      <div class="accept-row"><span class="ac-role">Low inventory alert</span><span class="ac-criteria">When available "Standard" signs drop below threshold, admin receives one alert email. A second status change within 24 hours does not send a duplicate.</span></div>
+      <div class="accept-row"><span class="ac-role">TC isolation</span><span class="ac-criteria">TC acting as Agent A cannot see Agent B's data even if also linked to Agent B — they must switch agents first via /tc/select-agent.</span></div>
+    </div>
+  </div>
+
+</div>

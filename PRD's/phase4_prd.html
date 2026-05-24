@@ -1,0 +1,531 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .prd { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .cover { border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 1.75rem; margin-bottom: 2rem; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #faeeda; color: #7a4a0a; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; margin-bottom: 1rem; }
+  .cover h1 { font-size: 26px; font-weight: 500; margin-bottom: 0.4rem; }
+  .cover .sub { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; max-width: 580px; margin-bottom: 1.25rem; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .meta-card { background: var(--color-background-secondary); border-radius: 8px; padding: 0.65rem 0.9rem; }
+  .meta-card .label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+  .meta-card .val { font-size: 13px; font-weight: 500; }
+
+  .section { margin-bottom: 2.25rem; padding-bottom: 2.25rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .section:last-child { border-bottom: none; margin-bottom: 0; }
+  .section-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 1.1rem; }
+  .snum { font-size: 11px; font-weight: 500; color: #7a4a0a; background: #faeeda; border-radius: 4px; padding: 2px 7px; margin-top: 3px; flex-shrink: 0; }
+  .section h2 { font-size: 18px; font-weight: 500; }
+  .section-sub { font-size: 13px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.5; }
+
+  .callout { display: flex; gap: 10px; background: #faeeda; border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .callout i { font-size: 17px; color: #7a4a0a; flex-shrink: 0; margin-top: 1px; }
+  .callout p { font-size: 13px; color: #5a3208; line-height: 1.55; }
+
+  .callout-green { background: #e8f5ee; }
+  .callout-green i { color: #1a6640; }
+  .callout-green p { color: #1a4a30; }
+
+  .callout-blue { background: #e8f0fb; }
+  .callout-blue i { color: #1a4080; }
+  .callout-blue p { color: #0d2a5e; }
+
+  .callout-red { background: #ffeaea; }
+  .callout-red i { color: #a02020; }
+  .callout-red p { color: #7a0a0a; }
+
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
+  .card-title { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .card-title i { font-size: 15px; color: var(--color-text-secondary); }
+
+  ul.spec { list-style: none; }
+  ul.spec li { font-size: 13px; color: var(--color-text-secondary); padding: 3px 0; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
+  ul.spec li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #d97706; margin-top: 6px; flex-shrink: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+
+  .schema-block { background: var(--color-background-secondary); border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 0.75rem; }
+  .schema-block .schema-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px; }
+  .schema-block .schema-name span { font-size: 11px; background: #faeeda; color: #7a4a0a; border-radius: 3px; padding: 1px 5px; font-weight: 400; }
+  .field-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 180px; }
+  .field-type { font-size: 11px; color: #7a4a0a; background: #faeeda; border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
+  .field-note { font-size: 12px; color: var(--color-text-tertiary); }
+
+  .flow-step { display: flex; gap: 12px; margin-bottom: 0.6rem; align-items: flex-start; }
+  .flow-num { width: 22px; height: 22px; border-radius: 50%; background: #faeeda; color: #7a4a0a; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .flow-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; padding-top: 2px; }
+  .flow-text strong { color: var(--color-text-primary); font-weight: 500; }
+
+  .route-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .route-row:last-child { border-bottom: none; }
+  .method { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px; min-width: 44px; text-align: center; flex-shrink: 0; }
+  .get { background: #e8f5ee; color: #1a6640; }
+  .post { background: #e8f0fb; color: #1a4080; }
+  .put { background: #faeeda; color: #7a4a0a; }
+  .del { background: #ffeaea; color: #a02020; }
+  .route-path { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 260px; }
+  .route-desc { font-size: 12px; color: var(--color-text-secondary); }
+
+  .screen-block { border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; overflow: hidden; margin-bottom: 0.75rem; }
+  .screen-header { background: var(--color-background-secondary); padding: 0.55rem 0.9rem; display: flex; align-items: center; justify-content: space-between; }
+  .screen-name { font-size: 13px; font-weight: 500; }
+  .screen-role { font-size: 11px; color: var(--color-text-tertiary); }
+  .screen-body { padding: 0.9rem; }
+
+  .stack-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-label { font-size: 13px; font-weight: 500; min-width: 160px; }
+  .stack-val { font-size: 13px; color: var(--color-text-secondary); flex: 1; }
+  .stag { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 500; flex-shrink: 0; }
+  .stag-orange { background: #faeeda; color: #7a4a0a; }
+  .stag-green { background: #e8f5ee; color: #1a6640; }
+  .stag-blue { background: #e8f0fb; color: #1a4080; }
+
+  .accept-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); align-items: flex-start; }
+  .accept-row:last-child { border-bottom: none; }
+  .ac-role { font-size: 12px; font-weight: 500; min-width: 130px; color: var(--color-text-secondary); }
+  .ac-criteria { font-size: 13px; color: var(--color-text-secondary); line-height: 1.45; }
+
+  .tag-pill { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; margin-right: 4px; }
+  .out { background: #ffeaea; color: #a02020; }
+  .in { background: #faeeda; color: #7a4a0a; }
+
+  h3 { font-size: 14px; font-weight: 500; margin-bottom: 0.6rem; margin-top: 0.9rem; }
+  h3:first-child { margin-top: 0; }
+
+  .status-flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 0.75rem; }
+  .status-box { font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 6px; }
+  .status-arrow { font-size: 14px; color: var(--color-text-tertiary); }
+  .s-new { background: #e8f0fb; color: #1a4080; }
+  .s-hold { background: #faeeda; color: #7a4a0a; }
+  .s-clear { background: #e8f5ee; color: #1a6640; }
+  .s-sched { background: #f3e8fb; color: #6b21a8; }
+  .s-done { background: #e8f5ee; color: #1a6640; }
+</style>
+
+<div class="prd">
+  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Phase 4 PRD for SignPost Field — 811 email monitoring, automated workflows, and field tech mobile view</h2>
+
+  <div class="cover">
+    <div class="badge"><i class="ti ti-mail" aria-hidden="true"></i> Phase 4 — 811 Monitoring & Field Tech</div>
+    <h1>SignPost Field — Phase 4 PRD</h1>
+    <p class="sub">Adds automated 811/Dig Safe email monitoring with order hold workflows, field tech mobile job view, and background job scheduling. QuickBooks auth fix is handled separately after live deployment.</p>
+    <div class="meta-grid">
+      <div class="meta-card"><div class="label">Depends on</div><div class="val">Phase 1–3 complete</div></div>
+      <div class="meta-card"><div class="label">Phase</div><div class="val">4 of 5</div></div>
+      <div class="meta-card"><div class="label">New roles</div><div class="val">FIELD_TECH</div></div>
+      <div class="meta-card"><div class="label">New integrations</div><div class="val">IMAP / Gmail API</div></div>
+      <div class="meta-card"><div class="label">DB changes</div><div class="val">Ticket811, JobAssignment</div></div>
+      <div class="meta-card"><div class="label">QB</div><div class="val">Excluded — Phase 4b</div></div>
+    </div>
+  </div>
+
+  <!-- SCOPE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">01</span>
+      <div><h2>Scope — What's In & Out</h2></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3><span class="tag-pill in">✓ In scope</span></h3>
+        <ul class="spec">
+          <li>811 inbox email polling (IMAP or Gmail API)</li>
+          <li>Address extraction from 811 emails</li>
+          <li>Cross-reference 811 addresses against active orders</li>
+          <li>Auto-hold matched orders with admin alert</li>
+          <li>Admin 811 ticket management UI</li>
+          <li>Order hold/release workflow</li>
+          <li>FIELD_TECH role with scoped mobile view</li>
+          <li>Admin job assignment (order → field tech)</li>
+          <li>Field tech dashboard — assigned jobs only</li>
+          <li>Field tech mark job complete from mobile</li>
+          <li>Field tech add job notes and flag issues</li>
+          <li>Background polling scheduler (node-cron)</li>
+          <li>811 ticket history and audit log</li>
+          <li>Admin can manually create 811 tickets</li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="tag-pill out">✗ Out of scope</span></h3>
+        <ul class="spec">
+          <li>QuickBooks auth fix (Phase 4b after deploy)</li>
+          <li>In-app payment processing</li>
+          <li>Field tech GPS tracking</li>
+          <li>Field tech photo uploads</li>
+          <li>Automated SMS to field tech (Phase 5)</li>
+          <li>811 API direct integration (email only)</li>
+          <li>Multi-inbox monitoring</li>
+          <li>Field tech scheduling / calendar view</li>
+          <li>Route optimization for field techs</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <p>The 811 email parser is the most fragile part of this phase. 811 notification emails vary by state and utility company — the parser needs to handle multiple formats gracefully. Build with a fallback: if the parser can't extract an address confidently, flag the ticket for manual admin review rather than silently failing.</p>
+    </div>
+  </div>
+
+  <!-- 811 MONITORING -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">02</span>
+      <div><h2>811 Email Monitoring</h2><p class="section-sub">A background service polls a dedicated 811 inbox, parses incoming notifications, and triggers order holds automatically.</p></div>
+    </div>
+
+    <h3>How 811 emails work</h3>
+    <div class="callout callout-blue">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>When a sign install order is placed near a utility dig site, the 811 notification center emails a designated address with the ticket number, excavation address, and work start date. The parser needs to extract the street address from this email and match it against pending/scheduled orders within a configurable radius (default: 0.1 miles). Emails come from various senders depending on state — always check the subject line for "811" or "Dig Safe" or "One Call" keywords.</p>
+    </div>
+
+    <h3>Email polling setup — two options</h3>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-mail" aria-hidden="true"></i>Option A — IMAP (recommended)</div>
+        <ul class="spec">
+          <li>Use <strong>imapflow</strong> npm package</li>
+          <li>Works with any email provider (Gmail, Outlook, custom)</li>
+          <li>Poll every 5 minutes via node-cron</li>
+          <li>Mark emails as read after processing</li>
+          <li>No OAuth required — app password works</li>
+          <li>Simpler setup, more reliable</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-brand-google" aria-hidden="true"></i>Option B — Gmail API</div>
+        <ul class="spec">
+          <li>Use Gmail API with service account</li>
+          <li>More complex OAuth setup</li>
+          <li>Better for Gmail-specific features</li>
+          <li>Push notifications instead of polling</li>
+          <li>Use only if IMAP is blocked by provider</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout callout-green" style="margin-top:0.5rem;">
+      <i class="ti ti-check" aria-hidden="true"></i>
+      <p>Build with <strong>Option A (IMAP + imapflow)</strong> by default. The admin can configure the inbox credentials in settings. If they're using Gmail, they'll need to enable IMAP and generate an App Password in Google Account settings — not their regular Gmail password.</p>
+    </div>
+
+    <h3>811 workflow</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Scheduler fires</strong> — node-cron runs every 5 minutes, calls the 811 poller service</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>Fetch unread emails</strong> — IMAP connects to configured inbox, fetches unread messages, filters by subject keywords: "811", "Dig Safe", "One Call", "utility locate", "ticket"</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Parse address</strong> — Extract street address from email body using regex patterns. If confident match found → proceed. If uncertain → create ticket with status NEEDS_REVIEW and alert admin.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Cross-reference orders</strong> — Query orders with status PENDING or SCHEDULED where address contains the parsed street name and city. Flag matches.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>Create Ticket811 record</strong> — Save ticket with: raw email, parsed address, ticket number, matched order IDs, status</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Hold matched orders</strong> — Update matched order status to ON_HOLD, set holdReason = "811 ticket [number]"</div></div>
+    <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><strong>Alert admin</strong> — Send email to ADMIN_ALERT_EMAIL with ticket number, address, matched orders, and link to /admin/811/[id]</div></div>
+    <div class="flow-step"><div class="flow-num">8</div><div class="flow-text"><strong>Mark email read</strong> — Mark processed email as read in IMAP so it isn't processed again</div></div>
+
+    <h3 style="margin-top:1rem;">Order status additions</h3>
+    <div class="callout callout-red">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <p>Add <strong>ON_HOLD</strong> to the Order status enum. This is a new status that sits between SCHEDULED and IN_PROGRESS. Orders on hold are not assigned to field techs and do not appear in the job queue. Add <strong>holdReason</strong> (String?) and <strong>heldAt</strong> (DateTime?) fields to the Order model.</p>
+    </div>
+
+    <h3>Order status flow with 811</h3>
+    <div class="status-flow">
+      <span class="status-box s-new">PENDING</span>
+      <span class="status-arrow">→</span>
+      <span class="status-box s-sched">SCHEDULED</span>
+      <span class="status-arrow">→</span>
+      <span class="status-box s-hold">ON_HOLD</span>
+      <span class="status-arrow">→</span>
+      <span class="status-box s-sched">SCHEDULED</span>
+      <span class="status-arrow">→</span>
+      <span class="status-box s-done">IN_PROGRESS</span>
+      <span class="status-arrow">→</span>
+      <span class="status-box s-done">COMPLETED</span>
+    </div>
+
+    <h3>Admin 811 release flow</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Admin receives clearance from utility company (separate process, outside the app)</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Admin goes to <strong>/admin/811/[id]</strong> → clicks "Mark Cleared"</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Ticket811 status → CLEARED. All linked orders with holdReason matching this ticket → status returns to SCHEDULED, holdReason cleared</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Admin and realtor receive email confirming orders are back in queue</div></div>
+  </div>
+
+  <!-- DATABASE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">03</span>
+      <div><h2>New Database Models</h2></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">Ticket811 <span>new table: tickets_811</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">ticketNumber</span><span class="field-type">String?</span><span class="field-note">extracted from email, null if not parseable</span></div>
+      <div class="field-row"><span class="field-name">sourceEmail</span><span class="field-type">String</span><span class="field-note">sender email address</span></div>
+      <div class="field-row"><span class="field-name">emailSubject</span><span class="field-type">String</span><span class="field-note">original email subject line</span></div>
+      <div class="field-row"><span class="field-name">emailBody</span><span class="field-type">String</span><span class="field-note">full raw email body for audit</span></div>
+      <div class="field-row"><span class="field-name">parsedAddress</span><span class="field-type">String?</span><span class="field-note">address extracted by parser</span></div>
+      <div class="field-row"><span class="field-name">workStartDate</span><span class="field-type">DateTime?</span><span class="field-note">excavation start date from email</span></div>
+      <div class="field-row"><span class="field-name">status</span><span class="field-type">Enum</span><span class="field-note">NEW | NEEDS_REVIEW | ACTIVE | CLEARED | DISMISSED</span></div>
+      <div class="field-row"><span class="field-name">matchedOrderIds</span><span class="field-type">String[]</span><span class="field-note">array of order IDs put on hold</span></div>
+      <div class="field-row"><span class="field-name">clearedAt</span><span class="field-type">DateTime?</span></div>
+      <div class="field-row"><span class="field-name">clearedByUserId</span><span class="field-type">FK → User?</span></div>
+      <div class="field-row"><span class="field-name">adminNotes</span><span class="field-type">String?</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+      <div class="field-row"><span class="field-name">updatedAt</span><span class="field-type">DateTime</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">JobAssignment <span>new table: job_assignments</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">orderId</span><span class="field-type">FK → Order UNIQUE</span><span class="field-note">one active assignment per order</span></div>
+      <div class="field-row"><span class="field-name">fieldTechId</span><span class="field-type">FK → User</span><span class="field-note">must have role FIELD_TECH</span></div>
+      <div class="field-row"><span class="field-name">assignedByUserId</span><span class="field-type">FK → User</span><span class="field-note">admin who made the assignment</span></div>
+      <div class="field-row"><span class="field-name">scheduledFor</span><span class="field-type">DateTime?</span><span class="field-note">when the job is scheduled</span></div>
+      <div class="field-row"><span class="field-name">startedAt</span><span class="field-type">DateTime?</span><span class="field-note">when tech marked started</span></div>
+      <div class="field-row"><span class="field-name">completedAt</span><span class="field-type">DateTime?</span></div>
+      <div class="field-row"><span class="field-name">techNotes</span><span class="field-type">String?</span><span class="field-note">field tech notes on the job</span></div>
+      <div class="field-row"><span class="field-name">issue</span><span class="field-type">String?</span><span class="field-note">issue flagged by tech, triggers admin alert</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">Order — additions <span>alter existing</span></div>
+      <div class="field-row"><span class="field-name">status enum</span><span class="field-type">add ON_HOLD</span><span class="field-note">new status between SCHEDULED and IN_PROGRESS</span></div>
+      <div class="field-row"><span class="field-name">holdReason</span><span class="field-type">String?</span><span class="field-note">e.g. "811 ticket #12345"</span></div>
+      <div class="field-row"><span class="field-name">heldAt</span><span class="field-type">DateTime?</span></div>
+      <div class="field-row"><span class="field-name">jobAssignment</span><span class="field-type">relation → JobAssignment?</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">User — additions <span>alter existing</span></div>
+      <div class="field-row"><span class="field-name">role enum</span><span class="field-type">add FIELD_TECH</span><span class="field-note">new role alongside REALTOR, ADMIN, TC</span></div>
+      <div class="field-row"><span class="field-name">jobAssignments</span><span class="field-type">relation → JobAssignment[]</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">AppSettings <span>new table: app_settings</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">key</span><span class="field-type">String UNIQUE</span><span class="field-note">setting key e.g. "imap_host"</span></div>
+      <div class="field-row"><span class="field-name">value</span><span class="field-type">String</span><span class="field-note">setting value, encrypted if sensitive</span></div>
+      <div class="field-row"><span class="field-name">isEncrypted</span><span class="field-type">Boolean</span><span class="field-note">true for passwords/tokens</span></div>
+      <div class="field-row"><span class="field-name">updatedAt</span><span class="field-type">DateTime</span></div>
+    </div>
+  </div>
+
+  <!-- API ROUTES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">04</span>
+      <div><h2>New API Routes</h2></div>
+    </div>
+
+    <h3>811 management</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/811</span><span class="route-desc">All 811 tickets. Filters: status, date range. Includes matched order count.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/811/[id]</span><span class="route-desc">Single ticket detail with matched orders, full email body, audit trail.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/811</span><span class="route-desc">Manually create a ticket. Body: ticketNumber, parsedAddress, workStartDate, notes.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/811/[id]/clear</span><span class="route-desc">Mark ticket cleared. Releases all held orders back to SCHEDULED. Sends confirmation emails.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/811/[id]/dismiss</span><span class="route-desc">Dismiss ticket (false positive). Does not release orders — admin must manually update them.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/811/[id]</span><span class="route-desc">Update ticket — notes, parsedAddress (manual correction), matchedOrderIds.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/811/poll</span><span class="route-desc">Manually trigger inbox poll. Admin only. Returns count of new tickets found.</span></div>
+    </div>
+
+    <h3>Job assignments — admin</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/field-techs</span><span class="route-desc">List all FIELD_TECH users with their current job count.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/assignments</span><span class="route-desc">Assign order to field tech. Body: orderId, fieldTechId, scheduledFor. Sets order status → IN_PROGRESS.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/assignments/[id]</span><span class="route-desc">Update assignment — reschedule, reassign to different tech.</span></div>
+      <div class="route-row"><span class="method del">DEL</span><span class="route-path">/api/admin/assignments/[id]</span><span class="route-desc">Unassign order. Sets order back to SCHEDULED.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/assignments</span><span class="route-desc">All assignments. Filters: fieldTechId, date, status. For admin job board view.</span></div>
+    </div>
+
+    <h3>Field tech routes</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/field/jobs</span><span class="route-desc">Field tech's assigned jobs for today and upcoming. Auth: FIELD_TECH only.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/field/jobs/[id]</span><span class="route-desc">Single job detail — order info, address, realtor name, sign info, notes.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/field/jobs/[id]/start</span><span class="route-desc">Mark job started. Sets startedAt timestamp, order status → IN_PROGRESS.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/field/jobs/[id]/complete</span><span class="route-desc">Mark job complete. Body: techNotes. Sets completedAt, order status → COMPLETED. Triggers invoice auto-creation if QB connected.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/field/jobs/[id]/flag</span><span class="route-desc">Flag an issue on a job. Body: issue (description). Sends alert email to admin. Does not complete the job.</span></div>
+    </div>
+
+    <h3>Settings</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/settings</span><span class="route-desc">Get all app settings (sensitive values masked). Admin only.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/settings</span><span class="route-desc">Update settings. Body: key-value pairs. Encrypts sensitive keys before storing.</span></div>
+    </div>
+  </div>
+
+  <!-- BACKGROUND SCHEDULER -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">05</span>
+      <div><h2>Background Scheduler</h2><p class="section-sub">Runs recurring tasks server-side using node-cron.</p></div>
+    </div>
+    <div class="callout callout-blue">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>In Next.js App Router, initialize the scheduler in a custom server file or use a Route Handler that's called on startup. The cleanest approach for this stack is to create <strong>/lib/scheduler.ts</strong> and initialize it in the Next.js instrumentation hook (<strong>instrumentation.ts</strong> in the root) — this runs once on server startup in both dev and production.</p>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="stack-row"><span class="stack-label">811 inbox poll</span><span class="stack-val">Every 5 minutes — fetch unread 811 emails, parse, match orders, create tickets</span><span class="stag stag-orange">*/5 * * * *</span></div>
+      <div class="stack-row"><span class="stack-label">Invoice aging check</span><span class="stack-val">Daily at 8am — find invoices overdue by 7, 14, 30 days and send reminder emails</span><span class="stag stag-orange">0 8 * * *</span></div>
+      <div class="stack-row"><span class="stack-label">Stale order check</span><span class="stack-val">Daily at 9am — flag PENDING orders older than 48 hours with no action for admin review</span><span class="stag stag-orange">0 9 * * *</span></div>
+    </div>
+    <div class="callout callout-green" style="margin-top:0.5rem;">
+      <i class="ti ti-check" aria-hidden="true"></i>
+      <p>Invoice aging reminders were deferred from Phase 2 — this is the right place to add them since the scheduler infrastructure is being built here anyway. Add them alongside the 811 polling job.</p>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">06</span>
+      <div><h2>New Pages & Screens</h2></div>
+    </div>
+
+    <h3>Admin 811 management</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/811</span><span class="screen-role">Admin only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Summary cards: Active tickets, Needs Review, Cleared this month, Orders currently on hold</li>
+        <li>Tickets table: ticket #, parsed address, status badge, matched orders count, received date</li>
+        <li>Filter tabs: All, Active, Needs Review, Cleared</li>
+        <li>"Manual Poll" button — triggers immediate inbox check</li>
+        <li>"Create Ticket" button — manually log a 811 ticket</li>
+        <li>Click row → ticket detail</li>
+        <li>Add "811" to admin sidebar nav with red badge showing active ticket count</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/811/[id]</span><span class="screen-role">Admin only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Ticket details: number, source email, received date, parsed address, work start date, status</li>
+        <li>Raw email body (collapsible, monospace font)</li>
+        <li>Matched orders section — list of orders put on hold with links to each order</li>
+        <li>Admin notes field — auto-saves on blur</li>
+        <li>"Mark Cleared" button — releases all held orders, sends confirmation emails</li>
+        <li>"Dismiss" button — false positive, does not release orders</li>
+        <li>"Manually link order" — search and add an order to this ticket's hold list</li>
+        <li>Audit trail: created, status changes with timestamps and who changed</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Admin job board</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/jobs</span><span class="screen-role">Admin only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Summary cards: Unassigned orders, Jobs today, In progress, Completed today</li>
+        <li>Two sections: "Unassigned" (SCHEDULED orders with no assignment) and "Assigned" (by tech)</li>
+        <li>Unassigned section: order #, realtor, address, type, scheduled date, "Assign" button</li>
+        <li>Assign button → modal: select field tech from dropdown, set scheduled date/time</li>
+        <li>Assigned section: grouped by field tech, shows their jobs for today</li>
+        <li>Each job row: order #, address, type, scheduled time, status, tech notes if any</li>
+        <li>Inline reassign and unassign buttons</li>
+        <li>Add "Jobs" to admin sidebar nav</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Admin settings</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/settings</span><span class="screen-role">Admin only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Sections: 811 Inbox Config, Notifications, Inventory Thresholds, QuickBooks (greyed out — coming soon)</li>
+        <li>811 section: IMAP host, port, email, app password (masked), test connection button</li>
+        <li>Notification section: admin alert email, SMS opt-in default, invoice reminder days</li>
+        <li>Inventory section: low inventory threshold per sign type</li>
+        <li>Save button per section — not one global save</li>
+        <li>Test Connection button for IMAP — attempts connection, shows success/failure</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Field tech portal (/field/*)</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/field/login + /field/dashboard</span><span class="screen-role">FIELD_TECH only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Field techs use the same /login page — redirected to /field/dashboard on login</li>
+        <li>Dashboard: Today's jobs list sorted by scheduled time</li>
+        <li>Each job card: address (large, easy to read on phone), order type badge, realtor name, scheduled time</li>
+        <li>Status badge per job: Assigned / Started / Completed</li>
+        <li>"Start Job" button — one tap to mark started</li>
+        <li>Upcoming section: jobs for next 7 days (collapsed by default)</li>
+        <li>No access to any admin, realtor, or order management pages</li>
+        <li>Mobile-optimized — large text, large tap targets, minimal chrome</li>
+        <li>PWA-friendly — add to homescreen works same as realtor portal</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/field/jobs/[id]</span><span class="screen-role">FIELD_TECH only</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Job details: full address (tap to open in Maps app), order type, realtor name and phone</li>
+        <li>Sign info if assigned: sign number, type</li>
+        <li>Order notes from realtor</li>
+        <li>Admin notes (read-only)</li>
+        <li>Action buttons (context-aware based on status):</li>
+        <li>→ If ASSIGNED: "Start Job" button</li>
+        <li>→ If STARTED: "Complete Job" (with notes textarea) + "Flag Issue" button</li>
+        <li>→ If COMPLETED: read-only summary view</li>
+        <li>Flag Issue modal: description textarea → sends alert email to admin</li>
+        <li>Back button → /field/dashboard</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <!-- NEW ENV VARS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">07</span>
+      <div><h2>New Environment Variables</h2></div>
+    </div>
+    <div class="schema-block">
+      <div class="field-row"><span class="field-name">IMAP_HOST</span><span class="field-note">e.g. imap.gmail.com — can also be stored in AppSettings DB table</span></div>
+      <div class="field-row"><span class="field-name">IMAP_PORT</span><span class="field-note">993 for SSL, 143 for TLS</span></div>
+      <div class="field-row"><span class="field-name">IMAP_USER</span><span class="field-note">email address of the 811 inbox</span></div>
+      <div class="field-row"><span class="field-name">IMAP_PASSWORD</span><span class="field-note">app password — never the account password</span></div>
+      <div class="field-row"><span class="field-name">POLL_INTERVAL_MINUTES</span><span class="field-note">default 5 — how often to check inbox</span></div>
+      <div class="field-row"><span class="field-name">ADDRESS_MATCH_RADIUS_MILES</span><span class="field-note">default 0.1 — radius for order matching</span></div>
+    </div>
+    <div class="callout" style="margin-top:0.5rem;">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>IMAP credentials can live in either .env.local OR the AppSettings database table (configurable via /admin/settings). Env vars are the fallback defaults — DB settings override them. This lets you change the inbox without redeploying.</p>
+    </div>
+  </div>
+
+  <!-- NEW PACKAGES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">08</span>
+      <div><h2>New npm Packages</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="stack-row"><span class="stack-label">imapflow</span><span class="stack-val">Modern IMAP client — fetch, read, mark emails</span><span class="stag stag-orange">npm install</span></div>
+      <div class="stack-row"><span class="stack-label">mailparser</span><span class="stack-val">Parse raw email content into structured objects</span><span class="stag stag-orange">npm install</span></div>
+      <div class="stack-row"><span class="stack-label">node-cron</span><span class="stack-val">Background job scheduler for polling and reminders</span><span class="stag stag-orange">npm install</span></div>
+      <div class="stack-row"><span class="stack-label">geolib</span><span class="stack-val">Distance calculation for address proximity matching</span><span class="stag stag-orange">npm install</span></div>
+    </div>
+  </div>
+
+  <!-- ACCEPTANCE CRITERIA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">09</span>
+      <div><h2>Acceptance Criteria</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="accept-row"><span class="ac-role">811 polling</span><span class="ac-criteria">Scheduler runs every 5 minutes. Admin can trigger manual poll from /admin/811. New emails in the 811 inbox create Ticket811 records within one poll cycle.</span></div>
+      <div class="accept-row"><span class="ac-role">Address match</span><span class="ac-criteria">An order with address "123 Main St, Seattle WA" is automatically put ON_HOLD when a 811 ticket arrives for "123 Main Street, Seattle". Street name matching is fuzzy — not exact string match.</span></div>
+      <div class="accept-row"><span class="ac-role">No match</span><span class="ac-criteria">A 811 ticket with an address that doesn't match any active orders creates a ticket with status ACTIVE and zero matched orders. No orders are put on hold.</span></div>
+      <div class="accept-row"><span class="ac-role">Parse failure</span><span class="ac-criteria">An email where address cannot be confidently extracted creates a ticket with status NEEDS_REVIEW. Admin receives alert email. No orders are put on hold.</span></div>
+      <div class="accept-row"><span class="ac-role">Admin alert</span><span class="ac-criteria">Admin receives email within one poll cycle of a new 811 ticket being created with matched orders.</span></div>
+      <div class="accept-row"><span class="ac-role">Clear ticket</span><span class="ac-criteria">Admin marks ticket CLEARED. All orders with holdReason referencing that ticket number return to SCHEDULED status. Realtor receives email that their order is back in queue.</span></div>
+      <div class="accept-row"><span class="ac-role">Field tech login</span><span class="ac-criteria">FIELD_TECH user logs in and is redirected to /field/dashboard. They cannot access /admin/* or /dashboard/* routes.</span></div>
+      <div class="accept-row"><span class="ac-role">Job assignment</span><span class="ac-criteria">Admin assigns a SCHEDULED order to a field tech via /admin/jobs. Job appears in field tech's dashboard immediately.</span></div>
+      <div class="accept-row"><span class="ac-role">Job completion</span><span class="ac-criteria">Field tech marks job complete from /field/jobs/[id]. Order status changes to COMPLETED. If QB is connected, invoice is auto-created.</span></div>
+      <div class="accept-row"><span class="ac-role">Issue flag</span><span class="ac-criteria">Field tech flags an issue on a job. Admin receives email with job details and issue description. Job is not marked complete.</span></div>
+      <div class="accept-row"><span class="ac-role">Settings save</span><span class="ac-criteria">Admin saves IMAP credentials in /admin/settings. "Test Connection" button confirms the connection works. Scheduler uses the saved credentials on next poll cycle.</span></div>
+      <div class="accept-row"><span class="ac-role">Invoice aging</span><span class="ac-criteria">Invoices overdue by 7 days receive a reminder email to the realtor. Same invoice does not receive a second 7-day reminder — only escalates to 14-day reminder next.</span></div>
+    </div>
+  </div>
+
+</div>

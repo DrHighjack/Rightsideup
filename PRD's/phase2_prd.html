@@ -1,0 +1,467 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .prd { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .cover { border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 1.75rem; margin-bottom: 2rem; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #e8f0fb; color: #1a4080; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; margin-bottom: 1rem; }
+  .cover h1 { font-size: 26px; font-weight: 500; margin-bottom: 0.4rem; }
+  .cover .sub { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; max-width: 580px; margin-bottom: 1.25rem; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .meta-card { background: var(--color-background-secondary); border-radius: 8px; padding: 0.65rem 0.9rem; }
+  .meta-card .label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+  .meta-card .val { font-size: 13px; font-weight: 500; }
+
+  .section { margin-bottom: 2.25rem; padding-bottom: 2.25rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .section:last-child { border-bottom: none; margin-bottom: 0; }
+  .section-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 1.1rem; }
+  .snum { font-size: 11px; font-weight: 500; color: #1a4080; background: #e8f0fb; border-radius: 4px; padding: 2px 7px; margin-top: 3px; flex-shrink: 0; }
+  .section h2 { font-size: 18px; font-weight: 500; }
+  .section-sub { font-size: 13px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.5; }
+
+  .callout { display: flex; gap: 10px; background: #e8f0fb; border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .callout i { font-size: 17px; color: #1a4080; flex-shrink: 0; margin-top: 1px; }
+  .callout p { font-size: 13px; color: #0d2a5e; line-height: 1.55; }
+
+  .callout-warn { background: #faeeda; }
+  .callout-warn i { color: #7a4a0a; }
+  .callout-warn p { color: #5a3208; }
+
+  .callout-green { background: #e8f5ee; }
+  .callout-green i { color: #1a6640; }
+  .callout-green p { color: #1a4a30; }
+
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
+  .card-title { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .card-title i { font-size: 15px; color: var(--color-text-secondary); }
+
+  ul.spec { list-style: none; }
+  ul.spec li { font-size: 13px; color: var(--color-text-secondary); padding: 3px 0; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
+  ul.spec li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #4a90d9; margin-top: 6px; flex-shrink: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+
+  .schema-block { background: var(--color-background-secondary); border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 0.75rem; }
+  .schema-block .schema-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px; }
+  .schema-block .schema-name span { font-size: 11px; background: #e8f0fb; color: #1a4080; border-radius: 3px; padding: 1px 5px; font-weight: 400; }
+  .field-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 170px; }
+  .field-type { font-size: 11px; color: #1a4080; background: #e8f0fb; border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
+  .field-note { font-size: 12px; color: var(--color-text-tertiary); }
+
+  .flow-step { display: flex; gap: 12px; margin-bottom: 0.6rem; align-items: flex-start; }
+  .flow-num { width: 22px; height: 22px; border-radius: 50%; background: #e8f0fb; color: #1a4080; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .flow-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; padding-top: 2px; }
+  .flow-text strong { color: var(--color-text-primary); font-weight: 500; }
+
+  .route-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .route-row:last-child { border-bottom: none; }
+  .method { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px; min-width: 44px; text-align: center; flex-shrink: 0; }
+  .get { background: #e8f5ee; color: #1a6640; }
+  .post { background: #e8f0fb; color: #1a4080; }
+  .put { background: #faeeda; color: #7a4a0a; }
+  .del { background: #ffeaea; color: #a02020; }
+  .route-path { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 240px; }
+  .route-desc { font-size: 12px; color: var(--color-text-secondary); }
+
+  .screen-block { border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; overflow: hidden; margin-bottom: 0.75rem; }
+  .screen-header { background: var(--color-background-secondary); padding: 0.55rem 0.9rem; display: flex; align-items: center; justify-content: space-between; }
+  .screen-name { font-size: 13px; font-weight: 500; }
+  .screen-role { font-size: 11px; color: var(--color-text-tertiary); }
+  .screen-body { padding: 0.9rem; }
+
+  .stack-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-label { font-size: 13px; font-weight: 500; min-width: 160px; }
+  .stack-val { font-size: 13px; color: var(--color-text-secondary); flex: 1; }
+  .stag { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 500; flex-shrink: 0; }
+  .stag-blue { background: #e8f0fb; color: #1a4080; }
+  .stag-warn { background: #faeeda; color: #7a4a0a; }
+  .stag-green { background: #e8f5ee; color: #1a6640; }
+
+  .accept-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); align-items: flex-start; }
+  .accept-row:last-child { border-bottom: none; }
+  .ac-role { font-size: 12px; font-weight: 500; min-width: 110px; color: var(--color-text-secondary); }
+  .ac-criteria { font-size: 13px; color: var(--color-text-secondary); line-height: 1.45; }
+
+  .tag-pill { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; margin-right: 4px; }
+  .out { background: #ffeaea; color: #a02020; }
+  .in { background: #e8f0fb; color: #1a4080; }
+
+  h3 { font-size: 14px; font-weight: 500; margin-bottom: 0.6rem; margin-top: 0.9rem; }
+  h3:first-child { margin-top: 0; }
+
+  .dep-row { display: flex; gap: 8px; align-items: flex-start; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .dep-row:last-child { border-bottom: none; }
+  .dep-label { font-size: 12px; font-weight: 500; min-width: 120px; }
+  .dep-val { font-size: 12px; color: var(--color-text-secondary); line-height: 1.45; }
+</style>
+
+<div class="prd">
+  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">Phase 2 PRD for SignPost Field covering QuickBooks billing, invoicing, client tracker, coupons, and SMS notifications</h2>
+
+  <div class="cover">
+    <div class="badge"><i class="ti ti-credit-card" aria-hidden="true"></i> Phase 2 — Billing & Clients</div>
+    <h1>SignPost Field — Phase 2 PRD</h1>
+    <p class="sub">Adds QuickBooks invoice sync, auto-invoicing on job completion, a client tracker in admin, coupon/discount codes, and Twilio SMS notifications. Builds directly on top of the Phase 1 codebase.</p>
+    <div class="meta-grid">
+      <div class="meta-card"><div class="label">Depends on</div><div class="val">Phase 1 complete</div></div>
+      <div class="meta-card"><div class="label">Phase</div><div class="val">2 of 5</div></div>
+      <div class="meta-card"><div class="label">New integrations</div><div class="val">QuickBooks, Twilio</div></div>
+      <div class="meta-card"><div class="label">New roles</div><div class="val">None</div></div>
+      <div class="meta-card"><div class="label">DB changes</div><div class="val">Invoice, Coupon tables</div></div>
+      <div class="meta-card"><div class="label">Status</div><div class="val">Planning</div></div>
+    </div>
+  </div>
+
+  <!-- SCOPE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">01</span>
+      <div><h2>Scope — What's In & Out</h2></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3><span class="tag-pill in">✓ In scope</span></h3>
+        <ul class="spec">
+          <li>QuickBooks Online OAuth 2.0 connection</li>
+          <li>Auto-create invoice in QBO when order marked COMPLETED</li>
+          <li>Two-way invoice status sync (paid in QBO → reflected in app)</li>
+          <li>Realtor invoice view — see and download invoices</li>
+          <li>Admin invoice management (create, send, void)</li>
+          <li>Coupon/promo code system (admin creates, realtor applies)</li>
+          <li>Twilio SMS on order status changes</li>
+          <li>Client tracker — full CRM view per realtor in admin</li>
+          <li>Admin notes and tags on client records</li>
+          <li>Outstanding balance displayed per client</li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="tag-pill out">✗ Out of scope (later phases)</span></h3>
+        <ul class="spec">
+          <li>Stripe / in-app payment processing</li>
+          <li>TC multi-agent accounts</li>
+          <li>Sign inventory module</li>
+          <li>811 email monitoring</li>
+          <li>Email invoice delivery (QBO handles this natively)</li>
+          <li>Recurring billing / subscriptions</li>
+          <li>Payment plans</li>
+          <li>Field tech views</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout callout-warn" style="margin-top:0.5rem;">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <p>Phase 1 stubbed out an Invoice model in the Prisma schema. Before starting Phase 2, confirm that stub exists and run any pending migrations. If the stub was skipped, add the Invoice and Coupon models first before touching any feature code.</p>
+    </div>
+  </div>
+
+  <!-- QUICKBOOKS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">02</span>
+      <div><h2>QuickBooks Integration</h2><p class="section-sub">Use the QuickBooks Online API (v3). OAuth 2.0 flow initiated by admin. One QBO company connected to the whole app — not per-realtor.</p></div>
+    </div>
+    <div class="callout callout-green">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>Use the <strong>node-quickbooks</strong> npm package (intuit-oauth for the OAuth flow, node-quickbooks for API calls). Register your app at developer.intuit.com — you'll get a sandbox company to test with before going live. Sandbox credentials are separate from production.</p>
+    </div>
+
+    <h3>OAuth connection flow</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Admin visits <strong>/admin/settings/quickbooks</strong> — page shows "Connect to QuickBooks" button if not yet connected</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Button initiates OAuth: redirects to Intuit's auth page. Scopes needed: <strong>com.intuit.quickbooks.accounting</strong></div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Intuit redirects back to <strong>/api/quickbooks/callback</strong> with auth code + realmId (company ID)</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Exchange code for access_token + refresh_token. Store both in a <strong>QBOConnection</strong> record in DB (encrypted at rest). Store realmId.</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Admin settings page now shows "Connected — [Company Name]" with a Disconnect button</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">Access tokens expire in 1 hour. Refresh tokens expire in 100 days. Build a token refresh helper that automatically refreshes before each API call if token is within 5 min of expiry.</div></div>
+
+    <h3 style="margin-top:1rem;">Auto-invoice on order completion</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Admin changes order status to <strong>COMPLETED</strong> via the admin order edit page</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Server checks: does an Invoice already exist for this order? If yes, skip. If no, proceed.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Look up or create a QBO <strong>Customer</strong> record for the realtor (match by email). Store QBO CustomerId on the User record.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Create QBO Invoice with: line item = order type + address, amount from service pricing, due date = 30 days out, customer = realtor</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Save Invoice record in local DB with qboInvoiceId, status = SENT, amount, dueDate, linked orderId and realtorId</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">QBO handles emailing the invoice to the realtor natively — no extra email code needed</div></div>
+
+    <h3 style="margin-top:1rem;">Sync invoice status from QBO</h3>
+    <ul class="spec">
+      <li>Add a <strong>/api/quickbooks/webhook</strong> endpoint to receive QBO webhook events</li>
+      <li>Register webhook in QBO developer portal for Invoice events (create, update, delete)</li>
+      <li>On webhook: verify HMAC signature, parse event, update local Invoice status if payment received</li>
+      <li>Also add a manual "Sync Now" button in admin invoices that polls QBO for status updates on all open invoices</li>
+      <li>Invoice statuses to map: QBO "Paid" → local PAID, QBO "Voided" → local VOIDED</li>
+    </ul>
+  </div>
+
+  <!-- DATABASE SCHEMA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">03</span>
+      <div><h2>New Database Models</h2><p class="section-sub">Add these to schema.prisma. Migrate existing Invoice stub if it exists.</p></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">Invoice <span>table: invoices</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">invoiceNumber</span><span class="field-type">String UNIQUE</span><span class="field-note">local ref e.g. INV-0042</span></div>
+      <div class="field-row"><span class="field-name">realtorId</span><span class="field-type">FK → User</span></div>
+      <div class="field-row"><span class="field-name">orderId</span><span class="field-type">FK → Order?</span><span class="field-note">nullable for manual invoices</span></div>
+      <div class="field-row"><span class="field-name">qboInvoiceId</span><span class="field-type">String?</span><span class="field-note">QuickBooks invoice ID for sync</span></div>
+      <div class="field-row"><span class="field-name">status</span><span class="field-type">Enum</span><span class="field-note">DRAFT | SENT | PAID | VOIDED | OVERDUE</span></div>
+      <div class="field-row"><span class="field-name">amountCents</span><span class="field-type">Int</span><span class="field-note">store as cents to avoid float issues</span></div>
+      <div class="field-row"><span class="field-name">couponId</span><span class="field-type">FK → Coupon?</span><span class="field-note">applied coupon if any</span></div>
+      <div class="field-row"><span class="field-name">discountCents</span><span class="field-type">Int</span><span class="field-note">discount applied in cents, default 0</span></div>
+      <div class="field-row"><span class="field-name">dueDate</span><span class="field-type">DateTime</span></div>
+      <div class="field-row"><span class="field-name">paidAt</span><span class="field-type">DateTime?</span></div>
+      <div class="field-row"><span class="field-name">notes</span><span class="field-type">String?</span><span class="field-note">admin-only notes</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+      <div class="field-row"><span class="field-name">updatedAt</span><span class="field-type">DateTime</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">Coupon <span>table: coupons</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">code</span><span class="field-type">String UNIQUE</span><span class="field-note">uppercase, e.g. SUMMER20</span></div>
+      <div class="field-row"><span class="field-name">description</span><span class="field-type">String?</span><span class="field-note">internal label for admin</span></div>
+      <div class="field-row"><span class="field-name">type</span><span class="field-type">Enum</span><span class="field-note">PERCENT | FIXED</span></div>
+      <div class="field-row"><span class="field-name">value</span><span class="field-type">Float</span><span class="field-note">percent (0–100) or fixed dollar amount</span></div>
+      <div class="field-row"><span class="field-name">maxUses</span><span class="field-type">Int?</span><span class="field-note">null = unlimited</span></div>
+      <div class="field-row"><span class="field-name">usedCount</span><span class="field-type">Int</span><span class="field-note">default 0, increment on use</span></div>
+      <div class="field-row"><span class="field-name">restrictToUserId</span><span class="field-type">FK → User?</span><span class="field-note">null = any realtor can use</span></div>
+      <div class="field-row"><span class="field-name">expiresAt</span><span class="field-type">DateTime?</span><span class="field-note">null = never expires</span></div>
+      <div class="field-row"><span class="field-name">isActive</span><span class="field-type">Boolean</span><span class="field-note">admin can deactivate without deleting</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">QBOConnection <span>table: qbo_connections</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">realmId</span><span class="field-type">String UNIQUE</span><span class="field-note">QBO company ID</span></div>
+      <div class="field-row"><span class="field-name">accessToken</span><span class="field-type">String</span><span class="field-note">encrypt before storing</span></div>
+      <div class="field-row"><span class="field-name">refreshToken</span><span class="field-type">String</span><span class="field-note">encrypt before storing</span></div>
+      <div class="field-row"><span class="field-name">tokenExpiresAt</span><span class="field-type">DateTime</span></div>
+      <div class="field-row"><span class="field-name">companyName</span><span class="field-type">String?</span><span class="field-note">fetched from QBO after connect</span></div>
+      <div class="field-row"><span class="field-name">updatedAt</span><span class="field-type">DateTime</span></div>
+    </div>
+
+    <div class="schema-block">
+      <div class="schema-name">User — additions <span>alter existing</span></div>
+      <div class="field-row"><span class="field-name">qboCustomerId</span><span class="field-type">String?</span><span class="field-note">QBO Customer ID, set on first invoice</span></div>
+      <div class="field-row"><span class="field-name">phone</span><span class="field-type">String?</span><span class="field-note">already exists — confirm it's there for SMS</span></div>
+      <div class="field-row"><span class="field-name">smsOptIn</span><span class="field-type">Boolean</span><span class="field-note">default true, realtor can opt out in settings</span></div>
+      <div class="field-row"><span class="field-name">adminNotes</span><span class="field-type">String?</span><span class="field-note">internal admin notes on this client</span></div>
+      <div class="field-row"><span class="field-name">tags</span><span class="field-type">String[]</span><span class="field-note">admin-applied tags e.g. ["vip", "net30"]</span></div>
+    </div>
+  </div>
+
+  <!-- API ROUTES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">04</span>
+      <div><h2>New API Routes</h2></div>
+    </div>
+
+    <h3>QuickBooks</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/quickbooks/connect</span><span class="route-desc">Initiates OAuth flow — redirects to Intuit auth URL. Admin only.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/quickbooks/callback</span><span class="route-desc">OAuth callback. Exchanges code for tokens, saves QBOConnection, redirects to /admin/settings/quickbooks.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/quickbooks/disconnect</span><span class="route-desc">Revokes token, deletes QBOConnection. Admin only.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/quickbooks/webhook</span><span class="route-desc">Receives QBO webhook events. Verifies HMAC. Updates local invoice status.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/quickbooks/sync</span><span class="route-desc">Manual sync — polls QBO for status of all open invoices. Admin only.</span></div>
+    </div>
+
+    <h3>Invoices</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/invoices</span><span class="route-desc">Realtor: their invoices. Query params: status, page. Returns amount, status, dueDate, orderId.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/invoices/[id]</span><span class="route-desc">Single invoice detail. Realtor can only fetch their own.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/invoices</span><span class="route-desc">All invoices. Filters: status, realtorId, date range. Includes totals summary.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/invoices</span><span class="route-desc">Manually create invoice. Body: realtorId, orderId?, amountCents, dueDate, notes, couponCode?</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/invoices/[id]</span><span class="route-desc">Update invoice — status, notes, dueDate. Voiding also voids in QBO.</span></div>
+    </div>
+
+    <h3>Coupons</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/coupons/validate</span><span class="route-desc">Realtor submits a code. Returns: valid/invalid, discount type, value, expiry. Does not consume the coupon.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/coupons</span><span class="route-desc">All coupons. Admin only.</span></div>
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/admin/coupons</span><span class="route-desc">Create coupon. Body: code, type, value, maxUses, restrictToUserId, expiresAt.</span></div>
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/coupons/[id]</span><span class="route-desc">Edit or deactivate coupon. Can toggle isActive.</span></div>
+      <div class="route-row"><span class="method del">DEL</span><span class="route-path">/api/admin/coupons/[id]</span><span class="route-desc">Delete coupon — only if usedCount is 0. Otherwise deactivate instead.</span></div>
+    </div>
+
+    <h3>Client tracker (admin)</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method put">PUT</span><span class="route-path">/api/admin/users/[id]</span><span class="route-desc">Update adminNotes, tags on a client record. Cannot change role or password via this route.</span></div>
+      <div class="route-row"><span class="method get">GET</span><span class="route-path">/api/admin/users/[id]/summary</span><span class="route-desc">Returns: order count, total invoiced, outstanding balance, last order date, all invoices.</span></div>
+    </div>
+
+    <h3>SMS — internal only</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="route-row"><span class="method post">POST</span><span class="route-path">/api/internal/sms</span><span class="route-desc">Internal server-side helper — not called by client. Sends SMS via Twilio. Called by order status change logic. Checks smsOptIn before sending.</span></div>
+    </div>
+  </div>
+
+  <!-- SMS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">05</span>
+      <div><h2>Twilio SMS Notifications</h2><p class="section-sub">Triggered server-side on order status changes. Use twilio npm package.</p></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="stack-row"><span class="stack-label">Order → SCHEDULED</span><span class="stack-val">"Your sign install at [address] is scheduled for [date]. Order #[number] — SignPost Field"</span></div>
+      <div class="stack-row"><span class="stack-label">Order → COMPLETED</span><span class="stack-val">"Your sign at [address] has been installed. Invoice on the way. Order #[number] — SignPost Field"</span></div>
+      <div class="stack-row"><span class="stack-label">Order → CANCELLED (by admin)</span><span class="stack-val">"Your order #[number] at [address] was cancelled. Log in to place a new order or contact us."</span></div>
+      <div class="stack-row"><span class="stack-label">Invoice → SENT</span><span class="stack-val">"Invoice #[number] for $[amount] is ready. Due [date]. View in your SignPost portal."</span></div>
+    </div>
+    <div class="callout callout-warn" style="margin-top: 0.5rem;">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <p>Only send SMS if the realtor's <strong>smsOptIn</strong> is true AND they have a phone number on file. Always check both conditions before calling Twilio. Add an opt-out link or instruction in each message per carrier compliance rules.</p>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">06</span>
+      <div><h2>New Pages & Screens</h2></div>
+    </div>
+
+    <h3>Realtor portal additions</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/invoices</span><span class="screen-role">Realtor</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>List of all invoices: invoice number, amount, status badge, due date, linked order address</li>
+        <li>Filter tabs: All, Outstanding, Paid</li>
+        <li>Outstanding balance total shown at top</li>
+        <li>Each row links to invoice detail</li>
+        <li>Add "Invoices" to bottom tab nav (replacing or adding to Account tab)</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/invoices/[id]</span><span class="screen-role">Realtor</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Invoice details: number, amount, discount if any, due date, status, linked order info</li>
+        <li>Coupon code input field — validate on blur, show discount preview if valid</li>
+        <li>"View in QuickBooks" link (opens QBO invoice URL if available)</li>
+        <li>Note: payment happens in QBO — no in-app payment in Phase 2</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/account — additions</span><span class="screen-role">Realtor</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Add SMS notifications toggle (smsOptIn on/off)</li>
+        <li>Phone number field — required if SMS is on</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Admin hub additions</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/invoices</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Full invoice table: invoice #, realtor name, amount, discount, status, due date, order #</li>
+        <li>Summary cards at top: Total Outstanding, Paid This Month, Overdue Count</li>
+        <li>Filter by status, realtor, date range</li>
+        <li>Inline status update per row</li>
+        <li>"Create Invoice" button → modal or /admin/invoices/new</li>
+        <li>"Sync QBO" button — triggers manual sync</li>
+        <li>Export to CSV</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/invoices/[id]</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Full invoice detail, all fields editable</li>
+        <li>Status dropdown with all statuses</li>
+        <li>Admin notes field</li>
+        <li>Linked order summary card</li>
+        <li>Void button — confirms, voids in QBO and locally</li>
+        <li>QBO invoice ID shown with link to QBO</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/coupons</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Table: code, type, value, uses/max, expiry, status (active/inactive)</li>
+        <li>"Create Coupon" button → inline form or modal</li>
+        <li>Toggle active/inactive per row</li>
+        <li>Edit and delete (delete only if unused)</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/clients/[id] — expanded</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Client profile header: name, email, phone, brokerage, joined date, tags</li>
+        <li>Summary row: total orders, total invoiced, outstanding balance, last active</li>
+        <li>Admin notes textarea — auto-saves on blur</li>
+        <li>Tag input — add/remove freeform tags</li>
+        <li>Tabs: Orders history | Invoice history</li>
+        <li>Each tab shows a paginated list with status and date</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/settings/quickbooks</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Connection status: connected (company name + connected date) or disconnected</li>
+        <li>Connect / Disconnect button</li>
+        <li>Last sync timestamp</li>
+        <li>Manual sync button</li>
+        <li>Sandbox vs Production toggle (reads from env var, display only)</li>
+      </ul></div>
+    </div>
+  </div>
+
+  <!-- NEW ENV VARS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">07</span>
+      <div><h2>New Environment Variables</h2></div>
+    </div>
+    <div class="schema-block">
+      <div class="field-row"><span class="field-name">QB_CLIENT_ID</span><span class="field-note">From developer.intuit.com app settings</span></div>
+      <div class="field-row"><span class="field-name">QB_CLIENT_SECRET</span><span class="field-note">From developer.intuit.com app settings</span></div>
+      <div class="field-row"><span class="field-name">QB_REDIRECT_URI</span><span class="field-note">https://yourdomain.com/api/quickbooks/callback</span></div>
+      <div class="field-row"><span class="field-name">QB_ENVIRONMENT</span><span class="field-note">"sandbox" or "production"</span></div>
+      <div class="field-row"><span class="field-name">QB_WEBHOOK_VERIFIER_TOKEN</span><span class="field-note">From QBO webhook setup — used to verify incoming webhooks</span></div>
+      <div class="field-row"><span class="field-name">ENCRYPTION_KEY</span><span class="field-note">32-byte key for encrypting QBO tokens at rest — openssl rand -hex 32</span></div>
+      <div class="field-row"><span class="field-name">TWILIO_ACCOUNT_SID</span><span class="field-note">From twilio.com console</span></div>
+      <div class="field-row"><span class="field-name">TWILIO_AUTH_TOKEN</span><span class="field-note">From twilio.com console</span></div>
+      <div class="field-row"><span class="field-name">TWILIO_PHONE_NUMBER</span><span class="field-note">Your Twilio number e.g. +12065550100</span></div>
+    </div>
+  </div>
+
+  <!-- NEW PACKAGES -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">08</span>
+      <div><h2>New npm Packages</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="stack-row"><span class="stack-label">intuit-oauth</span><span class="stack-val">OAuth 2.0 flow for QuickBooks</span><span class="stag stag-blue">npm install</span></div>
+      <div class="stack-row"><span class="stack-label">node-quickbooks</span><span class="stack-val">QBO API wrapper — invoices, customers</span><span class="stag stag-blue">npm install</span></div>
+      <div class="stack-row"><span class="stack-label">twilio</span><span class="stack-val">SMS sending via Twilio API</span><span class="stag stag-blue">npm install</span></div>
+      <div class="stack-row"><span class="stack-label">crypto (built-in)</span><span class="stack-val">Node.js built-in — use for AES-256-GCM encryption of QBO tokens</span><span class="stag stag-green">built in</span></div>
+    </div>
+  </div>
+
+  <!-- ACCEPTANCE CRITERIA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">09</span>
+      <div><h2>Acceptance Criteria</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="accept-row"><span class="ac-role">QBO connect</span><span class="ac-criteria">Admin can connect to a QuickBooks sandbox company via OAuth. Settings page shows company name and "Connected" after auth.</span></div>
+      <div class="accept-row"><span class="ac-role">Auto-invoice</span><span class="ac-criteria">When admin marks an order COMPLETED, an invoice is created in QBO within 5 seconds and a matching Invoice record appears in the local DB and in the realtor's invoice list.</span></div>
+      <div class="accept-row"><span class="ac-role">No duplicate invoices</span><span class="ac-criteria">Marking an already-completed order COMPLETED again does not create a second invoice.</span></div>
+      <div class="accept-row"><span class="ac-role">Invoice sync</span><span class="ac-criteria">When an invoice is paid in QBO, the local status updates to PAID either via webhook or manual sync.</span></div>
+      <div class="accept-row"><span class="ac-role">Coupon — valid</span><span class="ac-criteria">Realtor enters a valid, active coupon code on an invoice. Discount is calculated and displayed before the invoice is saved. Coupon usedCount increments by 1.</span></div>
+      <div class="accept-row"><span class="ac-role">Coupon — invalid</span><span class="ac-criteria">Expired, inactive, maxed-out, or non-existent codes return a clear error message. No discount is applied.</span></div>
+      <div class="accept-row"><span class="ac-role">SMS — sent</span><span class="ac-criteria">When order status changes to SCHEDULED or COMPLETED, a Twilio SMS is sent to the realtor's phone within 10 seconds, IF smsOptIn is true and phone is set.</span></div>
+      <div class="accept-row"><span class="ac-role">SMS — opt out</span><span class="ac-criteria">Realtor with smsOptIn = false receives no SMS on any status change.</span></div>
+      <div class="accept-row"><span class="ac-role">Client tracker</span><span class="ac-criteria">Admin can view a realtor's full order and invoice history from /admin/clients/[id], see their outstanding balance, add notes, and add/remove tags.</span></div>
+      <div class="accept-row"><span class="ac-role">Token security</span><span class="ac-criteria">QBO access_token and refresh_token are encrypted in the database. They are never returned in any API response to the client.</span></div>
+    </div>
+  </div>
+
+</div>

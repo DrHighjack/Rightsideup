@@ -1,0 +1,381 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  REALTOR
+  ADMIN
+  TC
+  FIELD_TECH
+}
+
+enum OrderStatus {
+  PENDING
+  SCHEDULED
+  ON_HOLD
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum Ticket811Status {
+  NEW
+  NEEDS_REVIEW
+  ACTIVE
+  CLEARED
+  DISMISSED
+}
+
+enum SignStatus {
+  AVAILABLE
+  DEPLOYED
+  DAMAGED
+  LOST
+  RETIRED
+}
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  phone          String?
+  brokerageName  String?
+  brokerageId    String?
+  brokerage      Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: SetNull)
+  role           Role       @default(REALTOR)
+  paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  orders         Order[]
+  invoices       Invoice[]
+  managedBrokerages Brokerage[] @relation("BrokerageAdmin")
+  
+  // TC relations
+  tcAgentLinks   TCAgentLink[] @relation("TCUser")
+  linkedTCs      TCAgentLink[] @relation("AgentUser")
+  tcInvitesSent  TCInvite[] @relation("InvitedBy")
+  signReports    SignReport[]
+  assignedSigns  Sign[] @relation("AssignedRealtor")
+  placedByTCOrders Order[] @relation("PlacedByTC")
+  
+  // Phase 4 — Field tech relations
+  jobAssignments JobAssignment[] @relation("FieldTech")
+  assignedJobs   JobAssignment[] @relation("AssignedBy")
+  clearedTickets Ticket811[] @relation("ClearedBy")
+  
+  @@map("users")
+  @@index([brokerageId])
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  orderNumber    String        @unique
+  realtorId      String
+  realtor        User          @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  placedByTCId   String?       // null if placed by realtor directly, set if placed by TC
+  placedByTC     User?         @relation("PlacedByTC", fields: [placedByTCId], references: [id], onDelete: SetNull)
+  type           String
+  status         OrderStatus   @default(PENDING)
+  address        String
+  addressLat     Float?
+  addressLng     Float?
+  scheduledDate  DateTime?
+  notes          String?
+  adminNotes     String?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  holdReason     String?       // e.g. "811 ticket #12345"
+  heldAt         DateTime?
+  isStale        Boolean       @default(false)
+  staleAt        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  
+  items          OrderItem[]
+  discounts      OrderDiscount[]
+  assignedSigns  Sign[] @relation("AssignedToOrder")
+  jobAssignment  JobAssignment?
+  
+  @@map("orders")
+  @@index([realtorId])
+  @@index([placedByTCId])
+  @@index([status])
+  @@index([heldAt])
+  @@index([isStale])
+}
+
+model Invoice {
+  id                String     @id @default(cuid())
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount            Float?
+  status            String     @default("PENDING")
+  dueDate           DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  lastReminderSentAt DateTime?
+  reminderCount     Int        @default(0)
+  
+  @@map("invoices")
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Sign {
+  id                String     @id @default(cuid())
+  signNumber        String?    @unique  // Physical ID on the sign e.g. SPF-S-0042 — nullable for migration, will be required in production
+  type              String     @default("Standard")  // e.g. "Standard", "Rider", "Open House", "Custom"
+  status            SignStatus @default(AVAILABLE)
+  assignedToUserId  String?    // FK to User — which realtor has it deployed
+  assignedToUser    User?      @relation("AssignedRealtor", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  assignedToOrderId String?    // FK to Order — which order it's currently on
+  assignedToOrder   Order?     @relation("AssignedToOrder", fields: [assignedToOrderId], references: [id], onDelete: SetNull)
+  deployedAddress   String?    // Current location if deployed
+  deployedLat       Float?
+  deployedLng       Float?
+  notes             String?    // Admin notes, condition notes
+  purchasedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  orderItems        OrderItem[]
+  reports           SignReport[]
+  
+  @@map("signs")
+  @@index([status])
+  @@index([assignedToUserId])
+  @@index([assignedToOrderId])
+  @@index([type])
+}
+
+model OrderItem {
+  id             String     @id @default(cuid())
+  orderId        String
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  signId         String?
+  sign           Sign?      @relation(fields: [signId], references: [id], onDelete: SetNull)
+  quantity       Int        @default(1)
+  isHangingSelf  Boolean    @default(false)
+  storagePlannedAfter Boolean? // null = not applicable, true = yes store, false = no store
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("order_items")
+  @@index([orderId])
+  @@index([signId])
+}
+
+model Brokerage {
+  id             String     @id @default(cuid())
+  name           String
+  phone          String?
+  email          String?
+  adminId        String
+  admin          User       @relation("BrokerageAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  agents         User[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("brokerages")
+  @@index([adminId])
+}
+
+model QBOConnection {
+  id             String     @id @default(cuid())
+  realmId        String     @unique
+  companyName    String?
+  accessToken    String     // Encrypted
+  refreshToken   String     // Encrypted
+  expiresAt      DateTime
+  refreshExpiresAt DateTime?
+  isConnected    Boolean    @default(true)
+  connectedAt    DateTime   @default(now())
+  disconnectedAt DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("qbo_connections")
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  type           String     @default("FIXED")  // FIXED or PERCENTAGE
+  value          Float      // Dollar amount or percentage
+  maxUses        Int?       // null = unlimited
+  usedCount      Int        @default(0)
+  expiresAt      DateTime?  // null = no expiration
+  isActive       Boolean    @default(true)
+  description    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  orderDiscounts OrderDiscount[]
+  
+  @@map("coupons")
+  @@index([code])
+  @@index([isActive])
+}
+
+model OrderDiscount {
+  id             String     @id @default(cuid())
+  orderId        String
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  couponId       String
+  coupon         Coupon     @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  discountAmount Float      // Calculated discount amount
+  createdAt      DateTime   @default(now())
+  
+  @@map("order_discounts")
+  @@unique([orderId, couponId])
+  @@index([orderId])
+  @@index([couponId])
+}
+
+model SMSLog {
+  id             String     @id @default(cuid())
+  toNumber       String
+  message        String
+  status         String     @default("PENDING")  // PENDING, SENT, FAILED
+  eventType      String     // ORDER_CREATED, ORDER_COMPLETED, ORDER_CANCELLED, etc.
+  orderId        String?
+  userId         String?
+  sentAt         DateTime?
+  failureReason  String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("sms_logs")
+  @@index([toNumber])
+  @@index([eventType])
+  @@index([status])
+}
+
+model TCAgentLink {
+  id            String   @id @default(cuid())
+  tcUserId      String
+  tcUser        User     @relation("TCUser", fields: [tcUserId], references: [id], onDelete: Cascade)
+  agentUserId   String
+  agentUser     User     @relation("AgentUser", fields: [agentUserId], references: [id], onDelete: Cascade)
+  grantedBy     String   // REALTOR | ADMIN
+  createdAt     DateTime @default(now())
+  
+  @@map("tc_agent_links")
+  @@unique([tcUserId, agentUserId])
+  @@index([tcUserId])
+  @@index([agentUserId])
+}
+
+model TCInvite {
+  id               String   @id @default(cuid())
+  email            String
+  invitedByUserId  String
+  invitedByUser    User     @relation("InvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  token            String   @unique
+  expiresAt        DateTime
+  usedAt           DateTime?
+  createdAt        DateTime @default(now())
+  
+  @@map("tc_invites")
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model SignReport {
+  id               String   @id @default(cuid())
+  signId           String
+  sign             Sign     @relation(fields: [signId], references: [id], onDelete: Cascade)
+  reportedByUserId String
+  reportedByUser   User     @relation(fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  type             String   // LOST | DAMAGED | OTHER
+  description      String
+  resolvedAt       DateTime?
+  createdAt        DateTime @default(now())
+  
+  @@map("sign_reports")
+  @@index([signId])
+  @@index([reportedByUserId])
+  @@index([type])
+  @@index([resolvedAt])
+}
+
+model LowInventoryAlert {
+  id        String   @id @default(cuid())
+  signType  String   // e.g. "Standard", "Rider", "Open House", "Custom"
+  sentAt    DateTime @default(now())
+  threshold Int      @default(5)
+  
+  @@map("low_inventory_alerts")
+  @@index([signType])
+  @@index([sentAt])
+}
+
+model Ticket811 {
+  id               String            @id @default(cuid())
+  ticketNumber     String?           // extracted from email, null if not parseable
+  sourceEmail      String
+  emailSubject     String
+  emailBody        String            // full raw email body for audit
+  parsedAddress    String?           // address extracted by parser
+  workStartDate    DateTime?         // excavation start date from email
+  status           Ticket811Status   @default(NEW)
+  matchedOrderIds  String[]          // array of order IDs put on hold
+  clearedAt        DateTime?
+  clearedByUserId  String?
+  clearedByUser    User?             @relation("ClearedBy", fields: [clearedByUserId], references: [id], onDelete: SetNull)
+  adminNotes       String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  
+  @@map("tickets_811")
+  @@index([status])
+  @@index([createdAt])
+  @@index([ticketNumber])
+  @@index([clearedByUserId])
+}
+
+model JobAssignment {
+  id              String     @id @default(cuid())
+  orderId         String     @unique
+  order           Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fieldTechId     String
+  fieldTech       User       @relation("FieldTech", fields: [fieldTechId], references: [id], onDelete: Cascade)
+  assignedByUserId String
+  assignedByUser  User       @relation("AssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  scheduledFor    DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  techNotes       String?
+  issue           String?    // issue flagged by tech, triggers admin alert
+  createdAt       DateTime   @default(now())
+  
+  @@map("job_assignments")
+  @@index([fieldTechId])
+  @@index([orderId])
+  @@index([startedAt])
+  @@index([completedAt])
+}
+
+model AppSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  isEncrypted Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  
+  @@map("app_settings")
+  @@index([key])
+}
+
+

@@ -11,16 +11,40 @@ export async function GET(_request: NextRequest) {
     }
 
     const signs = await prisma.sign.findMany({
-      include: {
-        assignedToUser: {
-          select: { id: true, email: true, firstName: true, lastName: true },
-        },
+      where: {
+        status: "AVAILABLE",
+        assignedToOrderId: null,
       },
-      orderBy: { signNumber: "asc" },
+      orderBy: { type: "asc" },
     });
 
-    return NextResponse.json({ signs });
+    // Group signs by type to create inventory structure
+    const inventoryMap: Record<string, any> = {};
+
+    signs.forEach((sign) => {
+      const typeKey = sign.type || "Standard";
+      if (!inventoryMap[typeKey]) {
+        inventoryMap[typeKey] = {
+          id: typeKey.replace(/\s+/g, "_").toLowerCase(),
+          name: typeKey,
+          description: `${typeKey} Sign`,
+          inventory: [],
+          signs: [],
+        };
+      }
+      inventoryMap[typeKey].inventory.push({
+        quantity: 1,
+        location: sign.deployedAddress || "Storage",
+        signNumber: sign.signNumber,
+      });
+      inventoryMap[typeKey].signs.push(sign.id);
+    });
+
+    const signsByType = Object.values(inventoryMap);
+
+    return NextResponse.json({ signs: signsByType });
   } catch (error) {
+    console.error("Inventory fetch error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

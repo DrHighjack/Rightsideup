@@ -1,7 +1,4 @@
-import fetch from 'node-fetch';
 import { prisma } from '@/lib/prisma';
-
-const API_BASE = 'http://localhost:3000/api';
 
 async function testJobAssignments() {
   try {

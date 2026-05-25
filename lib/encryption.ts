@@ -7,7 +7,7 @@ if (!ENCRYPTION_KEY) {
 
 // Derive a 32-byte key from the encryption key
 function getEncryptionKey(): Buffer {
-  return crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+  return crypto.createHash('sha256').update(ENCRYPTION_KEY!).digest();
 }
 
 /**

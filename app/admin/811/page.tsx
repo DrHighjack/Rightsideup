@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 interface Ticket811 {
   id: string;
@@ -24,7 +23,6 @@ interface SummaryData {
 }
 
 export default function Ticket811ListPage() {
-  const router = useRouter();
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<SummaryData>({

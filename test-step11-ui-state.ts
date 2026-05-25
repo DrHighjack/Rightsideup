@@ -55,11 +55,11 @@ async function verifyUIState() {
     } else {
       jobs.forEach((job, idx) => {
         const status = job.completedAt ? 'Completed' : job.startedAt ? 'Started' : 'Assigned';
-        const time = new Date(job.scheduledFor).toLocaleTimeString('en-US', {
+        const time = job.scheduledFor ? new Date(job.scheduledFor).toLocaleTimeString('en-US', {
           hour: 'numeric',
           minute: '2-digit',
           hour12: true,
-        });
+        }) : 'N/A';
         console.log(`\n  Card ${idx + 1}:`);
         console.log(`    📍 ${job.order.address}`);
         console.log(`    🏷️  ${job.order.type} | ${status}`);

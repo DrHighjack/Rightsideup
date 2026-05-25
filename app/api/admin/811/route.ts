@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
             orderNumber: true,
             address: true,
             status: true,
-            realtorEmail: true,
+            realtor: { select: { email: true } },
           },
         });
         return { ...ticket, matchedOrders };

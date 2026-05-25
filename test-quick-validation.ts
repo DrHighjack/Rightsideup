@@ -93,7 +93,6 @@ Start Date: May 24, 2026`,
     console.log(`  Status: ${finalTicket?.status}`);
     console.log(`  Address: ${finalTicket?.parsedAddress}`);
     console.log(`  Matched Orders: ${finalTicket?.matchedOrderIds.join(', ')}`);
-    console.log(`  Confidence: ${finalTicket?.addressConfidence}`);
 
     console.log('\nOrder Record (SPF-00001):');
     console.log(`  ID: ${finalOrder?.id}`);

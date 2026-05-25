@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { encryptToken, decryptToken } from '@/lib/encryption';
 
-export async function GET(request: NextRequest) {
+export async function GET(_: NextRequest) {
   try {
     const session = await auth();
 

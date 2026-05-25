@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { z } from 'zod';
 
 interface JobAssignment {
   id: string;
@@ -35,7 +34,6 @@ interface JobAssignment {
 }
 
 export default function JobDetailPage() {
-  const router = useRouter();
   const params = useParams();
   const jobId = params.id as string;
 

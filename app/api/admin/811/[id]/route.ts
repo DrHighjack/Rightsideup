@@ -4,7 +4,7 @@ import { sendEmail } from '@/lib/email';
 
 // GET /api/admin/811/[id] - Get ticket detail with matched orders
 export async function GET(
-  request: NextRequest,
+  _: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
@@ -72,6 +72,7 @@ export async function PUT(
       // Get all matched orders
       const matchedOrders = await prisma.order.findMany({
         where: { id: { in: ticket.matchedOrderIds } },
+        include: { realtor: { select: { email: true } } },
       });
 
       console.log('[811API] Found', matchedOrders.length, 'matched orders');
@@ -92,10 +93,10 @@ export async function PUT(
             });
 
             // Send confirmation email to realtor if they exist
-            if (order.realtorEmail) {
+            if (order.realtor?.email) {
               try {
                 await sendEmail({
-                  to: order.realtorEmail,
+                  to: order.realtor.email,
                   subject: `Order ${order.orderNumber} - 811 Hold Released`,
                   html: `
                     <h3>811 Hold Released</h3>
@@ -106,7 +107,7 @@ export async function PUT(
                   `,
                 });
               } catch (emailError) {
-                console.error(`Failed to send email to realtor ${order.realtorEmail}:`, emailError);
+                console.error(`Failed to send email to realtor ${order.realtor?.email}:`, emailError);
                 // Don't fail the whole operation if email fails
               }
             }

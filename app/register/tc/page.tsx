@@ -279,7 +279,14 @@ function RegisterTCContent() {
 
 export default function RegisterTCPage() {
   return (
-    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span>Loading...</span></div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <div className="bg-white rounded-lg shadow-lg p-8 max-w-md w-full text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full mx-auto mb-4"></div>
+          <span className="text-gray-600">Loading registration...</span>
+        </div>
+      </div>
+    }>
       <RegisterTCContent />
     </Suspense>
   );

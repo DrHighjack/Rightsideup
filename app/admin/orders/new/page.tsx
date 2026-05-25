@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -36,7 +36,7 @@ interface SelectedSign {
   storagePlannedAfter?: boolean;
 }
 
-export default function AdminNewOrderPage() {
+function AdminNewOrderForm() {
   const searchParams = useSearchParams();
   const preSelectedRealtorId = searchParams.get("realtorId");
 
@@ -635,5 +635,13 @@ export default function AdminNewOrderPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function AdminNewOrderPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><span>Loading...</span></div>}>
+      <AdminNewOrderForm />
+    </Suspense>
   );
 }

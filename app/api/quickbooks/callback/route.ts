@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { exchangeCodeForToken, getCompanyInfo } from '@/lib/quickbooks';
 import { encryptToken } from '@/lib/encryption';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/quickbooks/callback
  * Handles OAuth callback from QuickBooks

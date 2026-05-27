@@ -28,7 +28,7 @@ interface SignLocation {
 const getMapsApiKey = (): string => {
   const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
   if (!key) {
-    throw new Error("NEXT_PUBLIC_GOOGLE_MAPS_KEY is not defined");
+    return ""; // Return empty string during build, will be set at runtime
   }
   return key;
 };

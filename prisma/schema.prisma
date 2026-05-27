@@ -40,6 +40,44 @@ enum SignStatus {
   RETIRED
 }
 
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  VOIDED
+  OVERDUE
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum ActivityAction {
+  ORDER_CREATED
+  ORDER_STATUS_CHANGED
+  ORDER_CANCELLED
+  ORDER_PUT_ON_HOLD
+  ORDER_RELEASED_FROM_HOLD
+  INVOICE_CREATED
+  INVOICE_PAID
+  INVOICE_VOIDED
+  INVOICE_REMINDER_SENT
+  USER_CREATED
+  USER_UPDATED
+  SIGN_REPORT_FILED
+  SIGN_REPORT_RESOLVED
+  TICKET_811_CREATED
+  TICKET_811_CLEARED
+  JOB_ASSIGNED
+  JOB_COMPLETED
+  JOB_FLAGGED
+  COUPON_REDEEMED
+  QB_CONNECTED
+  QB_DISCONNECTED
+}
+
 model User {
   id             String     @id @default(cuid())
   email          String     @unique
@@ -52,6 +90,7 @@ model User {
   brokerage      Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: SetNull)
   role           Role       @default(REALTOR)
   paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
+  qboCustomerId  String?    // QuickBooks customer ID for this realtor
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
@@ -71,6 +110,10 @@ model User {
   jobAssignments JobAssignment[] @relation("FieldTech")
   assignedJobs   JobAssignment[] @relation("AssignedBy")
   clearedTickets Ticket811[] @relation("ClearedBy")
+  
+  // Phase 5 — Activity and notifications
+  activityLogs   ActivityLog[]
+  notifications  Notification[]
   
   @@map("users")
   @@index([brokerageId])
@@ -114,21 +157,28 @@ model Order {
 }
 
 model Invoice {
-  id                String     @id @default(cuid())
+  id                String           @id @default(cuid())
   userId            String
-  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId           String?          // Link to order if created from order
+  invoiceNumber     String?          @unique // QB invoice number
+  qboInvoiceId      String?          // QB Online invoice ID
   amount            Float?
-  status            String     @default("PENDING")
+  discountAmount    Float?           @default(0)
+  status            InvoiceStatus    @default(DRAFT)
   dueDate           DateTime?
-  createdAt         DateTime   @default(now())
-  updatedAt         DateTime   @updatedAt
+  paidAt            DateTime?
+  paidAmount        Float?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
   lastReminderSentAt DateTime?
-  reminderCount     Int        @default(0)
+  reminderCount     Int              @default(0)
   
   @@map("invoices")
   @@index([userId])
   @@index([status])
   @@index([dueDate])
+  @@index([qboInvoiceId])
 }
 
 model Sign {
@@ -376,6 +426,41 @@ model AppSettings {
   
   @@map("app_settings")
   @@index([key])
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      ActivityAction
+  entityType  String         // Order, Invoice, User, Sign, Ticket811, Job
+  entityId    String
+  description String
+  metadata    Json?          // before/after values, additional context
+  createdAt   DateTime       @default(now())
+  
+  @@map("activity_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String               // ORDER_UPDATE, INVOICE_READY, JOB_ASSIGNED, etc.
+  status    NotificationStatus   @default(UNREAD)
+  link      String?              // URL to related entity
+  createdAt DateTime             @default(now())
+  
+  @@map("notifications")
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 

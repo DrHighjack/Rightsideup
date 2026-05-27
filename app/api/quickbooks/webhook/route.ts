@@ -19,7 +19,7 @@ export async function GET(_req: NextRequest) {
  * - Update local Invoice status based on QB events
  * - Handle invoice paid, voided, payment received events
  */
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
     console.log('🔔 QB Webhook received');
     

@@ -12,6 +12,14 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     console.log('🔄 QB Callback invoked');
+    
+    // Get the base URL from the request
+    const protocol = req.headers.get('x-forwarded-proto') || 'https';
+    const host = req.headers.get('x-forwarded-host') || req.headers.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
+    
+    console.log('🌐 Base URL:', baseUrl);
+    
     const { searchParams } = new URL(req.url);
     const code = searchParams.get('code');
     const realmId = searchParams.get('realmId');
@@ -24,14 +32,14 @@ export async function GET(req: NextRequest) {
     if (error) {
       console.error('❌ QuickBooks OAuth error:', error);
       return NextResponse.redirect(
-        `http://localhost:3000/admin/settings/quickbooks?error=${encodeURIComponent(error)}`
+        `${baseUrl}/admin/settings/quickbooks?error=${encodeURIComponent(error)}`
       );
     }
 
     if (!code || !realmId || !state) {
       console.error('❌ Missing code, realmId, or state in callback');
       return NextResponse.redirect(
-        'http://localhost:3000/admin/settings/quickbooks?error=missing_params'
+        `${baseUrl}/admin/settings/quickbooks?error=missing_params`
       );
     }
 
@@ -44,7 +52,7 @@ export async function GET(req: NextRequest) {
     } catch (err) {
       console.error('❌ Invalid state:', err);
       return NextResponse.redirect(
-        'http://localhost:3000/admin/settings/quickbooks?error=invalid_state'
+        `${baseUrl}/admin/settings/quickbooks?error=invalid_state`
       );
     }
 
@@ -59,7 +67,7 @@ export async function GET(req: NextRequest) {
     if (!user || user.role !== 'ADMIN') {
       console.error('❌ User not found or not admin:', { userId: stateData.userId, userEmail: user?.email, role: user?.role });
       return NextResponse.redirect(
-        'http://localhost:3000/admin/settings/quickbooks?error=unauthorized'
+        `${baseUrl}/admin/settings/quickbooks?error=unauthorized`
       );
     }
 
@@ -74,7 +82,7 @@ export async function GET(req: NextRequest) {
     } catch (tokenErr) {
       console.error('❌ Token exchange error:', tokenErr);
       return NextResponse.redirect(
-        'http://localhost:3000/admin/settings/quickbooks?error=token_exchange_failed'
+        `${baseUrl}/admin/settings/quickbooks?error=token_exchange_failed`
       );
     }
 
@@ -136,13 +144,19 @@ export async function GET(req: NextRequest) {
 
     // Redirect to settings page with success
     return NextResponse.redirect(
-      'http://localhost:3000/admin/settings/quickbooks?status=connected'
+      `${baseUrl}/admin/settings/quickbooks?status=connected`
     );
   } catch (error) {
     console.error('QB Callback Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    // Fallback to localhost if we can't determine the proper base URL
+    const protocol = 'https';
+    const host = process.env.VERCEL_URL || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
+    
     return NextResponse.redirect(
-      `http://localhost:3000/admin/settings/quickbooks?error=${encodeURIComponent(errorMessage)}`
+      `${baseUrl}/admin/settings/quickbooks?error=${encodeURIComponent(errorMessage)}`
     );
   }
 }

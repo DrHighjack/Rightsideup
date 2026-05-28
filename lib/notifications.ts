@@ -297,3 +297,134 @@ export async function getSMSStats(startDate?: Date, endDate?: Date) {
     successRate: total > 0 ? ((sent / total) * 100).toFixed(2) + '%' : '0%',
   };
 }
+
+/**
+ * Phase 5 — DB-level Notifications
+ * These notifications appear in the user's dashboard notification center
+ */
+
+interface CreateNotificationParams {
+  userId: string;
+  type: string;
+  title: string;
+  message: string;
+  link?: string;
+}
+
+/**
+ * Create an in-app notification for a user
+ * Soft error handling - logs but doesn't throw to avoid breaking operations
+ */
+export async function createNotification({
+  userId,
+  type,
+  title,
+  message,
+  link,
+}: CreateNotificationParams) {
+  try {
+    const notification = await prisma.notification.create({
+      data: {
+        userId,
+        type,
+        title,
+        message,
+        link,
+        status: 'UNREAD',
+      },
+    });
+
+    console.log(`[Notification] Created for user ${userId}: ${title}`);
+    return notification;
+  } catch (error) {
+    console.error(`[Notification] Failed to create notification for user ${userId}:`, error);
+    // Don't throw - allow the operation to continue
+  }
+}
+
+/**
+ * Get unread notifications for a user
+ */
+export async function getUnreadNotifications(userId: string, limit: number = 10) {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId,
+        status: 'UNREAD',
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+
+    return notifications;
+  } catch (error) {
+    console.error(`[Notification] Failed to fetch unread notifications for user ${userId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Get all notifications for a user (both read and unread)
+ */
+export async function getAllNotifications(userId: string, limit: number = 10) {
+  try {
+    const notifications = await prisma.notification.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      take: limit,
+    });
+
+    return notifications;
+  } catch (error) {
+    console.error(`[Notification] Failed to fetch notifications for user ${userId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Mark all notifications as read for a user
+ */
+export async function markAllAsRead(userId: string) {
+  try {
+    const result = await prisma.notification.updateMany({
+      where: {
+        userId,
+        status: 'UNREAD',
+      },
+      data: {
+        status: 'READ',
+      },
+    });
+
+    console.log(`[Notification] Marked ${result.count} notifications as read for user ${userId}`);
+    return result;
+  } catch (error) {
+    console.error(`[Notification] Failed to mark notifications as read for user ${userId}:`, error);
+    return { count: 0 };
+  }
+}
+
+/**
+ * Get unread notification count for a user
+ */
+export async function getUnreadCount(userId: string): Promise<number> {
+  try {
+    const count = await prisma.notification.count({
+      where: {
+        userId,
+        status: 'UNREAD',
+      },
+    });
+
+    return count;
+  } catch (error) {
+    console.error(`[Notification] Failed to get unread count for user ${userId}:`, error);
+    return 0;
+  }
+}

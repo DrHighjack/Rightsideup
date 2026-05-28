@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activityLog";
+import { createNotification } from "@/lib/notifications";
 import { ActivityAction } from "@prisma/client";
 
 export async function GET(
@@ -119,6 +120,15 @@ export async function PUT(
           oldStatus: order.status,
           newStatus: body.status,
         },
+      });
+
+      // Notify the realtor about the status change
+      await createNotification({
+        userId: order.realtorId,
+        type: 'ORDER_STATUS_CHANGED',
+        title: `Order ${order.orderNumber} updated`,
+        message: `Your order status has changed from ${order.status} to ${body.status}`,
+        link: `/dashboard/orders/${order.id}`,
       });
     }
 

@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
 import { logActivity } from '@/lib/activityLog';
+import { createNotification } from '@/lib/notifications';
 import { ActivityAction } from '@prisma/client';
 
 const assignmentSchema = z.object({
@@ -205,6 +206,17 @@ export async function POST(request: NextRequest) {
         fieldTechEmail: fieldTech.email,
         scheduledFor,
       },
+    });
+
+    // Notify the field tech about the new job assignment
+    await createNotification({
+      userId: fieldTechId,
+      type: 'JOB_ASSIGNED',
+      title: `New job assigned: ${order.orderNumber}`,
+      message: `You have been assigned a new job at ${order.address}${
+        scheduledFor ? ` scheduled for ${new Date(scheduledFor).toLocaleDateString()}` : ''
+      }`,
+      link: `/dashboard/jobs/${assignment.id}`,
     });
 
     return NextResponse.json(assignment, { status: 201 });

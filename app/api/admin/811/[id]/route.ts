@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/lib/email';
 import { auth } from '@/lib/auth';
 import { logActivity } from '@/lib/activityLog';
+import { createNotification } from '@/lib/notifications';
 import { ActivityAction } from '@prisma/client';
 
 // GET /api/admin/811/[id] - Get ticket detail with matched orders
@@ -168,6 +169,19 @@ export async function PUT(
           },
         });
       }
+
+      // Notify affected realtors that their orders are back in queue
+      await Promise.all(
+        matchedOrders.map((order) =>
+          createNotification({
+            userId: order.realtorId,
+            type: 'ORDER_RELEASED_FROM_811',
+            title: `811 Hold Released - Order ${order.orderNumber}`,
+            message: `The 811 ticket hold on your order has been cleared. Your order is now back to SCHEDULED status.`,
+            link: `/dashboard/orders/${order.id}`,
+          })
+        )
+      );
 
       console.log('[811API] Ticket cleared successfully');
       return NextResponse.json({

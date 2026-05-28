@@ -3,6 +3,7 @@
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import NotificationBell from "@/app/components/NotificationBell";
 
 export default function DashboardLayout({
   children,
@@ -67,6 +68,10 @@ export default function DashboardLayout({
 
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top header with notification bell */}
+        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 flex justify-end">
+          <NotificationBell />
+        </div>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </div>

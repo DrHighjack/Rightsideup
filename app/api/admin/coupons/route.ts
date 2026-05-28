@@ -6,6 +6,8 @@
 import { auth } from '@/lib/auth';
 import { createCoupon, getActiveCoupons, getCouponStats } from '@/lib/discounts';
 import { NextResponse } from 'next/server';
+import { logActivity } from '@/lib/activityLog';
+import { ActivityAction } from '@prisma/client';
 
 export async function GET() {
   try {
@@ -72,6 +74,22 @@ export async function POST(req: Request) {
       description,
       maxUses,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+    });
+
+    // Log activity
+    await logActivity({
+      userId: session.user.id,
+      action: ActivityAction.COUPON_REDEEMED,
+      entityType: 'Coupon',
+      entityId: coupon.id,
+      description: `Coupon created: ${code} (${type} - ${value})`,
+      metadata: {
+        code,
+        type,
+        value,
+        maxUses,
+        expiresAt,
+      },
     });
 
     return NextResponse.json(coupon, { status: 201 });

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activityLog";
+import { ActivityAction } from "@prisma/client";
 
 export async function GET(
   _request: NextRequest,
@@ -96,7 +98,6 @@ export async function PUT(
 
     // If status is changing to something other than PENDING, reset stale flags
     if (body.status && body.status !== 'PENDING') {
-      updateData.isStale = false;
       updateData.staleAt = null;
     }
 
@@ -104,6 +105,22 @@ export async function PUT(
       where: { id: params.id },
       data: updateData,
     });
+
+    // Log activity if status changed
+    if (body.status && order.status !== body.status) {
+      await logActivity({
+        userId: session.user.id,
+        action: ActivityAction.ORDER_STATUS_CHANGED,
+        entityType: 'Order',
+        entityId: order.id,
+        description: `Order status changed from ${order.status} to ${body.status}`,
+        metadata: {
+          orderNumber: order.orderNumber,
+          oldStatus: order.status,
+          newStatus: body.status,
+        },
+      });
+    }
 
     return NextResponse.json(updatedOrder);
   } catch (error) {

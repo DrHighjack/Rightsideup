@@ -105,6 +105,12 @@ export default function AdminLayout({
           >
             Jobs
           </Link>
+          <Link
+            href="/admin/activity"
+            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+          >
+            📋 Activity Log
+          </Link>
           <div className="pt-4 mt-4 border-t border-gray-200">
             <p className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold">
               Coming Soon

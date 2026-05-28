@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { sendEmail } from '@/lib/email';
+import { auth } from '@/lib/auth';
+import { logActivity } from '@/lib/activityLog';
+import { ActivityAction } from '@prisma/client';
 
 // GET /api/admin/811/[id] - Get ticket detail with matched orders
 export async function GET(
@@ -49,6 +52,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await auth();
     const { id } = params;
     const body = await request.json();
     const { action } = body;
@@ -148,6 +152,22 @@ export async function PUT(
           adminNotes: adminNotes || ticket.adminNotes,
         },
       });
+
+      // Log activity
+      if (session?.user?.id) {
+        await logActivity({
+          userId: session.user.id,
+          action: ActivityAction.TICKET_811_CLEARED,
+          entityType: 'Ticket811',
+          entityId: ticket.id,
+          description: `811 ticket cleared - ${matchedOrders.length} orders released`,
+          metadata: {
+            ticketNumber: ticket.ticketNumber,
+            ordersReleased: matchedOrders.map((o) => o.orderNumber),
+            adminNotes,
+          },
+        });
+      }
 
       console.log('[811API] Ticket cleared successfully');
       return NextResponse.json({

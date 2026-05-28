@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { logActivity } from '@/lib/activityLog';
+import { ActivityAction } from '@prisma/client';
 
 const assignmentSchema = z.object({
   orderId: z.string().min(1),
@@ -186,6 +188,22 @@ export async function POST(request: NextRequest) {
             lastName: true,
           },
         },
+      },
+    });
+
+    // Log activity
+    await logActivity({
+      userId: session.user.id,
+      action: ActivityAction.JOB_ASSIGNED,
+      entityType: 'JobAssignment',
+      entityId: assignment.id,
+      description: `Job assigned to ${fieldTech.firstName} ${fieldTech.lastName} for order ${order.orderNumber}`,
+      metadata: {
+        orderId,
+        orderNumber: order.orderNumber,
+        fieldTechId,
+        fieldTechEmail: fieldTech.email,
+        scheduledFor,
       },
     });
 

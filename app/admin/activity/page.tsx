@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import { ActivityAction } from '@prisma/client';
 
 interface ActivityLogItem {

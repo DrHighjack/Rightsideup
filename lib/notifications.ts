@@ -321,7 +321,7 @@ export async function createNotification({
   title,
   message,
   link,
-}: CreateNotificationParams) {
+}: CreateNotificationParams): Promise<any> {
   try {
     const notification = await prisma.notification.create({
       data: {
@@ -339,6 +339,7 @@ export async function createNotification({
   } catch (error) {
     console.error(`[Notification] Failed to create notification for user ${userId}:`, error);
     // Don't throw - allow the operation to continue
+    return null;
   }
 }
 

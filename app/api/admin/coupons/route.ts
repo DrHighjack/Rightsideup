@@ -77,20 +77,22 @@ export async function POST(req: Request) {
     });
 
     // Log activity
-    await logActivity({
-      userId: session.user.id,
-      action: ActivityAction.COUPON_REDEEMED,
-      entityType: 'Coupon',
-      entityId: coupon.id,
-      description: `Coupon created: ${code} (${type} - ${value})`,
-      metadata: {
-        code,
-        type,
-        value,
-        maxUses,
-        expiresAt,
-      },
-    });
+    if (session?.user?.id) {
+      await logActivity({
+        userId: session.user.id,
+        action: ActivityAction.COUPON_REDEEMED,
+        entityType: 'Coupon',
+        entityId: coupon.id,
+        description: `Coupon created: ${code} (${type} - ${value})`,
+        metadata: {
+          code,
+          type,
+          value,
+          maxUses,
+          expiresAt,
+        },
+      });
+    }
 
     return NextResponse.json(coupon, { status: 201 });
   } catch (error: any) {

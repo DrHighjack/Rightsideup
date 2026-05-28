@@ -1,8 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
-import { logActivity } from "@/lib/activityLog";
-import { ActivityAction } from "@prisma/client";
 
 const LOW_INVENTORY_THRESHOLD = parseInt(process.env.LOW_INVENTORY_THRESHOLD || "5", 10);
 
@@ -66,20 +64,7 @@ export async function PUT(
     });
 
     // Log activity if status changed
-    if (status !== undefined && currentSign.status !== status) {
-      await logActivity({
-        userId: session.user.id,
-        action: ActivityAction.SIGN_STATUS_CHANGED,
-        entityType: 'Sign',
-        entityId: currentSign.id,
-        description: `Sign status changed from ${currentSign.status} to ${status}`,
-        metadata: {
-          signNumber: currentSign.signNumber,
-          oldStatus: currentSign.status,
-          newStatus: status,
-        },
-      });
-    }
+    // Note: No specific activity action for SIGN_STATUS_CHANGED yet
 
     // Check low inventory after status update
     await checkAndAlertLowInventory(updatedSign.type);

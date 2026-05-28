@@ -193,20 +193,22 @@ export async function POST(request: NextRequest) {
     });
 
     // Log activity
-    await logActivity({
-      userId: session.user.id,
-      action: ActivityAction.JOB_ASSIGNED,
-      entityType: 'JobAssignment',
-      entityId: assignment.id,
-      description: `Job assigned to ${fieldTech.firstName} ${fieldTech.lastName} for order ${order.orderNumber}`,
-      metadata: {
-        orderId,
-        orderNumber: order.orderNumber,
-        fieldTechId,
-        fieldTechEmail: fieldTech.email,
-        scheduledFor,
-      },
-    });
+    if (session?.user?.id) {
+      await logActivity({
+        userId: session.user.id,
+        action: ActivityAction.JOB_ASSIGNED,
+        entityType: 'JobAssignment',
+        entityId: assignment.id,
+        description: `Job assigned to ${fieldTech.firstName} ${fieldTech.lastName} for order ${order.orderNumber}`,
+        metadata: {
+          orderId,
+          orderNumber: order.orderNumber,
+          fieldTechId,
+          fieldTechEmail: fieldTech.email,
+          scheduledFor,
+        },
+      });
+    }
 
     // Notify the field tech about the new job assignment
     await createNotification({

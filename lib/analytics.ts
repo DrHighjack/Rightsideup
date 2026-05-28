@@ -456,7 +456,7 @@ export async function getDashboardMetrics(
   // Outstanding invoices
   const outstandingInvoices = await prisma.invoice.findMany({
     where: {
-      status: { in: ['PENDING', 'SENT', 'PARTIALLY_PAID'] },
+      status: { in: ['SENT', 'VIEWED', 'OVERDUE'] },
     },
   });
 
@@ -482,7 +482,7 @@ export async function getDashboardMetrics(
 
   // Signs deployed vs available ratio
   const [deployedSigns, totalSigns] = await Promise.all([
-    prisma.sign.count({ where: { status: { in: ['DEPLOYED', 'IN_USE'] } } }),
+    prisma.sign.count({ where: { status: 'DEPLOYED' } }),
     prisma.sign.count(),
   ]);
 
@@ -608,11 +608,11 @@ export async function getOrdersData(startDate: Date, endDate: Date): Promise<Ord
  * Get current order status distribution
  */
 export async function getStatusData(): Promise<StatusData[]> {
-  const statuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'];
+  const statuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 
   const counts = await Promise.all(
     statuses.map((status) =>
-      prisma.order.count({ where: { status } })
+      prisma.order.count({ where: { status: status as any } })
     )
   );
 

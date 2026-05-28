@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
 import {
   LineChart,
   Line,
@@ -278,7 +277,7 @@ export default function AdminDashboardPage() {
                   dataKey="value"
                   label
                 >
-                  {statusData.map((entry, index) => (
+                  {statusData.map((_entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}
                 </Pie>

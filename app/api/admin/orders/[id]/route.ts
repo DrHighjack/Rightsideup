@@ -109,18 +109,20 @@ export async function PUT(
 
     // Log activity if status changed
     if (body.status && order.status !== body.status) {
-      await logActivity({
-        userId: session.user.id,
-        action: ActivityAction.ORDER_STATUS_CHANGED,
-        entityType: 'Order',
-        entityId: order.id,
-        description: `Order status changed from ${order.status} to ${body.status}`,
-        metadata: {
-          orderNumber: order.orderNumber,
-          oldStatus: order.status,
-          newStatus: body.status,
-        },
-      });
+      if (session?.user?.id) {
+        await logActivity({
+          userId: session.user.id,
+          action: ActivityAction.ORDER_STATUS_CHANGED,
+          entityType: 'Order',
+          entityId: order.id,
+          description: `Order status changed from ${order.status} to ${body.status}`,
+          metadata: {
+            orderNumber: order.orderNumber,
+            oldStatus: order.status,
+            newStatus: body.status,
+          },
+        });
+      }
 
       // Notify the realtor about the status change
       await createNotification({

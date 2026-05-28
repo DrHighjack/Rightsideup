@@ -1,4 +1,4 @@
-import { PrismaClient, ActivityAction } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { createNotification } from './lib/notifications';
 
 const prisma = new PrismaClient();
@@ -49,7 +49,7 @@ async function testNotifications() {
     const oldStatus = order.status;
     const newStatus = 'SCHEDULED';
     
-    const updatedOrder = await prisma.order.update({
+    await prisma.order.update({
       where: { id: order.id },
       data: { 
         status: newStatus,
@@ -59,7 +59,7 @@ async function testNotifications() {
     console.log(`✓ Order updated: ${oldStatus} → ${newStatus}`);
 
     console.log('\n5️⃣ Creating notification for realtor (simulating API route)...');
-    const notification = await createNotification({
+    await createNotification({
       userId: realtor.id,
       type: 'ORDER_STATUS_CHANGED',
       title: `Order ${order.orderNumber} updated`,

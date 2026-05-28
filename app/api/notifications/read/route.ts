@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
  * PUT /api/notifications/read
  * Marks all unread notifications as READ for the logged-in user
  */
-export async function PUT(request: NextRequest) {
+export async function PUT(_request: NextRequest) {
   try {
     const session = await auth();
 

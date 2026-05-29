@@ -21,6 +21,18 @@ interface Client {
   };
 }
 
+interface OrderForm {
+  type: "INSTALL" | "REMOVAL" | "CHANGE";
+  address: string;
+  scheduledDate: string;
+  notes: string;
+  items: Array<{
+    signId?: string;
+    quantity: number;
+    isHangingSelf?: boolean;
+  }>;
+}
+
 export default function SalesmenClientsPage() {
   const { status } = useSession();
   const router = useRouter();
@@ -33,6 +45,19 @@ export default function SalesmenClientsPage() {
   const [total, setTotal] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [allocatingFreeInstall, setAllocatingFreeInstall] = useState<string | null>(null);
+  
+  // Order modal state
+  const [showOrderModal, setShowOrderModal] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [orderForm, setOrderForm] = useState<OrderForm>({
+    type: "INSTALL",
+    address: "",
+    scheduledDate: "",
+    notes: "",
+    items: [{ quantity: 1, isHangingSelf: false }],
+  });
+  const [creatingOrder, setCreatingOrder] = useState(false);
+  const [orderError, setOrderError] = useState("");
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -104,6 +129,66 @@ export default function SalesmenClientsPage() {
       setError((err as Error).message || "Failed to update free install");
     } finally {
       setAllocatingFreeInstall(null);
+    }
+  };
+
+  const handleCreateOrder = (client: Client) => {
+    setSelectedClient(client);
+    setOrderForm({
+      type: "INSTALL",
+      address: "",
+      scheduledDate: "",
+      notes: "",
+      items: [{ quantity: 1, isHangingSelf: false }],
+    });
+    setOrderError("");
+    setShowOrderModal(true);
+  };
+
+  const handleSubmitOrder = async () => {
+    try {
+      if (!selectedClient) return;
+      if (!orderForm.address.trim()) {
+        setOrderError("Address is required");
+        return;
+      }
+
+      setCreatingOrder(true);
+      setOrderError("");
+
+      const res = await fetch("/api/salesmen/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          realtorId: selectedClient.id,
+          type: orderForm.type,
+          address: orderForm.address,
+          scheduledDate: orderForm.scheduledDate || undefined,
+          notes: orderForm.notes || undefined,
+          items: orderForm.items,
+          status: "PENDING",
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to create order");
+      }
+
+      // Update client order count
+      setClients(
+        clients.map((c) =>
+          c.id === selectedClient.id
+            ? { ...c, _count: { orders: c._count.orders + 1 } }
+            : c
+        )
+      );
+
+      setShowOrderModal(false);
+    } catch (err) {
+      setOrderError((err as Error).message || "Failed to create order");
+    } finally {
+      setCreatingOrder(false);
     }
   };
 
@@ -234,6 +319,12 @@ export default function SalesmenClientsPage() {
                         ? "Revoke"
                         : "Give"}
                     </button>
+                    <button
+                      onClick={() => handleCreateOrder(client)}
+                      className="px-3 py-1 rounded text-sm font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+                    >
+                      + Order
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -278,6 +369,126 @@ export default function SalesmenClientsPage() {
           </div>
         </div>
       </div>
+
+      {/* Create Order Modal */}
+      {showOrderModal && selectedClient && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full">
+            <div className="border-b border-gray-200 px-6 py-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                Create Order for {selectedClient.firstName} {selectedClient.lastName}
+              </h2>
+            </div>
+
+            <div className="px-6 py-4 max-h-96 overflow-y-auto">
+              {orderError && (
+                <div className="mb-4 rounded-md bg-red-50 p-4 text-sm text-red-800">
+                  {orderError}
+                </div>
+              )}
+
+              {/* Order Type */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Order Type
+                </label>
+                <select
+                  value={orderForm.type}
+                  onChange={(e) =>
+                    setOrderForm({ ...orderForm, type: e.target.value as any })
+                  }
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                >
+                  <option value="INSTALL">Install</option>
+                  <option value="REMOVAL">Removal</option>
+                  <option value="CHANGE">Change</option>
+                </select>
+              </div>
+
+              {/* Address */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Address *
+                </label>
+                <input
+                  type="text"
+                  value={orderForm.address}
+                  onChange={(e) =>
+                    setOrderForm({ ...orderForm, address: e.target.value })
+                  }
+                  placeholder="Enter property address"
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Scheduled Date */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Scheduled Date
+                </label>
+                <input
+                  type="date"
+                  value={orderForm.scheduledDate}
+                  onChange={(e) =>
+                    setOrderForm({ ...orderForm, scheduledDate: e.target.value })
+                  }
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900"
+                />
+              </div>
+
+              {/* Notes */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Notes
+                </label>
+                <textarea
+                  value={orderForm.notes}
+                  onChange={(e) =>
+                    setOrderForm({ ...orderForm, notes: e.target.value })
+                  }
+                  placeholder="Add any special instructions or notes"
+                  rows={3}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Hanging Self Checkbox */}
+              <div className="mb-4">
+                <label className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={orderForm.items[0]?.isHangingSelf || false}
+                    onChange={(e) => {
+                      const newItems = [...orderForm.items];
+                      newItems[0] = { ...newItems[0], isHangingSelf: e.target.checked };
+                      setOrderForm({ ...orderForm, items: newItems });
+                    }}
+                    className="rounded border-gray-300 text-blue-600 mr-2"
+                  />
+                  <span className="text-sm text-gray-700">Customer will hang the sign themselves</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="border-t border-gray-200 px-6 py-4 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowOrderModal(false)}
+                disabled={creatingOrder}
+                className="px-4 py-2 rounded border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmitOrder}
+                disabled={creatingOrder}
+                className="px-4 py-2 rounded bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+              >
+                {creatingOrder ? "Creating..." : "Create Order"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

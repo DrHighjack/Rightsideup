@@ -640,11 +640,13 @@ export async function getRealtorsMetrics(): Promise<RealtorMetrics[]> {
 
   const metrics = realtors
     .map((realtor) => {
-      const totalRevenue = realtor.orders.reduce((sum, order) => {
-        const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
-        const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
-        return sum + (subtotal - discount);
-      }, 0);
+      const totalRevenue = realtor.orders
+        .filter((order) => order.status === 'COMPLETED')
+        .reduce((sum, order) => {
+          const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
+          const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
+          return sum + (subtotal - discount);
+        }, 0);
 
       return {
         id: realtor.id,

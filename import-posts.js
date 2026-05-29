@@ -73,8 +73,8 @@ function parseCSV(filePath) {
  */
 function mapStatus(csvStatus) {
   const statusMap = {
-    'removed': 'CANCELLED',
-    'in ground': 'COMPLETED',
+    'removed': 'COMPLETED',
+    'in ground': 'PENDING',
     'on hold': 'ON_HOLD',
     'awaiting 811': 'PENDING',
     'awaiting hoa': 'PENDING',

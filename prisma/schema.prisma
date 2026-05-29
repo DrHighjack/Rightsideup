@@ -21,6 +21,7 @@ enum OrderStatus {
   SCHEDULED
   ON_HOLD
   IN_PROGRESS
+  IN_GROUND
   COMPLETED
   CANCELLED
 }

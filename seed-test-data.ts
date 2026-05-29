@@ -57,15 +57,22 @@ async function seedTestData() {
     for (let day = 1; day <= 7; day++) {
       for (let i = 0; i < 2; i++) {
         const types = ['INSTALL', 'REMOVAL', 'CHANGE'];
-        const statuses = ['COMPLETED', 'SCHEDULED', 'PENDING', 'IN_PROGRESS'];
+        const statuses = ['IN_GROUND', 'SCHEDULED', 'PENDING', 'IN_PROGRESS'];
+        const orderType = types[(day + i) % types.length];
+        let status = statuses[(day + i) % statuses.length];
+        
+        // For REMOVAL orders that are 'completed', use COMPLETED status
+        if (orderType === 'REMOVAL' && status === 'IN_GROUND') {
+          status = 'COMPLETED';
+        }
         
         await prisma.order.create({
           data: {
             orderNumber: `ORD-WEEK-${day}-${i + 1}`,
             realtorId: realtor.id,
             address: `Test Week Address ${day}-${i + 1}`,
-            type: types[(day + i) % types.length],
-            status: statuses[(day + i) % statuses.length] as any,
+            type: orderType,
+            status: status as any,
             createdAt: new Date(now.getTime() - day * 86400000 - Math.random() * 3600000),
           },
         });
@@ -75,13 +82,17 @@ async function seedTestData() {
 
     // Orders from past month (for monthly metrics)
     for (let day = 8; day <= 30; day++) {
+      const orderType = ['INSTALL', 'REMOVAL', 'CHANGE'][day % 3];
+      const baseStatus = day % 5 === 0 ? 'IN_GROUND' : 'SCHEDULED';
+      const status = orderType === 'REMOVAL' && baseStatus === 'IN_GROUND' ? 'COMPLETED' : baseStatus;
+      
       await prisma.order.create({
         data: {
           orderNumber: `ORD-MONTH-${day}`,
           realtorId: realtor.id,
           address: `Test Month Address ${day}`,
-          type: ['INSTALL', 'REMOVAL', 'CHANGE'][day % 3],
-          status: day % 5 === 0 ? 'COMPLETED' : 'SCHEDULED',
+          type: orderType,
+          status: status,
           createdAt: new Date(now.getTime() - day * 86400000),
         },
       });

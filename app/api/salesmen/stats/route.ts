@@ -39,7 +39,7 @@ export async function GET() {
       clientsWithInstalls: clientsAdded.filter((c) => c.freeInstallGivenBy).length,
       totalOrders: clientsAdded.reduce((sum, c) => sum + c.orders.length, 0),
       completedOrders: clientsAdded.reduce(
-        (sum, c) => sum + c.orders.filter((o) => o.status === "COMPLETED").length,
+        (sum, c) => sum + c.orders.filter((o) => o.status === "COMPLETED" || o.status === "IN_GROUND").length,
         0
       ),
       pendingOrders: clientsAdded.reduce(
@@ -48,7 +48,7 @@ export async function GET() {
       ),
       totalRevenue: clientsAdded.reduce((sum, client) => {
         const clientRevenue = client.orders
-          .filter((o) => o.status === "COMPLETED")
+          .filter((o) => o.status === "COMPLETED" || o.status === "IN_GROUND")
           .reduce((clientSum, order) => {
             const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
             const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
@@ -62,7 +62,7 @@ export async function GET() {
       avgRevenuePerClient: clientsAdded.length > 0
         ? (clientsAdded.reduce((sum, client) => {
             const clientRevenue = client.orders
-              .filter((o) => o.status === "COMPLETED")
+              .filter((o) => o.status === "COMPLETED" || o.status === "IN_GROUND")
               .reduce((clientSum, order) => {
                 const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
                 const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
@@ -77,7 +77,7 @@ export async function GET() {
     const topClients = clientsAdded
       .map((client) => {
         const totalRevenue = client.orders
-          .filter((o) => o.status === "COMPLETED")
+          .filter((o) => o.status === "COMPLETED" || o.status === "IN_GROUND")
           .reduce((sum, order) => {
             const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
             const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);

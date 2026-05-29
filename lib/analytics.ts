@@ -43,7 +43,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const [totalOrders, pendingOrders, completedOrders, cancelledOrders] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: 'PENDING' } }),
-    prisma.order.count({ where: { status: 'COMPLETED' } }),
+    prisma.order.count({ where: { status: { in: ['IN_GROUND', 'COMPLETED'] } } }),
     prisma.order.count({ where: { status: 'CANCELLED' } }),
   ]);
 
@@ -54,7 +54,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const getRevenueByDateRange = async (startDate: Date) => {
     const orders = await prisma.order.findMany({
       where: {
-        status: 'COMPLETED',
+        status: { in: ['IN_GROUND', 'COMPLETED'] },
         updatedAt: { gte: startDate },
       },
       include: {
@@ -220,7 +220,7 @@ export async function getRealtorPerformance() {
         const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
         totalRevenue += subtotal - discount;
 
-        if (order.status === 'COMPLETED') completedCount++;
+        if (order.status === 'COMPLETED' || order.status === 'IN_GROUND') completedCount++;
       });
 
       const completionRate =
@@ -398,7 +398,7 @@ export async function getDashboardMetrics(
   const getRevenue = async (start: Date, end: Date) => {
     const orders = await prisma.order.findMany({
       where: {
-        status: 'COMPLETED',
+        status: { in: ['IN_GROUND', 'COMPLETED'] },
         updatedAt: { gte: start, lte: end },
       },
       include: {
@@ -447,7 +447,7 @@ export async function getDashboardMetrics(
   const [totalOrders, completedOrders] = await Promise.all([
     prisma.order.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
     prisma.order.count({
-      where: { status: 'COMPLETED', createdAt: { gte: startDate, lte: endDate } },
+      where: { status: { in: ['IN_GROUND', 'COMPLETED'] }, createdAt: { gte: startDate, lte: endDate } },
     }),
   ]);
 
@@ -528,7 +528,7 @@ export async function getDashboardMetrics(
 export async function getRevenueData(startDate: Date, endDate: Date): Promise<RevenueData[]> {
   const orders = await prisma.order.findMany({
     where: {
-      status: 'COMPLETED',
+      status: { in: ['IN_GROUND', 'COMPLETED'] },
       updatedAt: { gte: startDate, lte: endDate },
     },
     include: {
@@ -641,7 +641,7 @@ export async function getRealtorsMetrics(): Promise<RealtorMetrics[]> {
   const metrics = realtors
     .map((realtor) => {
       const totalRevenue = realtor.orders
-        .filter((order) => order.status === 'COMPLETED')
+        .filter((order) => order.status === 'COMPLETED' || order.status === 'IN_GROUND')
         .reduce((sum, order) => {
           const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
           const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);

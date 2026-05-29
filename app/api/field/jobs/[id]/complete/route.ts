@@ -31,6 +31,7 @@ export async function PUT(
           select: {
             id: true,
             status: true,
+            type: true,
           },
         },
       },
@@ -84,10 +85,13 @@ export async function PUT(
       },
     });
 
-    // Update order status to COMPLETED
+    // Update order status based on order type
+    // REMOVAL orders → COMPLETED (removed from ground)
+    // INSTALL/CHANGE orders → IN_GROUND (installed/replaced, still in ground)
+    const newStatus = assignment.order.type === 'REMOVAL' ? 'COMPLETED' : 'IN_GROUND';
     await prisma.order.update({
       where: { id: assignment.orderId },
-      data: { status: 'COMPLETED' },
+      data: { status: newStatus },
     });
 
     return NextResponse.json(updatedAssignment);

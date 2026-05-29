@@ -147,7 +147,7 @@ export default function TCDashboardPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <p className="text-gray-500 text-sm mb-2">Completed</p>
             <p className="text-3xl font-bold text-green-600">
-              {orders.filter((o) => o.status === "COMPLETED").length}
+              {orders.filter((o) => o.status === "COMPLETED" || o.status === "IN_GROUND").length}
             </p>
           </div>
         </div>
@@ -205,7 +205,7 @@ export default function TCDashboardPage() {
                               ? "bg-amber-100 text-amber-700"
                               : order.status === "CONFIRMED"
                               ? "bg-blue-100 text-blue-700"
-                              : order.status === "COMPLETED"
+                              : order.status === "COMPLETED" || order.status === "IN_GROUND"
                               ? "bg-green-100 text-green-700"
                               : "bg-gray-100 text-gray-700"
                           }`}

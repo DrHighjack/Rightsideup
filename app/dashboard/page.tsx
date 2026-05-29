@@ -42,7 +42,7 @@ export default function DashboardPage() {
             (o: OrderData) => o.status === "SCHEDULED" || o.status === "IN_PROGRESS"
           ).length;
           const completedThisMonth = data.orders.filter((o: OrderData) => {
-            if (o.status !== "COMPLETED") return false;
+            if (o.status !== "COMPLETED" && o.status !== "IN_GROUND") return false;
             const orderDate = new Date(o.createdAt);
             const now = new Date();
             return (
@@ -148,11 +148,13 @@ export default function DashboardPage() {
                       className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
                         order.status === "PENDING"
                           ? "bg-yellow-100 text-yellow-800"
+                          : order.status === "IN_GROUND"
+                          ? "bg-blue-100 text-blue-800"
                           : order.status === "COMPLETED"
                           ? "bg-green-100 text-green-800"
                           : order.status === "CANCELLED"
                           ? "bg-red-100 text-red-800"
-                          : "bg-blue-100 text-blue-800"
+                          : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {order.status}

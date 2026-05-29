@@ -107,7 +107,7 @@ export default function OrderDetailPage() {
             className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
               order.status === "PENDING"
                 ? "bg-yellow-100 text-yellow-800"
-                : order.status === "COMPLETED"
+                : order.status === "COMPLETED" || order.status === "IN_GROUND"
                 ? "bg-green-100 text-green-800"
                 : order.status === "CANCELLED"
                 ? "bg-red-100 text-red-800"

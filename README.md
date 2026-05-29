@@ -123,7 +123,8 @@ Visit `http://localhost:3000`
 - id, email (unique), passwordHash, firstName, lastName, phone, brokerageName, role (REALTOR|ADMIN|TC), createdAt, updatedAt
 
 ### Order
-- id, orderNumber (unique, auto-generated), realtorId (FK), type (INSTALL|REMOVAL|CHANGE), status (PENDING|SCHEDULED|IN_PROGRESS|COMPLETED|CANCELLED), address, addressLat, addressLng, scheduledDate, notes, adminNotes, cancelledAt, cancelReason, createdAt, updatedAt
+- id, orderNumber (unique, auto-generated), realtorId (FK), type (INSTALL|REMOVAL|CHANGE), status (PENDING|SCHEDULED|IN_PROGRESS|IN_GROUND|COMPLETED|CANCELLED), address, addressLat, addressLng, scheduledDate, notes, adminNotes, cancelledAt, cancelReason, createdAt, updatedAt
+  - Status meanings: PENDING (awaiting scheduling), SCHEDULED (scheduled), IN_PROGRESS (work in progress), IN_GROUND (sign installed, not removed yet), COMPLETED (sign removed/job done), CANCELLED (cancelled)
 
 ### Invoice (stubbed for future use)
 ### SignInventory (stubbed for future use)

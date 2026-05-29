@@ -71,12 +71,20 @@ export default function AdminLayout({
           </Link>
           {/* Salesmen: Access to Clients and Salesmen */}
           {isSalesmenOnly && (
-            <Link
-              href="/admin/salesmen/clients"
-              className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-            >
-              Manage Clients
-            </Link>
+            <>
+              <Link
+                href="/admin/salesmen/clients"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Manage Clients
+              </Link>
+              <Link
+                href="/admin/salesmen/orders/new"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Create Order
+              </Link>
+            </>
           )}
           {/* Admin: Full Access */}
           {isAdmin && (

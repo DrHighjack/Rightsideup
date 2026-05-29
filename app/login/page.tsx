@@ -18,7 +18,7 @@ export default function LoginPage() {
   // If already logged in, redirect to appropriate dashboard
   useEffect(() => {
     if (session?.user) {
-      if ((session.user as any).role === "ADMIN") {
+      if (["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
         router.push("/admin");
       } else {
         router.push("/dashboard");
@@ -45,6 +45,8 @@ export default function LoginPage() {
         const response = await fetch("/api/auth/session");
         const newSession = await response.json();
         if (newSession?.user?.role === "ADMIN") {
+          router.push("/admin");
+        } else if (newSession?.user?.role === "SALESMEN") {
           router.push("/admin");
         } else {
           router.push("/dashboard");

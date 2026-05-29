@@ -38,8 +38,8 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // Admin route protection - only ADMIN role allowed
-  if (isAdminRoute && userRole && userRole !== "ADMIN") {
+  // Admin route protection - ADMIN and SALESMEN allowed
+  if (isAdminRoute && userRole && !["ADMIN", "SALESMEN"].includes(userRole)) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 

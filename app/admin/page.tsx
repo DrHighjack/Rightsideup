@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import {
   LineChart,
   Line,
@@ -68,6 +70,8 @@ interface TechMetrics {
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
 export default function AdminDashboardPage() {
+  const { data: session } = useSession();
+  const router = useRouter();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [revenueData, setRevenueData] = useState<RevenueData[]>([]);
   const [ordersData, setOrdersData] = useState<OrdersData[]>([]);
@@ -77,9 +81,19 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState<'7' | '30' | '90'>('30');
 
+  // Redirect salesmen to their dashboard
   useEffect(() => {
-    fetchAnalyticsData();
-  }, [dateRange]);
+    if (session?.user && (session.user as any).role === 'SALESMEN') {
+      router.push('/admin/salesmen');
+    }
+  }, [session, router]);
+
+  useEffect(() => {
+    // Don't fetch analytics if user is salesmen (they'll be redirected)
+    if (session?.user && (session.user as any).role !== 'SALESMEN') {
+      fetchAnalyticsData();
+    }
+  }, [dateRange, session]);
 
   async function fetchAnalyticsData() {
     try {
@@ -145,6 +159,11 @@ export default function AdminDashboardPage() {
         <span className="ml-3 text-gray-600">Loading dashboard...</span>
       </div>
     );
+  }
+
+  // Redirect salesmen (while their redirect effect is happening)
+  if (session?.user && (session.user as any).role === 'SALESMEN') {
+    return null;
   }
 
   return (

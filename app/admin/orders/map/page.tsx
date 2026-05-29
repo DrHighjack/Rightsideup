@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { APIProvider, Map, AdvancedMarker, InfoWindow } from "@vis.gl/react-google-maps";
+import GoogleMapReact from "google-map-react";
 import Link from "next/link";
 
 interface OrderLocation {
@@ -22,14 +22,6 @@ interface OrderLocation {
   scheduledDate: string | null;
 }
 
-const getMapsApiKey = (): string => {
-  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
-  if (!key) {
-    return ""; // Return empty string during build, will be set at runtime
-  }
-  return key;
-};
-
 const getMarkerColor = (order: OrderLocation): string => {
   switch (order.status) {
     case "COMPLETED":
@@ -47,6 +39,28 @@ const getMarkerColor = (order: OrderLocation): string => {
       return "#FBBF24"; // Yellow
   }
 };
+
+const OrderMarker = ({ order, isSelected, onClick }: { order: OrderLocation; isSelected: boolean; onClick: () => void }) => (
+  <div
+    onClick={onClick}
+    className="cursor-pointer transition-transform hover:scale-125"
+    title={`${order.orderNumber} - ${order.address}`}
+  >
+    <div
+      style={{
+        width: 28,
+        height: 28,
+        backgroundColor: getMarkerColor(order),
+        border: isSelected ? "3px solid white" : "2px solid rgba(0,0,0,0.3)",
+        borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: isSelected ? "0 0 0 3px rgba(0,0,0,0.4)" : "0 2px 4px rgba(0,0,0,0.3)",
+      }}
+    />
+  </div>
+);
 
 const getStatusLabel = (status: string): string => {
   return status.replace(/_/g, " ");
@@ -74,10 +88,17 @@ export default function OrdersMapPage() {
   const [orders, setOrders] = useState<OrderLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState({ lat: 39.8283, lng: -98.5795 }); // USA center
+  const [mapCenter, setMapCenter] = useState({ lat: 47.6, lng: -122.3 }); // Seattle area default
   const [error, setError] = useState("");
+  const [mapKey, setMapKey] = useState("");
 
   useEffect(() => {
+    // Get API key from environment
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    if (key) {
+      setMapKey(key);
+    }
+    
     fetchOrders();
   }, []);
 
@@ -111,18 +132,7 @@ export default function OrdersMapPage() {
     }
   };
 
-  const getMapKey = (): string => {
-    try {
-      return getMapsApiKey();
-    } catch (err) {
-      console.error(err);
-      return "";
-    }
-  };
-
-  const apiKey = getMapKey();
-
-  if (!apiKey) {
+  if (!mapKey) {
     return (
       <div className="min-h-screen bg-gray-50 p-4 md:p-6">
         <div className="max-w-6xl mx-auto">
@@ -138,9 +148,9 @@ export default function OrdersMapPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 md:p-6">
+      <div className="bg-white border-b border-gray-200 p-4 md:p-6 flex-shrink-0">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Orders Map</h1>
@@ -211,130 +221,99 @@ export default function OrdersMapPage() {
 
       {/* Map Container */}
       {loading ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-gray-600">Loading map...</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center bg-gray-100">
+          <p className="text-gray-600">Loading map...</p>
         </div>
       ) : orders.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-gray-600">No orders with location data found</p>
-          </div>
+        <div className="flex-1 flex items-center justify-center bg-gray-100">
+          <p className="text-gray-600">No orders with location data found</p>
         </div>
       ) : (
         <div className="flex-1 relative overflow-hidden">
-          <APIProvider apiKey={apiKey}>
-            <Map
-              defaultCenter={mapCenter}
-              defaultZoom={4}
-              mapId="orders-map"
-              fullscreenControl={false}
-              zoomControl={true}
-              streetViewControl={false}
-              mapTypeControl={false}
-              className="w-full h-full"
-            >
-              {orders.map((order) => (
-                order.addressLat && order.addressLng && (
-                  <AdvancedMarker
-                    key={order.id}
-                    position={{
-                      lat: parseFloat(String(order.addressLat)),
-                      lng: parseFloat(String(order.addressLng)),
-                    }}
-                    onClick={() =>
-                      setSelectedMarker(selectedMarker === order.id ? null : order.id)
-                    }
-                  >
-                    <div
-                      className="w-6 h-6 rounded-full cursor-pointer transition-transform hover:scale-125 border-2 border-white shadow-md"
-                      style={{
-                        backgroundColor: getMarkerColor(order),
-                      }}
-                      title={`${order.orderNumber} - ${order.address}`}
-                    />
-                  </AdvancedMarker>
-                )
-              ))}
+          <GoogleMapReact
+            bootstrapURLKeys={{ key: mapKey }}
+            defaultCenter={mapCenter}
+            defaultZoom={8}
+            margin={[50, 50, 50, 50]}
+            yesIWantToUseGoogleMapApiInternals
+          >
+            {orders.map((order) =>
+              order.addressLat && order.addressLng ? (
+                <OrderMarker
+                  key={order.id}
+                  lat={parseFloat(String(order.addressLat))}
+                  lng={parseFloat(String(order.addressLng))}
+                  order={order}
+                  isSelected={selectedMarker === order.id}
+                  onClick={() => setSelectedMarker(selectedMarker === order.id ? null : order.id)}
+                />
+              ) : null
+            )}
+          </GoogleMapReact>
 
-              {selectedMarker && (
-                <InfoWindow
-                  position={(() => {
-                    const order = orders.find((o) => o.id === selectedMarker);
-                    if (!order || !order.addressLat || !order.addressLng)
-                      return { lat: 0, lng: 0 };
-                    return {
-                      lat: parseFloat(String(order.addressLat)),
-                      lng: parseFloat(String(order.addressLng)),
-                    };
-                  })()}
-                  onCloseClick={() => setSelectedMarker(null)}
-                >
-                  {(() => {
-                    const order = orders.find((o) => o.id === selectedMarker);
-                    if (!order) return null;
+          {/* Info Panel */}
+          {selectedMarker && (
+            <div className="absolute bottom-6 left-6 bg-white rounded-lg shadow-lg p-4 w-72 max-h-96 overflow-y-auto">
+              {(() => {
+                const order = orders.find((o) => o.id === selectedMarker);
+                if (!order) return null;
 
-                    return (
-                      <div className="bg-white rounded-lg shadow-lg p-3 min-w-64">
-                        <h3 className="font-bold text-lg mb-2">
-                          {order.orderNumber}
-                        </h3>
+                return (
+                  <div>
+                    <h3 className="font-bold text-lg mb-3">{order.orderNumber}</h3>
 
-                        <div className="space-y-2 text-sm">
-                          <div>
-                            <p className="text-gray-500">Address</p>
-                            <p className="font-medium">{order.address}</p>
-                          </div>
-
-                          <div>
-                            <p className="text-gray-500">Status</p>
-                            <span
-                              className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
-                                order.status
-                              )}`}
-                            >
-                              {getStatusLabel(order.status)}
-                            </span>
-                          </div>
-
-                          <div>
-                            <p className="text-gray-500">Type</p>
-                            <p className="font-medium">{order.type}</p>
-                          </div>
-
-                          <div>
-                            <p className="text-gray-500">Client</p>
-                            <p className="font-medium">
-                              {order.realtor.firstName} {order.realtor.lastName}
-                            </p>
-                          </div>
-
-                          {order.scheduledDate && (
-                            <div>
-                              <p className="text-gray-500">Scheduled Date</p>
-                              <p className="font-medium">
-                                {new Date(order.scheduledDate).toLocaleDateString()}
-                              </p>
-                            </div>
-                          )}
-
-                          <div className="pt-2 mt-2 border-t">
-                            <Link
-                              href={`/admin/orders/${order.id}`}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                            >
-                              View Details →
-                            </Link>
-                          </div>
-                        </div>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <p className="text-gray-500">Address</p>
+                        <p className="font-medium">{order.address}</p>
                       </div>
-                    );
-                  })()}
-                </InfoWindow>
-              )}
-            </Map>
-          </APIProvider>
+
+                      <div>
+                        <p className="text-gray-500">Status</p>
+                        <span
+                          className={`inline-block px-2 py-1 rounded text-xs font-semibold ${getStatusColor(
+                            order.status
+                          )}`}
+                        >
+                          {getStatusLabel(order.status)}
+                        </span>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Type</p>
+                        <p className="font-medium">{order.type}</p>
+                      </div>
+
+                      <div>
+                        <p className="text-gray-500">Client</p>
+                        <p className="font-medium">
+                          {order.realtor.firstName} {order.realtor.lastName}
+                        </p>
+                      </div>
+
+                      {order.scheduledDate && (
+                        <div>
+                          <p className="text-gray-500">Scheduled Date</p>
+                          <p className="font-medium">
+                            {new Date(order.scheduledDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="pt-2 mt-3 border-t">
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                        >
+                          View Details →
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       )}
     </div>

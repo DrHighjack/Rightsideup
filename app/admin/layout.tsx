@@ -82,12 +82,6 @@ export default function AdminLayout({
           {isAdmin && (
             <>
               <Link
-                href="/admin/clients"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                Clients
-              </Link>
-              <Link
                 href="/admin/orders"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >
@@ -109,13 +103,7 @@ export default function AdminLayout({
                 href="/admin/brokerages"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >
-                Brokerages & TC Groups
-              </Link>
-              <Link
-                href="/admin/tcs"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                TC Accounts
+                Management
               </Link>
               <Link
                 href="/admin/811"

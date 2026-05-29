@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
         { lastName: { contains: search, mode: "insensitive" } },
         { email: { contains: search, mode: "insensitive" } },
         { brokerageName: { contains: search, mode: "insensitive" } },
+        { tags: { hasSome: [search] } }, // Search in tags array
       ];
     }
 
@@ -39,6 +40,7 @@ export async function GET(request: NextRequest) {
         email: true,
         brokerageName: true,
         phone: true,
+        tags: true,
         createdAt: true,
         _count: {
           select: { orders: true },

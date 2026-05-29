@@ -9,6 +9,7 @@ interface RealtorData {
   email: string;
   brokerageName?: string;
   phone?: string;
+  tags: string[];
   createdAt: string;
   _count: {
     orders: number;
@@ -21,6 +22,10 @@ export default function AdminClientsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [balanceFilter, setBalanceFilter] = useState<"all" | "has-balance" | "no-balance">("all");
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [clientsWithInvoices, setClientsWithInvoices] = useState<Map<string, boolean>>(new Map());
 
   useEffect(() => {
     async function fetchRealtors() {
@@ -36,6 +41,32 @@ export default function AdminClientsPage() {
 
         setRealtors(data.users);
         setTotalPages(data.pagination.pages);
+
+        // Extract all unique tags
+        const tags = new Set<string>();
+        data.users.forEach((user: RealtorData) => {
+          if (user.tags && Array.isArray(user.tags)) {
+            user.tags.forEach(tag => tags.add(tag));
+          }
+        });
+        setAllTags(Array.from(tags).sort());
+
+        // Fetch invoice data for balance filtering
+        const invoiceMap = new Map<string, boolean>();
+        for (const user of data.users) {
+          try {
+            const invRes = await fetch(`/api/admin/invoices?realtorId=${user.id}`);
+            if (invRes.ok) {
+              const invData = await invRes.json();
+              const invoices = invData.invoices || [];
+              const hasBalance = invoices.some((inv: any) => inv.total - inv.paid > 0);
+              invoiceMap.set(user.id, hasBalance);
+            }
+          } catch (err) {
+            console.error("Failed to fetch invoices for user:", user.id);
+          }
+        }
+        setClientsWithInvoices(invoiceMap);
       } catch (error) {
         console.error("Failed to fetch realtors:", error);
       } finally {
@@ -46,6 +77,71 @@ export default function AdminClientsPage() {
     fetchRealtors();
   }, [page, search]);
 
+  const filteredRealtors = realtors.filter((realtor) => {
+    // Tag filter
+    if (selectedTag && (!realtor.tags || !realtor.tags.includes(selectedTag))) {
+      return false;
+    }
+
+    // Balance filter
+    if (balanceFilter === "has-balance" && !clientsWithInvoices.get(realtor.id)) {
+      return false;
+    }
+    if (balanceFilter === "no-balance" && clientsWithInvoices.get(realtor.id)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const handleExportCSV = () => {
+    if (filteredRealtors.length === 0) {
+      alert("No realtors to export");
+      return;
+    }
+
+    // Prepare CSV data
+    const headers = ["First Name", "Last Name", "Email", "Brokerage", "Phone", "Orders", "Tags", "Joined"];
+    const rows = filteredRealtors.map((realtor) => [
+      realtor.firstName,
+      realtor.lastName,
+      realtor.email,
+      realtor.brokerageName || "",
+      realtor.phone || "",
+      realtor._count.orders,
+      (realtor.tags || []).join("; "),
+      new Date(realtor.createdAt).toLocaleDateString(),
+    ]);
+
+    // Create CSV content
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row
+          .map((cell) => {
+            // Escape quotes and wrap in quotes if contains comma
+            const str = String(cell);
+            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+              return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    // Download CSV
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `realtors_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -53,8 +149,9 @@ export default function AdminClientsPage() {
         <p className="text-gray-600">Manage realtor accounts and view their order history</p>
       </div>
 
-      {/* Search */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      {/* Search and Filters */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
+        {/* Search */}
         <div>
           <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
             Search
@@ -67,16 +164,72 @@ export default function AdminClientsPage() {
               setSearch(e.target.value);
               setPage(1);
             }}
-            placeholder="Search by name, email, or brokerage..."
+            placeholder="Search by name, email, brokerage, or tags..."
             className="w-full rounded-md border border-gray-300 px-4 py-2"
           />
+        </div>
+
+        {/* Filters */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Tag Filter */}
+          <div>
+            <label htmlFor="tag-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Filter by Tag
+            </label>
+            <select
+              id="tag-filter"
+              value={selectedTag}
+              onChange={(e) => {
+                setSelectedTag(e.target.value);
+                setPage(1);
+              }}
+              className="w-full rounded-md border border-gray-300 px-4 py-2"
+            >
+              <option value="">All Tags</option>
+              {allTags.map((tag) => (
+                <option key={tag} value={tag}>
+                  {tag}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Balance Filter */}
+          <div>
+            <label htmlFor="balance-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Filter by Outstanding Balance
+            </label>
+            <select
+              id="balance-filter"
+              value={balanceFilter}
+              onChange={(e) => {
+                setBalanceFilter(e.target.value as any);
+                setPage(1);
+              }}
+              className="w-full rounded-md border border-gray-300 px-4 py-2"
+            >
+              <option value="all">All Clients</option>
+              <option value="has-balance">Has Outstanding Balance</option>
+              <option value="no-balance">No Outstanding Balance</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Export Button */}
+        <div>
+          <button
+            onClick={handleExportCSV}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+          >
+            Export to CSV
+          </button>
         </div>
       </div>
 
       {/* Realtors table */}
       {loading ? (
         <div className="text-center text-gray-500 py-8">Loading realtors...</div>
-      ) : realtors.length === 0 ? (
+      ) : filteredRealtors.length === 0 ? (
         <div className="text-center text-gray-500 py-8">No realtors found</div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
@@ -94,6 +247,9 @@ export default function AdminClientsPage() {
                     Brokerage
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                    Tags
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
                     Orders
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
@@ -102,7 +258,7 @@ export default function AdminClientsPage() {
                 </tr>
               </thead>
               <tbody>
-                {realtors.map((realtor) => (
+                {filteredRealtors.map((realtor) => (
                   <tr
                     key={realtor.id}
                     className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
@@ -116,6 +272,22 @@ export default function AdminClientsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {realtor.brokerageName || "—"}
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <div className="flex flex-wrap gap-1">
+                        {realtor.tags && realtor.tags.length > 0 ? (
+                          realtor.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs"
+                            >
+                              {tag}
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {realtor._count.orders}

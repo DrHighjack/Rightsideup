@@ -23,6 +23,8 @@ export async function GET(
         phone: true,
         paymentMethod: true,
         brokerageName: true,
+        tags: true,
+        adminNotes: true,
         createdAt: true,
         role: true,
       },
@@ -52,6 +54,63 @@ export async function GET(
       orderCount: orders.length,
     });
   } catch (error) {
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { firstName, lastName, phone, brokerageName, tags, adminNotes } = body;
+
+    // Validate inputs
+    if (!firstName?.trim() || !lastName?.trim()) {
+      return NextResponse.json(
+        { error: "First name and last name are required" },
+        { status: 400 }
+      );
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id: params.id },
+      data: {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone?.trim() || null,
+        brokerageName: brokerageName?.trim() || null,
+        tags: Array.isArray(tags) ? tags.filter(t => t?.trim()) : [],
+        adminNotes: adminNotes || null,
+      },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        phone: true,
+        paymentMethod: true,
+        brokerageName: true,
+        tags: true,
+        adminNotes: true,
+        createdAt: true,
+        role: true,
+      },
+    });
+
+    return NextResponse.json({ user: updatedUser });
+  } catch (error) {
+    console.error("Failed to update user:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

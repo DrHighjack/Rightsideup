@@ -115,6 +115,10 @@ model User {
   activityLogs   ActivityLog[]
   notifications  Notification[]
   
+  // CRM Polish
+  tags           String[]      @default([])  // Freeform tags for organizing clients
+  adminNotes     String?       // JSON array of timestamped notes: [{ text, createdAt, adminId }, ...]
+  
   @@map("users")
   @@index([brokerageId])
 }

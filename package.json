@@ -49,6 +49,7 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
+    "@types/google-map-react": "^2.1.10",
     "@types/node": "^20.0.0",
     "@types/nodemailer": "^8.0.0",
     "@types/react": "^18.2.0",

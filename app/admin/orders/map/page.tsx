@@ -40,7 +40,9 @@ const getMarkerColor = (order: OrderLocation): string => {
   }
 };
 
-const OrderMarker = ({ order, isSelected, onClick }: { order: OrderLocation; isSelected: boolean; onClick: () => void }) => (
+const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick: () => void; [key: string]: any }) => {
+  const { order, isSelected, onClick } = props;
+  return (
   <div
     onClick={onClick}
     className="cursor-pointer transition-transform hover:scale-125"
@@ -60,7 +62,8 @@ const OrderMarker = ({ order, isSelected, onClick }: { order: OrderLocation; isS
       }}
     />
   </div>
-);
+  );
+};
 
 const getStatusLabel = (status: string): string => {
   return status.replace(/_/g, " ");

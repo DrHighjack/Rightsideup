@@ -11,6 +11,7 @@ generator client {
 enum Role {
   REALTOR
   ADMIN
+  SALESMEN
   TC
   FIELD_TECH
 }
@@ -118,6 +119,10 @@ model User {
   // CRM Polish
   tags           String[]      @default([])  // Freeform tags for organizing clients
   adminNotes     String?       // JSON array of timestamped notes: [{ text, createdAt, adminId }, ...]
+  
+  // Sales tracking
+  freeInstallGivenBy String?   // ID of the salesman who gave the free install
+  freeInstallDate    DateTime? // Date when free install was given
   
   @@map("users")
   @@index([brokerageId])

@@ -1,6 +1,6 @@
 "use client";
 
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
@@ -43,11 +43,17 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const { data: sessionData } = useSession();
+  const userRole = (sessionData?.user as any)?.role;
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
     router.push("/login");
   };
+
+  // Restrict access for salesmen to certain pages
+  const isSalesmenOnly = userRole === "SALESMEN";
+  const isAdmin = userRole === "ADMIN";
 
   return (
     <div className="flex h-screen flex-col md:flex-row bg-gray-50">
@@ -63,70 +69,96 @@ export default function AdminLayout({
           >
             Dashboard
           </Link>
-          <Link
-            href="/admin/orders"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            All Orders
-          </Link>
-          <Link
-            href="/admin/orders/new"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            Create Order
-          </Link>
-          <Link
-            href="/admin/coupons"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            Coupons
-          </Link>
-          <Link
-            href="/admin/brokerages"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            Brokerages & TC Groups
-          </Link>
-          <Link
-            href="/admin/tcs"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            TC Accounts
-          </Link>
-          <Link
-            href="/admin/811"
-            className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            811 Tickets
-            <Ticket811Badge />
-          </Link>
-          <Link
-            href="/admin/jobs"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            Jobs
-          </Link>
-          <Link
-            href="/admin/activity"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            📋 Activity Log
-          </Link>
-          <div className="pt-4 mt-4 border-t border-gray-200">
-            <p className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold">
-              Coming Soon
-            </p>
-            <p className="block px-4 py-2 text-sm text-gray-400">Invoices</p>
-            <p className="block px-4 py-2 text-sm text-gray-400">Inventory</p>
-          </div>
-          <div className="pt-4 mt-4 border-t border-gray-200">
+          {/* Salesmen: Access to Clients and Salesmen */}
+          {isSalesmenOnly && (
             <Link
-              href="/admin/settings"
+              href="/admin/salesmen/clients"
               className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
             >
-              ⚙️ Settings
+              Manage Clients
             </Link>
-          </div>
+          )}
+          {/* Admin: Full Access */}
+          {isAdmin && (
+            <>
+              <Link
+                href="/admin/clients"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Clients
+              </Link>
+              <Link
+                href="/admin/orders"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                All Orders
+              </Link>
+              <Link
+                href="/admin/orders/new"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Create Order
+              </Link>
+              <Link
+                href="/admin/coupons"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Coupons
+              </Link>
+              <Link
+                href="/admin/brokerages"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Brokerages & TC Groups
+              </Link>
+              <Link
+                href="/admin/tcs"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                TC Accounts
+              </Link>
+              <Link
+                href="/admin/811"
+                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                811 Tickets
+                <Ticket811Badge />
+              </Link>
+              <Link
+                href="/admin/jobs"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Jobs
+              </Link>
+              <Link
+                href="/admin/activity"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                📋 Activity Log
+              </Link>
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <p className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold">
+                  Coming Soon
+                </p>
+                <p className="block px-4 py-2 text-sm text-gray-400">Invoices</p>
+                <p className="block px-4 py-2 text-sm text-gray-400">Inventory</p>
+              </div>
+              <div className="pt-4 mt-4 border-t border-gray-200">
+                <Link
+                  href="/admin/salesmen"
+                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+                >
+                  👥 Salesmen
+                </Link>
+                <Link
+                  href="/admin/settings"
+                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+                >
+                  ⚙️ Settings
+                </Link>
+              </div>
+            </>
+          )}
         </nav>
         <div className="border-t border-gray-200 p-4">
           <button

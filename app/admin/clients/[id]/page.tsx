@@ -42,6 +42,8 @@ interface RealtorDetail {
   brokerageName?: string;
   tags: string[];
   adminNotes?: string;
+  freeInstallGivenBy?: string;
+  freeInstallDate?: string;
   createdAt: string;
 }
 
@@ -91,6 +93,9 @@ export default function RealtorDetailPage() {
   const [noteText, setNoteText] = useState("");
   const [notes, setNotes] = useState<AdminNote[]>([]);
   const [addingNote, setAddingNote] = useState(false);
+  
+  // Free install state
+  const [allocatingFreeInstall, setAllocatingFreeInstall] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -172,6 +177,7 @@ export default function RealtorDetailPage() {
         body: JSON.stringify({
           firstName: editData.firstName,
           lastName: editData.lastName,
+          email: editData.email,
           phone: editData.phone,
           brokerageName: editData.brokerageName,
           tags: editData.tags,
@@ -231,6 +237,7 @@ export default function RealtorDetailPage() {
         body: JSON.stringify({
           firstName: editData.firstName,
           lastName: editData.lastName,
+          email: editData.email,
           phone: editData.phone,
           brokerageName: editData.brokerageName,
           tags: editData.tags,
@@ -245,6 +252,35 @@ export default function RealtorDetailPage() {
       console.error("Failed to add note:", err);
     } finally {
       setAddingNote(false);
+    }
+  };
+
+  const handleFreeInstallToggle = async () => {
+    if (!realtor) return;
+
+    try {
+      setAllocatingFreeInstall(true);
+      const response = await fetch(
+        `/api/salesmen/clients/${realtorId}/free-install`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update free install");
+      }
+
+      const data = await response.json();
+      setRealtor({
+        ...realtor,
+        freeInstallGivenBy: data.client.freeInstallGivenBy,
+        freeInstallDate: data.client.freeInstallDate,
+      });
+    } catch (err) {
+      console.error("Failed to update free install:", err);
+      setError((err as Error).message || "Failed to update free install");
+    } finally {
+      setAllocatingFreeInstall(false);
     }
   };
 
@@ -348,7 +384,13 @@ export default function RealtorDetailPage() {
                         className="border border-gray-300 rounded px-3 py-2"
                       />
                     </div>
-                    <p className="text-sm text-gray-600">Email: {realtor.email}</p>
+                    <input
+                      type="email"
+                      value={editData.email}
+                      onChange={(e) => setEditData({ ...editData, email: e.target.value })}
+                      placeholder="Email"
+                      className="w-full border border-gray-300 rounded px-3 py-2"
+                    />
                   </div>
                 ) : (
                   <div>
@@ -477,6 +519,36 @@ export default function RealtorDetailPage() {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Free Install Section */}
+            <div className="border-t pt-4">
+              <div className="flex justify-between items-center">
+                <div>
+                  <p className="text-gray-600 text-sm font-medium mb-2">Free Install</p>
+                  {realtor.freeInstallGivenBy ? (
+                    <div className="bg-green-50 p-3 rounded border border-green-200">
+                      <p className="text-sm text-green-800 font-medium">✓ Allocated</p>
+                      <p className="text-xs text-green-700 mt-1">
+                        {formatDate(realtor.freeInstallDate!)}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-600">Not allocated</p>
+                  )}
+                </div>
+                <button
+                  onClick={handleFreeInstallToggle}
+                  disabled={allocatingFreeInstall}
+                  className={`px-4 py-2 rounded font-medium transition-colors ${
+                    realtor.freeInstallGivenBy
+                      ? "bg-red-100 text-red-700 hover:bg-red-200"
+                      : "bg-green-100 text-green-700 hover:bg-green-200"
+                  } disabled:opacity-50`}
+                >
+                  {allocatingFreeInstall ? "..." : realtor.freeInstallGivenBy ? "Revoke" : "Give"}
+                </button>
+              </div>
             </div>
           </div>
         </div>

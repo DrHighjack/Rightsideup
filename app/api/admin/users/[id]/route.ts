@@ -73,7 +73,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { firstName, lastName, phone, brokerageName, tags, adminNotes } = body;
+    const { firstName, lastName, email, phone, brokerageName, tags, adminNotes } = body;
 
     // Validate inputs
     if (!firstName?.trim() || !lastName?.trim()) {
@@ -83,11 +83,35 @@ export async function PUT(
       );
     }
 
+    // Validate email if provided
+    if (email && email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        return NextResponse.json(
+          { error: "Invalid email format" },
+          { status: 400 }
+        );
+      }
+
+      // Check if email is already taken by another user
+      const existingUser = await prisma.user.findUnique({
+        where: { email: email.trim() },
+      });
+
+      if (existingUser && existingUser.id !== params.id) {
+        return NextResponse.json(
+          { error: "Email is already in use" },
+          { status: 400 }
+        );
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: params.id },
       data: {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
+        email: email?.trim() || undefined,
         phone: phone?.trim() || null,
         brokerageName: brokerageName?.trim() || null,
         tags: Array.isArray(tags) ? tags.filter(t => t?.trim()) : [],

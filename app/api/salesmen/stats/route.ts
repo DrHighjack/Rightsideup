@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma";
  * Get statistics for a specific salesman
  * Shows number of clients added, installs allocated, orders, revenue, etc.
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
 

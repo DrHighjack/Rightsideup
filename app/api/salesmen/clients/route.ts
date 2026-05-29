@@ -4,8 +4,9 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * GET /api/salesmen/clients
- * List all realtor clients (for salesmen to manage)
- * Salesmen can only see clients, not invoices or activity
+ * List clients added by the current salesman
+ * - SALESMEN: Only see clients they've added (freeInstallGivenBy = their ID)
+ * - ADMIN: Can see all clients
  */
 export async function GET(request: NextRequest) {
   try {
@@ -20,6 +21,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
+    const userRole = (session.user as any).role;
+    const userId = session.user.id;
 
     // Build search filter
     const searchFilter = search
@@ -33,10 +36,14 @@ export async function GET(request: NextRequest) {
         }
       : {};
 
+    // For SALESMEN, only show clients they added; for ADMIN, show all
+    const roleFilter = userRole === "SALESMEN" ? { freeInstallGivenBy: userId } : {};
+
     const clients = await prisma.user.findMany({
       where: {
         role: "REALTOR",
         ...searchFilter,
+        ...roleFilter,
       },
       select: {
         id: true,
@@ -62,6 +69,7 @@ export async function GET(request: NextRequest) {
       where: {
         role: "REALTOR",
         ...searchFilter,
+        ...roleFilter,
       },
     });
 

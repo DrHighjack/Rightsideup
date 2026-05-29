@@ -129,10 +129,13 @@ export default function SalesmenClientsPage() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Manage Clients</h1>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">My Clients</h1>
+            <p className="text-gray-600 mt-2">Manage clients you've added and allocate installs</p>
+          </div>
           <Link
-            href="/admin"
-            className="text-green-600 hover:text-green-700 font-medium"
+            href="/admin/salesmen"
+            className="text-blue-600 hover:text-blue-700 font-medium"
           >
             ← Dashboard
           </Link>
@@ -240,8 +243,11 @@ export default function SalesmenClientsPage() {
 
         {/* Empty State */}
         {clients.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">No clients found</p>
+          <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
+            <p className="text-gray-600 text-lg mb-2">No clients added yet</p>
+            <p className="text-gray-500 text-sm">
+              You'll see clients here after you allocate them a free install
+            </p>
           </div>
         )}
 

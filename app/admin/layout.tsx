@@ -96,6 +96,12 @@ export default function AdminLayout({
                 All Orders
               </Link>
               <Link
+                href="/admin/orders/map"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                Orders Map
+              </Link>
+              <Link
                 href="/admin/orders/new"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >

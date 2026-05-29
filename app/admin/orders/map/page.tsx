@@ -30,6 +30,8 @@ const getMarkerColor = (order: OrderLocation): string => {
       return "#3B82F6"; // Blue
     case "IN_PROGRESS":
       return "#A855F7"; // Purple
+    case "IN_GROUND":
+      return "#06B6D4"; // Cyan
     case "ON_HOLD":
       return "#F97316"; // Orange
     case "CANCELLED":
@@ -77,6 +79,8 @@ const getStatusColor = (status: string): string => {
       return "bg-blue-100 text-blue-800";
     case "IN_PROGRESS":
       return "bg-purple-100 text-purple-800";
+    case "IN_GROUND":
+      return "bg-cyan-100 text-cyan-800";
     case "ON_HOLD":
       return "bg-orange-100 text-orange-800";
     case "CANCELLED":
@@ -87,6 +91,8 @@ const getStatusColor = (status: string): string => {
   }
 };
 
+const STATUS_OPTIONS = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'IN_GROUND', 'COMPLETED', 'CANCELLED'] as const;
+
 export default function OrdersMapPage() {
   const [orders, setOrders] = useState<OrderLocation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -94,6 +100,7 @@ export default function OrdersMapPage() {
   const [mapCenter, setMapCenter] = useState({ lat: 47.6, lng: -122.3 }); // Seattle area default
   const [error, setError] = useState("");
   const [mapKey, setMapKey] = useState("");
+  const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(STATUS_OPTIONS));
 
   useEffect(() => {
     // Get API key from environment
@@ -135,6 +142,26 @@ export default function OrdersMapPage() {
     }
   };
 
+  const toggleStatus = (status: string) => {
+    const newStatuses = new Set(selectedStatuses);
+    if (newStatuses.has(status)) {
+      newStatuses.delete(status);
+    } else {
+      newStatuses.add(status);
+    }
+    setSelectedStatuses(newStatuses);
+  };
+
+  const toggleAllStatuses = () => {
+    if (selectedStatuses.size === STATUS_OPTIONS.length) {
+      setSelectedStatuses(new Set());
+    } else {
+      setSelectedStatuses(new Set(STATUS_OPTIONS));
+    }
+  };
+
+  const filteredOrders = orders.filter((order) => selectedStatuses.has(order.status));
+
   if (!mapKey) {
     return (
       <div className="min-h-screen bg-gray-50 p-4 md:p-6">
@@ -174,6 +201,56 @@ export default function OrdersMapPage() {
             </div>
           )}
 
+          {/* Filter Section */}
+          <div className="mt-4 bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900">Filter by Status</h3>
+              <button
+                onClick={toggleAllStatuses}
+                className="text-sm px-3 py-1 bg-gray-200 hover:bg-gray-300 rounded transition"
+              >
+                {selectedStatuses.size === STATUS_OPTIONS.length ? "Clear All" : "Select All"}
+              </button>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+              {STATUS_OPTIONS.map((status) => (
+                <label key={status} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedStatuses.has(status)}
+                    onChange={() => toggleStatus(status)}
+                    className="w-4 h-4 rounded border-gray-300"
+                  />
+                  <div className="flex items-center gap-2">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{
+                        backgroundColor:
+                          status === "COMPLETED"
+                            ? "#10B981"
+                            : status === "SCHEDULED"
+                            ? "#3B82F6"
+                            : status === "IN_PROGRESS"
+                            ? "#A855F7"
+                            : status === "ON_HOLD"
+                            ? "#F97316"
+                            : status === "CANCELLED"
+                            ? "#EF4444"
+                            : status === "IN_GROUND"
+                            ? "#06B6D4"
+                            : "#FBBF24",
+                      }}
+                    ></div>
+                    <span className="text-sm text-gray-700">{status.replace(/_/g, " ")}</span>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <p className="text-sm text-gray-600 mt-3">
+              Showing {filteredOrders.length} of {orders.length} orders
+            </p>
+          </div>
+
           {/* Legend */}
           <div className="flex flex-wrap gap-6 mt-4 text-sm">
             <div className="flex items-center gap-2">
@@ -207,6 +284,13 @@ export default function OrdersMapPage() {
             <div className="flex items-center gap-2">
               <div
                 className="w-4 h-4 rounded-full"
+                style={{ backgroundColor: "#06B6D4" }}
+              ></div>
+              <span className="text-gray-700">In Ground</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div
+                className="w-4 h-4 rounded-full"
                 style={{ backgroundColor: "#FBBF24" }}
               ></div>
               <span className="text-gray-700">Pending</span>
@@ -231,6 +315,10 @@ export default function OrdersMapPage() {
         <div className="flex-1 flex items-center justify-center bg-gray-100">
           <p className="text-gray-600">No orders with location data found</p>
         </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="flex-1 flex items-center justify-center bg-gray-100">
+          <p className="text-gray-600">No orders match the selected filters</p>
+        </div>
       ) : (
         <div className="flex-1 relative overflow-hidden">
           <GoogleMapReact
@@ -240,7 +328,7 @@ export default function OrdersMapPage() {
             margin={[50, 50, 50, 50]}
             yesIWantToUseGoogleMapApiInternals
           >
-            {orders.map((order) =>
+            {filteredOrders.map((order) =>
               order.addressLat && order.addressLng ? (
                 <OrderMarker
                   key={order.id}

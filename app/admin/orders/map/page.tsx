@@ -110,6 +110,18 @@ export default function OrdersMapPage() {
     }
     
     fetchOrders();
+
+    // Refresh data when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        fetchOrders();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, []);
 
   const fetchOrders = async () => {
@@ -120,6 +132,7 @@ export default function OrdersMapPage() {
       if (res.ok) {
         const data = await res.json();
         setOrders(data.orders || []);
+        setSelectedMarker(null); // Clear selection to show fresh data
 
         // Set map center to first order if available
         if (data.orders && data.orders.length > 0) {
@@ -184,12 +197,21 @@ export default function OrdersMapPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-3xl font-bold text-gray-900">Orders Map</h1>
-            <Link
-              href="/admin/orders"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-            >
-              View Orders Table
-            </Link>
+            <div className="flex gap-2">
+              <button
+                onClick={fetchOrders}
+                disabled={loading}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+              <Link
+                href="/admin/orders"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+              >
+                View Orders Table
+              </Link>
+            </div>
           </div>
           <p className="text-gray-600">
             {loading ? "Loading..." : `${orders.length} order${orders.length !== 1 ? "s" : ""} with location data`}

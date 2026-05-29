@@ -281,6 +281,20 @@ export default function RealtorDetailPage() {
     });
   };
 
+  const filteredOrders = orders.filter((order) => {
+    if (filterStatus === "all") return true;
+    if (filterStatus === "active") return ["PENDING", "SCHEDULED", "IN_PROGRESS"].includes(order.status);
+    if (filterStatus === "completed") return order.status === "COMPLETED";
+    if (filterStatus === "cancelled") return order.status === "CANCELLED";
+    return true;
+  });
+
+  // Financial calculations
+  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.total, 0);
+  const totalPaid = invoices.reduce((sum, inv) => sum + inv.paid, 0);
+  const outstandingBalance = totalInvoiced - totalPaid;
+  const avgOrderValue = orders.length > 0 ? totalInvoiced / orders.length : 0;
+
   if (status === "loading" || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }

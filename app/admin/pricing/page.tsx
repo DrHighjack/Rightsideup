@@ -58,6 +58,11 @@ export default function PricingPage() {
   // Filter state for overrides
   const [overrideFilter, setOverrideFilter] = useState<OverrideFilter>("all");
 
+  // Add master price modal
+  const [showAddMasterModal, setShowAddMasterModal] = useState(false);
+  const [newServiceType, setNewServiceType] = useState("");
+  const [newMasterPrice, setNewMasterPrice] = useState(0);
+
   // Add override modal
   const [showAddOverrideModal, setShowAddOverrideModal] = useState(false);
   const [overrideForm, setOverrideForm] = useState({
@@ -158,12 +163,39 @@ export default function PricingPage() {
     if (!confirm("Are you sure you want to delete this override?")) return;
 
     try {
-      const res = await fetch(`/api/admin/pricing/overrides/${id}`, {
+      const res = await fetch(`/api/admin/pricing/overrides/${id}/delete`, {
         method: "DELETE",
       });
 
       if (!res.ok) throw new Error("Failed to delete override");
 
+      await fetchData();
+    } catch (err) {
+      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+    }
+  };
+
+  const handleAddMasterPrice = async () => {
+    if (!newServiceType) {
+      alert("Please enter a service type");
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/admin/pricing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          serviceType: newServiceType,
+          amountCents: newMasterPrice,
+        }),
+      });
+
+      if (!res.ok) throw new Error("Failed to create service type");
+
+      setShowAddMasterModal(false);
+      setNewServiceType("");
+      setNewMasterPrice(0);
       await fetchData();
     } catch (err) {
       alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
@@ -254,7 +286,10 @@ export default function PricingPage() {
       <div className="mb-12">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Master Prices</h2>
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+          <button
+            onClick={() => setShowAddMasterModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
             Add Service Type
           </button>
         </div>
@@ -483,6 +518,62 @@ export default function PricingPage() {
           )}
         </div>
       </div>
+
+      {/* Add Master Price Modal */}
+      {showAddMasterModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg max-w-md w-full mx-4 p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">Add Master Price</h3>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Service Type
+                </label>
+                <input
+                  type="text"
+                  value={newServiceType}
+                  onChange={(e) => setNewServiceType(e.target.value)}
+                  placeholder="e.g., Installation, Repair, etc."
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Price (cents)
+                </label>
+                <input
+                  type="number"
+                  value={newMasterPrice}
+                  onChange={(e) => setNewMasterPrice(Math.max(0, parseInt(e.target.value) || 0))}
+                  placeholder="e.g., 5000 for $50.00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => {
+                  setShowAddMasterModal(false);
+                  setNewServiceType("");
+                  setNewMasterPrice(0);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddMasterPrice}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                Create Service Type
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Override Modal */}
       {showAddOverrideModal && (

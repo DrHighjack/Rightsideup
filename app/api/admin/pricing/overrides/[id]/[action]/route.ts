@@ -90,7 +90,7 @@ export async function PUT(
 
 export async function DELETE(
   _: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { id: string; action: string } }
 ) {
   try {
     const session = await auth();
@@ -99,7 +99,14 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { id } = params;
+    const { id, action } = params;
+
+    if (action !== "delete") {
+      return NextResponse.json(
+        { error: "Invalid action for DELETE" },
+        { status: 400 }
+      );
+    }
 
     // Verify the override exists
     const override = await prisma.priceOverride.findUnique({

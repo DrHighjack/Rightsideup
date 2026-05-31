@@ -32,7 +32,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { serviceType, amountCents, description } = await request.json();
+    const { serviceType, amountCents } = await request.json();
 
     if (!serviceType || amountCents === undefined) {
       return NextResponse.json(

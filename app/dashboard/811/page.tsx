@@ -31,7 +31,7 @@ interface ActivityEvent {
 }
 
 export default function ElevenPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');

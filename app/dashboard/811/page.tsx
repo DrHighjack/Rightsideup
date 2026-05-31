@@ -234,7 +234,6 @@ export default function ElevenPage() {
           {stages.map((stage, idx) => {
             const isCompleted = stageIndex > idx;
             const isCurrent = stageIndex === idx;
-            const isFuture = stageIndex < idx;
 
             return (
               <div key={stage} className="flex flex-col items-center flex-1">

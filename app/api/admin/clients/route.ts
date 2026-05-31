@@ -11,7 +11,7 @@ export async function GET() {
   }
 
   // Check admin role
-  if (session.user.role !== "ADMIN") {
+  if (!session?.user || (session.user as any).role !== "ADMIN") {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -89,7 +89,7 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  _: Request,
   { params }: { params: { id: string } }
 ) {
   try {

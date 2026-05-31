@@ -113,6 +113,7 @@ model User {
   jobAssignments JobAssignment[] @relation("FieldTech")
   assignedJobs   JobAssignment[] @relation("AssignedBy")
   clearedTickets Ticket811[] @relation("ClearedBy")
+  realtorTickets Ticket811[] @relation("RealtorTickets")
   
   // Phase 5 — Activity and notifications
   activityLogs   ActivityLog[]
@@ -385,27 +386,40 @@ model LowInventoryAlert {
 }
 
 model Ticket811 {
-  id               String            @id @default(cuid())
-  ticketNumber     String?           // extracted from email, null if not parseable
-  sourceEmail      String
-  emailSubject     String
-  emailBody        String            // full raw email body for audit
-  parsedAddress    String?           // address extracted by parser
-  workStartDate    DateTime?         // excavation start date from email
-  status           Ticket811Status   @default(NEW)
-  matchedOrderIds  String[]          // array of order IDs put on hold
-  clearedAt        DateTime?
-  clearedByUserId  String?
-  clearedByUser    User?             @relation("ClearedBy", fields: [clearedByUserId], references: [id], onDelete: SetNull)
-  adminNotes       String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id                   String            @id @default(cuid())
+  ticketNumber         String?           // extracted from email, null if not parseable
+  sourceEmail          String
+  emailSubject         String
+  emailBody            String            // full raw email body for audit
+  parsedAddress        String?           // address extracted by parser
+  workStartDate        DateTime?         // excavation start date from email
+  status               Ticket811Status   @default(NEW)
+  matchedOrderIds      String[]          // array of order IDs put on hold
+  clearedAt            DateTime?
+  clearedByUserId      String?
+  clearedByUser        User?             @relation("ClearedBy", fields: [clearedByUserId], references: [id], onDelete: SetNull)
+  adminNotes           String?
+  
+  // New 811 ticket tracker fields
+  realtorId            String?           // which realtor this ticket belongs to
+  realtor              User?             @relation("RealtorTickets", fields: [realtorId], references: [id], onDelete: SetNull)
+  utilityLines         Json?             // array of { name: string, status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT', respondedAt?: DateTime }
+  requestedDate        DateTime?         // when realtor submitted the request
+  ticketSubmittedAt    DateTime?         // when 811 confirmed ticket number
+  allLinesRespondedAt  DateTime?         // when last utility responded
+  clearanceDate        DateTime?         // when officially cleared to dig
+  stage                String            @default("REQUESTED") // REQUESTED | TICKET_SUBMITTED | LINES_RESPONDED | CLEAR
+  
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
   
   @@map("tickets_811")
   @@index([status])
   @@index([createdAt])
   @@index([ticketNumber])
   @@index([clearedByUserId])
+  @@index([realtorId])
+  @@index([stage])
 }
 
 model JobAssignment {

@@ -367,7 +367,7 @@ export default function Ticket811DetailPage() {
               <div className="flex items-center justify-between mb-4">
                 <div className="flex-1 flex items-center">
                   {['REQUESTED', 'TICKET_SUBMITTED', 'LINES_RESPONDED', 'CLEAR'].map((stage, idx) => {
-                    const isActive = getStageStepIndex(ticket.stage) >= idx;
+                    const isActive = getStageStepIndex(ticket.stage || 'REQUESTED') >= idx;
                     const isCurrent = ticket.stage === stage;
                     return (
                       <div key={stage} className="flex items-center flex-1">

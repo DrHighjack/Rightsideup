@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 
 export async function PUT(
-  request: Request,
+  _: Request,
   { params }: { params: { id: string; action: string } }
 ) {
   try {

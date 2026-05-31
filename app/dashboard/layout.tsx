@@ -50,6 +50,12 @@ export default function DashboardLayout({
             My Signs
           </Link>
           <Link
+            href="/dashboard/811"
+            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+          >
+            811 Tracker
+          </Link>
+          <Link
             href="/dashboard/account"
             className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
           >
@@ -95,6 +101,12 @@ export default function DashboardLayout({
             className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
           >
             Signs
+          </Link>
+          <Link
+            href="/dashboard/811"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
+          >
+            811
           </Link>
           <Link
             href="/dashboard/account"

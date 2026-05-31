@@ -8,13 +8,16 @@ async function testTicket811Routes() {
   try {
     console.log('🧪 Testing 811 Ticket Tracker API Routes\n');
 
-    // Step 1: Get a realtor user ID
-    const realtor = await prisma.user.findFirst({
-      where: { role: 'REALTOR' },
+    // Step 1: Get test realtor user
+    const testRealtorId = 'cmpu9v0uu0000iy277uabg8vc'; // Test realtor created by setup script
+    
+    const realtor = await prisma.user.findUnique({
+      where: { id: testRealtorId },
     });
 
     if (!realtor) {
-      console.error('❌ No realtor found in database');
+      console.error('❌ Test realtor not found');
+      console.error('   Run: npx tsx scripts/setup-test-realtor.ts');
       return;
     }
 

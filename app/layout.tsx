@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   title: "SignPost Field",
   description: "Realtor order placement and admin management",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",

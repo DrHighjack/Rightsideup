@@ -58,7 +58,7 @@ export async function PUT(
     }
 
     // Update or create the utility line
-    let utilityLines: UtilityLine[] = (ticket.utilityLines as UtilityLine[]) || [];
+    let utilityLines: UtilityLine[] = ((ticket.utilityLines as unknown) as UtilityLine[]) || [];
 
     const lineIndex = utilityLines.findIndex((line) => line.name === lineName);
 

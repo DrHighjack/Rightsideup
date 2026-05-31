@@ -41,9 +41,6 @@ export async function PUT(
 
     const ticket = await prisma.ticket811.findUnique({
       where: { id: ticketId },
-      include: {
-        matchedOrderIds: true,
-      },
     });
 
     if (!ticket) {

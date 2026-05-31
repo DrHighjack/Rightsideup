@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { getEffectivePrice } from '@/lib/pricing';
 
 export interface DashboardStats {
   orders: {
@@ -50,7 +51,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const completionRate =
     totalOrders > 0 ? ((completedOrders / totalOrders) * 100).toFixed(1) : '0';
 
-  // Revenue calculations (from order items)
+  // Revenue calculations (from order items and pricing system)
   const getRevenueByDateRange = async (startDate: Date) => {
     const orders = await prisma.order.findMany({
       where: {
@@ -58,18 +59,26 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         updatedAt: { gte: startDate },
       },
       include: {
+        realtor: true,
         items: { include: { sign: true } },
         discounts: true,
       },
     });
 
     let total = 0;
-    orders.forEach((order) => {
-      // Calculate based on quantity and default price (pricing system to be implemented)
-      const subtotal = order.items.reduce((sum, item) => sum + (150 * item.quantity), 0);
+    for (const order of orders) {
+      // Calculate price for each item based on pricing system
+      let subtotal = 0;
+      for (const item of order.items) {
+        // Use service type from order (default to INSTALL if not set)
+        const serviceType = order.type || 'INSTALL';
+        // Get effective price for this realtor and their brokerage
+        const priceInCents = await getEffectivePrice(serviceType, order.realtorId, order.realtor?.brokerageId || undefined);
+        subtotal += priceInCents * item.quantity;
+      }
       const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
       total += subtotal - discount;
-    });
+    }
 
     return total;
   };
@@ -148,9 +157,11 @@ export async function getOrderAnalytics(startDate: Date, endDate: Date) {
     include: {
       realtor: {
         select: {
+          id: true,
           firstName: true,
           lastName: true,
           email: true,
+          brokerageId: true,
         },
       },
       items: { include: { sign: true } },
@@ -168,13 +179,29 @@ export async function getOrderAnalytics(startDate: Date, endDate: Date) {
     CANCELLED: 0,
   };
 
-  orders.forEach((order) => {
-    const subtotal = order.items.reduce((sum, item) => sum + (150 * item.quantity), 0);
+  const ordersWithRevenue = [];
+
+  for (const order of orders) {
+    let subtotal = 0;
+    for (const item of order.items) {
+      const serviceType = order.type || 'INSTALL';
+      const priceInCents = await getEffectivePrice(serviceType, order.realtor.id, order.realtor.brokerageId || undefined);
+      subtotal += priceInCents * item.quantity;
+    }
     const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
     totalRevenue += subtotal - discount;
     totalDiscount += discount;
     statusBreakdown[order.status] = (statusBreakdown[order.status] || 0) + 1;
-  });
+
+    ordersWithRevenue.push({
+      orderNumber: order.orderNumber,
+      realtor: `${order.realtor.firstName} ${order.realtor.lastName}`,
+      status: order.status,
+      itemCount: order.items.length,
+      revenue: subtotal,
+      discount: discount,
+    });
+  }
 
   return {
     period: { startDate, endDate },
@@ -183,14 +210,7 @@ export async function getOrderAnalytics(startDate: Date, endDate: Date) {
     totalDiscount,
     averageOrderValue: orders.length > 0 ? totalRevenue / orders.length : 0,
     statusBreakdown,
-    orders: orders.map((o) => ({
-      orderNumber: o.orderNumber,
-      realtor: `${o.realtor.firstName} ${o.realtor.lastName}`,
-      status: o.status,
-      itemCount: o.items.length,
-      revenue: o.items.reduce((sum, i) => sum + (150 * i.quantity), 0),
-      discount: o.discounts.reduce((sum, od) => sum + od.discountAmount, 0),
-    })),
+    orders: ordersWithRevenue,
   };
 }
 
@@ -210,33 +230,40 @@ export async function getRealtorPerformance() {
     },
   });
 
-  return realtors
-    .map((realtor) => {
-      let totalRevenue = 0;
-      let completedCount = 0;
+  const realtorMetrics = [];
 
-      realtor.orders.forEach((order) => {
-        const subtotal = order.items.reduce((sum, item) => sum + (150 * item.quantity), 0);
-        const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
-        totalRevenue += subtotal - discount;
+  for (const realtor of realtors) {
+    let totalRevenue = 0;
+    let completedCount = 0;
 
-        if (order.status === 'COMPLETED' || order.status === 'IN_GROUND') completedCount++;
-      });
+    for (const order of realtor.orders) {
+      let subtotal = 0;
+      for (const item of order.items) {
+        const serviceType = order.type || 'INSTALL';
+        const priceInCents = await getEffectivePrice(serviceType, realtor.id, realtor.brokerageId || undefined);
+        subtotal += priceInCents * item.quantity;
+      }
+      const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
+      totalRevenue += subtotal - discount;
 
-      const completionRate =
-        realtor.orders.length > 0 ? ((completedCount / realtor.orders.length) * 100).toFixed(1) : '0';
+      if (order.status === 'COMPLETED' || order.status === 'IN_GROUND') completedCount++;
+    }
 
-      return {
-        name: `${realtor.firstName} ${realtor.lastName}`,
-        email: realtor.email,
-        totalOrders: realtor.orders.length,
-        completedOrders: completedCount,
-        completionRate: `${completionRate}%`,
-        totalRevenue,
-        averageOrderValue: realtor.orders.length > 0 ? totalRevenue / realtor.orders.length : 0,
-      };
-    })
-    .sort((a, b) => b.totalRevenue - a.totalRevenue);
+    const completionRate =
+      realtor.orders.length > 0 ? ((completedCount / realtor.orders.length) * 100).toFixed(1) : '0';
+
+    realtorMetrics.push({
+      name: `${realtor.firstName} ${realtor.lastName}`,
+      email: realtor.email,
+      totalOrders: realtor.orders.length,
+      completedOrders: completedCount,
+      completionRate: `${completionRate}%`,
+      totalRevenue,
+      averageOrderValue: realtor.orders.length > 0 ? totalRevenue / realtor.orders.length : 0,
+    });
+  }
+
+  return realtorMetrics.sort((a, b) => b.totalRevenue - a.totalRevenue);
 }
 
 /**
@@ -296,26 +323,31 @@ export async function getTopSigns(limit: number = 10) {
     include: {
       orderItems: {
         include: {
-          order: { include: { discounts: true, items: true } },
+          order: { include: { realtor: true, discounts: true, items: true } },
         },
       },
     },
   });
 
-  const signStats = signs.map((sign) => {
+  const signStats = [];
+
+  for (const sign of signs) {
     let totalRevenue = 0;
     let totalQuantity = 0;
-    let orderCount = new Set<string>();
+    const orderCount = new Set<string>();
 
-    sign.orderItems.forEach((item) => {
+    for (const item of sign.orderItems) {
       totalQuantity += item.quantity;
       orderCount.add(item.order.id);
-      const subtotal = 150 * item.quantity; // Default price per sign
+      
+      const serviceType = item.order.type || 'INSTALL';
+      const priceInCents = await getEffectivePrice(serviceType, item.order.realtor.id, item.order.realtor.brokerageId || undefined);
+      const subtotal = priceInCents * item.quantity;
       const discount = item.order.discounts.reduce((sum, od) => sum + od.discountAmount / item.order.items.length, 0);
       totalRevenue += subtotal - discount;
-    });
+    }
 
-    return {
+    signStats.push({
       signName: sign.signNumber || `Sign ${sign.id}`,
       signType: sign.type,
       status: sign.status,
@@ -323,8 +355,8 @@ export async function getTopSigns(limit: number = 10) {
       orderCount: orderCount.size,
       totalRevenue,
       averageRevenuePerOrder: orderCount.size > 0 ? totalRevenue / orderCount.size : 0,
-    };
-  });
+    });
+  }
 
   return signStats.sort((a, b) => b.totalRevenue - a.totalRevenue).slice(0, limit);
 }
@@ -394,7 +426,7 @@ export async function getDashboardMetrics(
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  // Helper to calculate revenue
+  // Helper to calculate revenue using pricing system
   const getRevenue = async (start: Date, end: Date) => {
     const orders = await prisma.order.findMany({
       where: {
@@ -402,16 +434,24 @@ export async function getDashboardMetrics(
         updatedAt: { gte: start, lte: end },
       },
       include: {
+        realtor: true,
         items: true,
         discounts: true,
       },
     });
 
-    return orders.reduce((total, order) => {
-      const subtotal = order.items.reduce((sum, item) => sum + 150 * item.quantity, 0);
+    let total = 0;
+    for (const order of orders) {
+      let subtotal = 0;
+      for (const item of order.items) {
+        const serviceType = order.type || 'INSTALL';
+        const priceInCents = await getEffectivePrice(serviceType, order.realtor.id, order.realtor.brokerageId || undefined);
+        subtotal += priceInCents * item.quantity;
+      }
       const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
-      return total + (subtotal - discount);
-    }, 0);
+      total += subtotal - discount;
+    }
+    return total;
   };
 
   // Revenue metrics
@@ -532,6 +572,7 @@ export async function getRevenueData(startDate: Date, endDate: Date): Promise<Re
       updatedAt: { gte: startDate, lte: endDate },
     },
     include: {
+      realtor: true,
       items: true,
       discounts: true,
     },
@@ -539,14 +580,19 @@ export async function getRevenueData(startDate: Date, endDate: Date): Promise<Re
 
   const revenueByDay: Record<string, number> = {};
 
-  orders.forEach((order) => {
+  for (const order of orders) {
     const day = order.updatedAt.toISOString().split('T')[0];
-    const subtotal = order.items.reduce((sum, item) => sum + 150 * item.quantity, 0);
+    let subtotal = 0;
+    for (const item of order.items) {
+      const serviceType = order.type || 'INSTALL';
+      const priceInCents = await getEffectivePrice(serviceType, order.realtor.id, order.realtor.brokerageId || undefined);
+      subtotal += priceInCents * item.quantity;
+    }
     const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
     const revenue = subtotal - discount;
 
     revenueByDay[day] = (revenueByDay[day] || 0) + revenue;
-  });
+  }
 
   // Fill in missing days
   const data: RevenueData[] = [];
@@ -638,29 +684,38 @@ export async function getRealtorsMetrics(): Promise<RealtorMetrics[]> {
     },
   });
 
-  const metrics = realtors
-    .map((realtor) => {
-      const totalRevenue = realtor.orders
-        .filter((order) => order.status === 'COMPLETED' || order.status === 'IN_GROUND')
-        .reduce((sum, order) => {
-          const subtotal = order.items.reduce((s, item) => s + 150 * item.quantity, 0);
-          const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
-          return sum + (subtotal - discount);
-        }, 0);
+  const metrics = [];
 
-      return {
-        id: realtor.id,
-        name: `${realtor.firstName} ${realtor.lastName}`,
-        email: realtor.email,
-        orderCount: realtor.orders.length,
-        totalRevenue,
-        lastOrderDate: realtor.orders[0]?.createdAt.toISOString().split('T')[0] || null,
-      };
-    })
+  for (const realtor of realtors) {
+    let totalRevenue = 0;
+    const completedOrders = realtor.orders.filter(
+      (order) => order.status === 'COMPLETED' || order.status === 'IN_GROUND'
+    );
+
+    for (const order of completedOrders) {
+      let subtotal = 0;
+      for (const item of order.items) {
+        const serviceType = order.type || 'INSTALL';
+        const priceInCents = await getEffectivePrice(serviceType, realtor.id, realtor.brokerageId || undefined);
+        subtotal += priceInCents * item.quantity;
+      }
+      const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
+      totalRevenue += subtotal - discount;
+    }
+
+    metrics.push({
+      id: realtor.id,
+      name: `${realtor.firstName} ${realtor.lastName}`,
+      email: realtor.email,
+      orderCount: realtor.orders.length,
+      totalRevenue,
+      lastOrderDate: realtor.orders[0]?.createdAt.toISOString().split('T')[0] || null,
+    });
+  }
+
+  return metrics
     .sort((a, b) => b.orderCount - a.orderCount)
     .slice(0, 10);
-
-  return metrics;
 }
 
 /**

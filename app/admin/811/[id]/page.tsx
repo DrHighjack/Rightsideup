@@ -4,6 +4,12 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 
+interface UtilityLine {
+  name: string;
+  status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT';
+  respondedAt?: string;
+}
+
 interface Order {
   id: string;
   orderNumber: string;
@@ -32,6 +38,14 @@ interface Ticket811 {
     email: string;
     name: string;
   };
+  // New 811 tracker fields
+  realtorId?: string;
+  utilityLines?: UtilityLine[];
+  requestedDate?: string;
+  ticketSubmittedAt?: string;
+  allLinesRespondedAt?: string;
+  clearanceDate?: string;
+  stage?: string;
 }
 
 export default function Ticket811DetailPage() {
@@ -43,6 +57,16 @@ export default function Ticket811DetailPage() {
   const [editing, setEditing] = useState(false);
   const [emailExpanded, setEmailExpanded] = useState(false);
   const [processing, setProcessing] = useState(false);
+
+  // Stage control state
+  const [selectedStage, setSelectedStage] = useState<string>('REQUESTED');
+  const [stageUpdating, setStageUpdating] = useState(false);
+
+  // Utility lines state
+  const [showAddUtilityModal, setShowAddUtilityModal] = useState(false);
+  const [newUtilityName, setNewUtilityName] = useState('');
+  const [newUtilityStatus, setNewUtilityStatus] = useState<'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT'>('PENDING');
+  const [utilityUpdating, setUtilityUpdating] = useState(false);
 
   // Form state for editing
   const [formData, setFormData] = useState({
@@ -62,6 +86,7 @@ export default function Ticket811DetailPage() {
             parsedAddress: data.parsedAddress || '',
             adminNotes: data.adminNotes || '',
           });
+          setSelectedStage(data.stage || 'REQUESTED');
         }
       } catch (error) {
         console.error('Failed to fetch ticket:', error);
@@ -71,6 +96,91 @@ export default function Ticket811DetailPage() {
     }
     fetchTicket();
   }, [id]);
+
+  async function handleStageChange() {
+    try {
+      setStageUpdating(true);
+      const res = await fetch(`/api/admin/811/${id}/stage`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stage: selectedStage }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTicket(data.ticket);
+        alert(`Stage updated to ${selectedStage}${data.ordersReleased ? ` - ${data.ordersReleased}` : ''}`);
+      } else {
+        alert('Failed to update stage');
+      }
+    } catch (error) {
+      console.error('Failed to update stage:', error);
+      alert('Failed to update stage');
+    } finally {
+      setStageUpdating(false);
+    }
+  }
+
+  async function handleAddUtilityLine() {
+    if (!newUtilityName.trim()) {
+      alert('Please enter utility line name');
+      return;
+    }
+
+    try {
+      setUtilityUpdating(true);
+      const res = await fetch(`/api/admin/811/${id}/utilities`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineName: newUtilityName,
+          status: newUtilityStatus,
+          respondedAt: newUtilityStatus !== 'PENDING' ? new Date().toISOString() : undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTicket(data.ticket);
+        setNewUtilityName('');
+        setNewUtilityStatus('PENDING');
+        setShowAddUtilityModal(false);
+        if (data.stageUpdated) {
+          alert(`Utility added${data.stageUpdated ? ` - ${data.stageUpdated}` : ''}`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to add utility line:', error);
+      alert('Failed to add utility line');
+    } finally {
+      setUtilityUpdating(false);
+    }
+  }
+
+  async function handleUtilityStatusChange(lineName: string, newStatus: string) {
+    try {
+      setUtilityUpdating(true);
+      const res = await fetch(`/api/admin/811/${id}/utilities`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lineName,
+          status: newStatus,
+          respondedAt: newStatus !== 'PENDING' ? new Date().toISOString() : undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTicket(data.ticket);
+      }
+    } catch (error) {
+      console.error('Failed to update utility:', error);
+      alert('Failed to update utility');
+    } finally {
+      setUtilityUpdating(false);
+    }
+  }
 
   async function handleClear() {
     try {
@@ -176,6 +286,21 @@ export default function Ticket811DetailPage() {
     );
   };
 
+  const getStageStepIndex = (stage: string) => {
+    const stages = ['REQUESTED', 'TICKET_SUBMITTED', 'LINES_RESPONDED', 'CLEAR'];
+    return stages.indexOf(stage);
+  };
+
+  const getUtilityStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      PENDING: 'bg-gray-100 text-gray-800',
+      RESPONDED: 'bg-blue-100 text-blue-800',
+      CLEAR: 'bg-green-100 text-green-800',
+      CONFLICT: 'bg-red-100 text-red-800',
+    };
+    return colors[status] || colors.PENDING;
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-4xl mx-auto">
@@ -231,6 +356,200 @@ export default function Ticket811DetailPage() {
             </div>
           </div>
         </div>
+
+        {/* NEW: Stage Control Section */}
+        {ticket.stage && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Stage Control</h2>
+
+            {/* 4-Step Progress Bar */}
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex-1 flex items-center">
+                  {['REQUESTED', 'TICKET_SUBMITTED', 'LINES_RESPONDED', 'CLEAR'].map((stage, idx) => {
+                    const isActive = getStageStepIndex(ticket.stage) >= idx;
+                    const isCurrent = ticket.stage === stage;
+                    return (
+                      <div key={stage} className="flex items-center flex-1">
+                        <div
+                          className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm ${
+                            isActive
+                              ? isCurrent
+                                ? 'bg-blue-600 text-white animate-pulse'
+                                : 'bg-green-600 text-white'
+                              : 'bg-gray-300 text-gray-700'
+                          }`}
+                        >
+                          {isActive && !isCurrent ? '✓' : idx + 1}
+                        </div>
+                        {idx < 3 && (
+                          <div
+                            className={`flex-1 h-1 mx-2 ${isActive ? 'bg-green-600' : 'bg-gray-300'}`}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-2 text-center text-xs font-medium text-gray-700">
+                <div>Requested</div>
+                <div>Ticket Submitted</div>
+                <div>Lines Responded</div>
+                <div>Clear to Dig ✓</div>
+              </div>
+            </div>
+
+            {/* Stage Update Controls */}
+            <div className="flex gap-4">
+              <select
+                value={selectedStage}
+                onChange={(e) => setSelectedStage(e.target.value)}
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="REQUESTED">Requested</option>
+                <option value="TICKET_SUBMITTED">Ticket Submitted</option>
+                <option value="LINES_RESPONDED">Lines Responded</option>
+                <option value="CLEAR">Clear to Dig</option>
+              </select>
+              <button
+                onClick={handleStageChange}
+                disabled={stageUpdating || selectedStage === ticket.stage}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              >
+                {stageUpdating ? 'Updating...' : 'Update Stage'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* NEW: Utility Lines Manager Section */}
+        {ticket.stage && (
+          <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-900">Utility Lines</h2>
+              <button
+                onClick={() => setShowAddUtilityModal(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+              >
+                + Add Utility Line
+              </button>
+            </div>
+
+            {/* Utility Lines Table */}
+            {Array.isArray(ticket.utilityLines) && ticket.utilityLines.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">Utility Name</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">Status</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">Responded Date</th>
+                      <th className="px-4 py-3 text-left font-medium text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {ticket.utilityLines.map((line: UtilityLine) => (
+                      <tr key={line.name} className="hover:bg-gray-50">
+                        <td className="px-4 py-3 font-medium text-gray-900">{line.name}</td>
+                        <td className="px-4 py-3">
+                          <select
+                            value={line.status}
+                            onChange={(e) => handleUtilityStatusChange(line.name, e.target.value)}
+                            disabled={utilityUpdating}
+                            className={`px-3 py-1 rounded text-sm font-medium border-0 cursor-pointer ${getUtilityStatusColor(
+                              line.status
+                            )}`}
+                          >
+                            <option value="PENDING">Pending</option>
+                            <option value="RESPONDED">Responded</option>
+                            <option value="CLEAR">Clear</option>
+                            <option value="CONFLICT">Conflict</option>
+                          </select>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {line.respondedAt ? new Date(line.respondedAt).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => {
+                              const newStatus =
+                                line.status === 'PENDING'
+                                  ? 'RESPONDED'
+                                  : line.status === 'RESPONDED'
+                                    ? 'CLEAR'
+                                    : 'PENDING';
+                              handleUtilityStatusChange(line.name, newStatus);
+                            }}
+                            disabled={utilityUpdating}
+                            className="text-blue-600 hover:text-blue-800 disabled:text-gray-400 text-xs font-medium"
+                          >
+                            Advance
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-4 bg-gray-50 rounded text-center text-gray-600">No utility lines added yet</div>
+            )}
+
+            {/* Add Utility Line Modal */}
+            {showAddUtilityModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
+                  <h3 className="text-lg font-bold mb-4">Add Utility Line</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Utility Name</label>
+                      <input
+                        type="text"
+                        value={newUtilityName}
+                        onChange={(e) => setNewUtilityName(e.target.value)}
+                        placeholder="e.g., Electric, Gas, Water"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Initial Status</label>
+                      <select
+                        value={newUtilityStatus}
+                        onChange={(e) => setNewUtilityStatus(e.target.value as any)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="PENDING">Pending</option>
+                        <option value="RESPONDED">Responded</option>
+                        <option value="CLEAR">Clear</option>
+                        <option value="CONFLICT">Conflict</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={() => {
+                        setShowAddUtilityModal(false);
+                        setNewUtilityName('');
+                        setNewUtilityStatus('PENDING');
+                      }}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleAddUtilityLine}
+                      disabled={utilityUpdating}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                    >
+                      {utilityUpdating ? 'Adding...' : 'Add Line'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Raw Email Body - Collapsible */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">

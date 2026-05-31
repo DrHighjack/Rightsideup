@@ -235,6 +235,27 @@ export default function TCDashboardPage() {
           )}
         </div>
       </div>
+
+      {/* Bottom Navigation */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-center gap-8 px-6 py-4">
+          <Link
+            href="/tc/dashboard"
+            className="text-indigo-600 font-medium border-b-2 border-indigo-600 pb-1"
+          >
+            📊 Dashboard
+          </Link>
+          <Link
+            href="/tc/pricing"
+            className="text-gray-700 hover:text-indigo-600 font-medium transition-colors"
+          >
+            💰 Pricing
+          </Link>
+        </div>
+      </div>
+
+      {/* Spacer for bottom nav */}
+      <div className="h-20"></div>
     </div>
   );
 }

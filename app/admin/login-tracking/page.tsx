@@ -35,7 +35,7 @@ export default function LoginTrackingPage() {
     fetchLoginData();
   }, []);
 
-  const getStatusColor = (lastLoginAt: string | null, createdAt: string) => {
+  const getStatusColor = (lastLoginAt: string | null) => {
     if (!lastLoginAt) {
       return "bg-gray-100";
     }
@@ -141,7 +141,7 @@ export default function LoginTrackingPage() {
               {users.map((user) => (
                 <tr
                   key={user.id}
-                  className={`${getStatusColor(user.lastLoginAt, user.createdAt)} hover:bg-opacity-75 transition`}
+                  className={`${getStatusColor(user.lastLoginAt)} hover:bg-opacity-75 transition`}
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">

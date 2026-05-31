@@ -51,7 +51,30 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { status, notes, adminNotes, scheduledDate, address, addressLat, addressLng } = body;
+    
+    // Extract ONLY updatable fields - whitelist approach
+    const updateData: any = {};
+    
+    // Only allow these specific fields to be updated
+    const allowedFields = ['status', 'notes', 'adminNotes', 'scheduledDate', 'address', 'addressLat', 'addressLng'];
+    
+    for (const field of allowedFields) {
+      if (field in body && body[field] !== undefined) {
+        if (field === 'scheduledDate' && body[field]) {
+          updateData.scheduledDate = new Date(body[field]);
+        } else if (field !== 'scheduledDate') {
+          updateData[field] = body[field];
+        }
+      }
+    }
+
+    // Validate status is a valid enum value
+    if (updateData.status) {
+      const validStatuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'IN_GROUND', 'COMPLETED', 'CANCELLED'];
+      if (!validStatuses.includes(updateData.status)) {
+        return NextResponse.json({ error: `Invalid status: ${updateData.status}` }, { status: 400 });
+      }
+    }
 
     // Get current order first to verify it exists
     const currentOrder = await prisma.order.findUnique({
@@ -62,18 +85,10 @@ export async function PUT(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    // Update the order
+    // Update the order with only allowed fields
     const updatedOrder = await prisma.order.update({
       where: { id: params.id },
-      data: {
-        ...(status && { status }),
-        ...(notes !== undefined && { notes }),
-        ...(adminNotes !== undefined && { adminNotes }),
-        ...(scheduledDate && { scheduledDate: new Date(scheduledDate) }),
-        ...(address && { address }),
-        ...(addressLat !== undefined && { addressLat }),
-        ...(addressLng !== undefined && { addressLng }),
-      },
+      data: updateData,
       include: {
         realtor: { select: { id: true, email: true, firstName: true, lastName: true } },
       },

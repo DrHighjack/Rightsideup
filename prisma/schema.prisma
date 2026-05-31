@@ -95,6 +95,7 @@ model User {
   qboCustomerId  String?    // QuickBooks customer ID for this realtor
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
+  lastLoginAt    DateTime?  // Track last login time for admin dashboard
   
   orders         Order[]
   invoices       Invoice[]

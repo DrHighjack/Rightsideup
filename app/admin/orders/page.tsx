@@ -51,10 +51,12 @@ export default function AdminOrdersPage() {
         const response = await fetch(url);
         const data = await response.json();
 
-        setOrders(data.orders);
-        setTotalPages(data.pagination.pages);
+        setOrders(data.orders || []);
+        setTotalPages(data.pagination?.pages || 1);
       } catch (error) {
         console.error("Failed to fetch orders:", error);
+        setOrders([]);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }

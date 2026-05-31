@@ -89,22 +89,50 @@ export async function PUT(
 
     const body = await request.json();
 
-    // Prepare update data
-    const updateData: any = {
-      ...body,
-      scheduledDate: body.scheduledDate
-        ? new Date(body.scheduledDate)
-        : undefined,
-    };
+    // Extract ONLY updatable fields - whitelist approach
+    const updateData: any = {};
+    
+    // Only allow these specific fields to be updated
+    const allowedFields = ['status', 'notes', 'adminNotes', 'scheduledDate', 'address', 'addressLat', 'addressLng'];
+    
+    for (const field of allowedFields) {
+      if (field in body && body[field] !== undefined) {
+        if (field === 'scheduledDate' && body[field]) {
+          updateData.scheduledDate = new Date(body[field]);
+        } else if (field !== 'scheduledDate') {
+          updateData[field] = body[field];
+        }
+      }
+    }
+
+    // Validate status is a valid enum value
+    if (updateData.status) {
+      const validStatuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'IN_GROUND', 'COMPLETED', 'CANCELLED'];
+      if (!validStatuses.includes(updateData.status)) {
+        return NextResponse.json({ error: `Invalid status: ${updateData.status}` }, { status: 400 });
+      }
+    }
 
     // If status is changing to something other than PENDING, reset stale flags
-    if (body.status && body.status !== 'PENDING') {
+    if (updateData.status && updateData.status !== 'PENDING') {
       updateData.staleAt = null;
     }
 
     const updatedOrder = await prisma.order.update({
       where: { id: params.id },
       data: updateData,
+      include: {
+        realtor: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        items: {
+          include: {
+            sign: {
+              select: { id: true, signNumber: true, type: true, status: true },
+            },
+          },
+        },
+      },
     });
 
     // Log activity if status changed

@@ -117,7 +117,7 @@ export default function AdminLayout({
                 href="/admin/brokerages"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >
-                Management
+                Client Management
               </Link>
               <Link
                 href="/admin/811"
@@ -137,6 +137,12 @@ export default function AdminLayout({
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >
                 📋 Activity Log
+              </Link>
+              <Link
+                href="/admin/login-tracking"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                🔐 Login Tracking
               </Link>
               <div className="pt-4 mt-4 border-t border-gray-200">
                 <p className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold">

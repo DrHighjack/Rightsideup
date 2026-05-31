@@ -22,6 +22,10 @@ export async function GET(
     const userRole = (session.user as any).role;
     const ticketId = params.id;
 
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const ticket = await prisma.ticket811.findUnique({
       where: { id: ticketId },
       include: {

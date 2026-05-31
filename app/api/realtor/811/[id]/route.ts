@@ -50,8 +50,15 @@ export async function GET(
     }
 
     if (userRole === 'TC') {
+      if (!ticket.realtorId) {
+        return NextResponse.json(
+          { error: 'Unauthorized - ticket has no realtor assigned' },
+          { status: 403 }
+        );
+      }
+
       const isLinked = await prisma.tCAgentLink.findUnique({
-        where: { tcUserId_agentUserId: { tcUserId: userId, agentUserId: ticket.realtorId || '' } },
+        where: { tcUserId_agentUserId: { tcUserId: userId, agentUserId: ticket.realtorId } },
       });
 
       if (!isLinked && ticket.realtorId !== userId) {

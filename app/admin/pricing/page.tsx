@@ -70,11 +70,26 @@ export default function PricingPage() {
   });
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [availableBrokerages, setAvailableBrokerages] = useState<Brokerage[]>([]);
+  const [clientSearchInput, setClientSearchInput] = useState("");
+  const [showClientDropdown, setShowClientDropdown] = useState(false);
 
   // Fetch data on mount
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchClientsData = async () => {
+    try {
+      const res = await fetch("/api/admin/clients");
+      if (res.ok) {
+        const data = await res.json();
+        setAvailableUsers(data.users || []);
+        setAvailableBrokerages(data.brokerages || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch clients data:", err);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -190,6 +205,8 @@ export default function PricingPage() {
         clientId: "",
         isLocked: false,
       });
+      setClientSearchInput("");
+      setShowClientDropdown(false);
       await fetchData();
     } catch (err) {
       alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
@@ -332,7 +349,10 @@ export default function PricingPage() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Client Price Overrides</h2>
           <button
-            onClick={() => setShowAddOverrideModal(true)}
+            onClick={() => {
+              setShowAddOverrideModal(true);
+              fetchClientsData();
+            }}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
             Add Override
@@ -500,13 +520,16 @@ export default function PricingPage() {
                 </label>
                 <select
                   value={overrideForm.clientType}
-                  onChange={(e) =>
+                  onChange={(e) => {
                     setOverrideForm({
                       ...overrideForm,
                       clientType: e.target.value as "realtor" | "brokerage",
                       clientId: "",
-                    })
-                  }
+                    });
+                    setClientSearchInput("");
+                    setShowClientDropdown(false);
+                    fetchClientsData();
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="realtor">Realtor</option>
@@ -514,19 +537,110 @@ export default function PricingPage() {
                 </select>
               </div>
 
-              {/* Client Selection - Placeholder for now */}
-              <div>
+              {/* Client Selection with Autocomplete */}
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   {overrideForm.clientType === "realtor" ? "Select Realtor" : "Select Brokerage"}
                 </label>
                 <input
                   type="text"
                   placeholder={`Search ${overrideForm.clientType}...`}
+                  value={
+                    overrideForm.clientId
+                      ? (overrideForm.clientType === "realtor"
+                          ? availableUsers.find((u) => u.id === overrideForm.clientId)
+                            ? `${availableUsers.find((u) => u.id === overrideForm.clientId)?.firstName} ${availableUsers.find((u) => u.id === overrideForm.clientId)?.lastName}`
+                            : ""
+                          : availableBrokerages.find((b) => b.id === overrideForm.clientId)?.name) || ""
+                      : clientSearchInput
+                  }
+                  onChange={(e) => {
+                    setClientSearchInput(e.target.value);
+                    setShowClientDropdown(true);
+                    setOverrideForm({ ...overrideForm, clientId: "" });
+                    if (!availableUsers.length && !availableBrokerages.length) {
+                      fetchClientsData();
+                    }
+                  }}
+                  onFocus={() => {
+                    setShowClientDropdown(true);
+                    if (!availableUsers.length && !availableBrokerages.length) {
+                      fetchClientsData();
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  (Client search would be implemented with a dropdown/autocomplete)
-                </p>
+
+                {/* Dropdown */}
+                {showClientDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-10 max-h-48 overflow-y-auto">
+                    {overrideForm.clientType === "realtor"
+                      ? availableUsers
+                          .filter((user) =>
+                            `${user.firstName} ${user.lastName} ${user.email}`
+                              .toLowerCase()
+                              .includes(clientSearchInput.toLowerCase())
+                          )
+                          .map((user) => (
+                            <div
+                              key={user.id}
+                              onClick={() => {
+                                setOverrideForm({ ...overrideForm, clientId: user.id });
+                                setClientSearchInput(
+                                  `${user.firstName} ${user.lastName}`
+                                );
+                                setShowClientDropdown(false);
+                              }}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.firstName} {user.lastName}
+                              </div>
+                              <div className="text-xs text-gray-500">{user.email}</div>
+                            </div>
+                          ))
+                      : availableBrokerages
+                          .filter((brokerage) =>
+                            brokerage.name
+                              .toLowerCase()
+                              .includes(clientSearchInput.toLowerCase())
+                          )
+                          .map((brokerage) => (
+                            <div
+                              key={brokerage.id}
+                              onClick={() => {
+                                setOverrideForm({
+                                  ...overrideForm,
+                                  clientId: brokerage.id,
+                                });
+                                setClientSearchInput(brokerage.name);
+                                setShowClientDropdown(false);
+                              }}
+                              className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                            >
+                              <div className="text-sm font-medium text-gray-900">
+                                {brokerage.name}
+                              </div>
+                            </div>
+                          ))}
+                    {((overrideForm.clientType === "realtor" &&
+                      availableUsers.filter((user) =>
+                        `${user.firstName} ${user.lastName} ${user.email}`
+                          .toLowerCase()
+                          .includes(clientSearchInput.toLowerCase())
+                      ).length === 0) ||
+                      (overrideForm.clientType === "brokerage" &&
+                        availableBrokerages.filter((brokerage) =>
+                          brokerage.name
+                            .toLowerCase()
+                            .includes(clientSearchInput.toLowerCase())
+                        ).length === 0)) && (
+                      <div className="px-3 py-2 text-center text-sm text-gray-500">
+                        No {overrideForm.clientType}s found
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Price */}
@@ -569,7 +683,11 @@ export default function PricingPage() {
 
             <div className="flex gap-2 mt-6">
               <button
-                onClick={() => setShowAddOverrideModal(false)}
+                onClick={() => {
+                  setShowAddOverrideModal(false);
+                  setClientSearchInput("");
+                  setShowClientDropdown(false);
+                }}
                 className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
               >
                 Cancel

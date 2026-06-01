@@ -34,13 +34,15 @@ export async function GET(_: NextRequest) {
       },
       include: {
         order: {
-          select: {
-            id: true,
-            orderNumber: true,
-            address: true,
-            status: true,
-            notes: true,
-            adminNotes: true,
+          include: {
+            realtor: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
           },
         },
       },

@@ -13,6 +13,7 @@ interface JobAssignment {
   completedAt: string | null;
   techNotes: string | null;
   issue: string | null;
+  images?: Array<{ id: string; data: string; name: string; uploadedAt: string }> | null;
   order: {
     id: string;
     orderNumber: string;
@@ -45,6 +46,7 @@ export default function JobDetailPage() {
   // Modal states
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [completeNotes, setCompleteNotes] = useState('');
+  const [completeImages, setCompleteImages] = useState<File[]>([]);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [flagIssue, setFlagIssue] = useState('');
 
@@ -91,18 +93,42 @@ export default function JobDetailPage() {
       return;
     }
 
+    if (completeImages.length === 0) {
+      alert('Please upload at least one photo of the sign');
+      return;
+    }
+
     try {
       setSubmitting(true);
+
+      // Convert images to base64
+      const imagePromises = completeImages.map((file) => {
+        return new Promise<{ data: string; name: string }>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            resolve({
+              data: reader.result as string,
+              name: file.name,
+            });
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const images = await Promise.all(imagePromises);
+
       const res = await fetch(`/api/field/jobs/${jobId}/complete`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ techNotes: completeNotes }),
+        body: JSON.stringify({ techNotes: completeNotes, images }),
       });
       if (!res.ok) throw new Error('Failed to complete job');
       const updated = await res.json();
       setJob(updated);
       setShowCompleteModal(false);
       setCompleteNotes('');
+      setCompleteImages([]);
       alert('Job completed successfully!');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error completing job');
@@ -333,6 +359,23 @@ export default function JobDetailPage() {
                   </p>
                 </div>
               )}
+              {job.images && job.images.length > 0 && (
+                <div>
+                  <p className="text-gray-600 mb-2">📸 Photos ({job.images.length})</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    {job.images.map((img) => (
+                      <div key={img.id}>
+                        <img
+                          src={img.data}
+                          alt={img.name}
+                          className="w-full h-32 object-cover rounded-lg border border-green-200"
+                        />
+                        <p className="text-xs text-gray-600 mt-1 truncate">{img.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -372,7 +415,7 @@ export default function JobDetailPage() {
       {/* Complete Job Modal */}
       {showCompleteModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-2xl p-4">
+          <div className="w-full bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Complete Job</h3>
 
             <div className="mb-4">
@@ -387,9 +430,55 @@ export default function JobDetailPage() {
               />
             </div>
 
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                📸 Upload Sign Photos <span className="text-red-600">*</span>
+              </label>
+              <p className="text-xs text-gray-600 mb-2">
+                At least one photo is required to complete the job
+              </p>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  const files = Array.from(e.currentTarget.files || []);
+                  setCompleteImages(files);
+                }}
+                disabled={submitting}
+                className="w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+              />
+              {completeImages.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm font-medium text-gray-700">
+                    {completeImages.length} photo{completeImages.length !== 1 ? 's' : ''} selected
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {completeImages.map((file, idx) => (
+                      <div key={idx} className="flex items-center gap-2 bg-blue-50 px-3 py-1 rounded-lg">
+                        <span className="text-sm text-gray-700">{file.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCompleteImages(completeImages.filter((_, i) => i !== idx));
+                          }}
+                          className="text-red-600 font-bold hover:text-red-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="flex gap-3">
               <button
-                onClick={() => setShowCompleteModal(false)}
+                onClick={() => {
+                  setShowCompleteModal(false);
+                  setCompleteImages([]);
+                }}
                 disabled={submitting}
                 className="flex-1 py-3 border-2 border-gray-300 text-gray-900 font-bold rounded-lg active:bg-gray-50 disabled:opacity-50"
               >
@@ -397,7 +486,7 @@ export default function JobDetailPage() {
               </button>
               <button
                 onClick={handleCompleteJob}
-                disabled={submitting || !completeNotes.trim()}
+                disabled={submitting || !completeNotes.trim() || completeImages.length === 0}
                 className="flex-1 py-3 bg-green-500 text-white font-bold rounded-lg active:bg-green-600 disabled:opacity-50"
               >
                 {submitting ? 'Submitting...' : 'Confirm'}

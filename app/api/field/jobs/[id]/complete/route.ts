@@ -5,6 +5,10 @@ import { z } from 'zod';
 
 const completeJobSchema = z.object({
   techNotes: z.string().min(1),
+  images: z.array(z.object({
+    data: z.string(),
+    name: z.string(),
+  })).min(1, 'At least one image is required'),
 });
 
 export async function PUT(
@@ -21,7 +25,7 @@ export async function PUT(
     const fieldTechId = session.user.id;
     const { id } = params;
     const body = await request.json();
-    const { techNotes } = completeJobSchema.parse(body);
+    const { techNotes, images } = completeJobSchema.parse(body);
 
     // Get assignment - verify it belongs to this field tech
     const assignment = await prisma.jobAssignment.findUnique({
@@ -67,12 +71,20 @@ export async function PUT(
       );
     }
 
+    // Format images with upload timestamp and id
+    const formattedImages = images.map((img, idx) => ({
+      id: `img-${Date.now()}-${idx}`,
+      uploadedAt: new Date().toISOString(),
+      ...img,
+    }));
+
     // Update assignment with completion info
     const updatedAssignment = await prisma.jobAssignment.update({
       where: { id },
       data: {
         completedAt: new Date(),
         techNotes,
+        images: formattedImages,
       },
       include: {
         order: {

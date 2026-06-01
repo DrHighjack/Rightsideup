@@ -76,10 +76,24 @@ export async function PUT(
       },
       include: {
         order: {
-          select: {
-            id: true,
-            orderNumber: true,
-            status: true,
+          include: {
+            realtor: {
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                phone: true,
+              },
+            },
+            assignedSigns: {
+              select: {
+                id: true,
+                signNumber: true,
+                type: true,
+                status: true,
+              },
+            },
           },
         },
       },

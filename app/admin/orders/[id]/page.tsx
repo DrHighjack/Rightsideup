@@ -210,7 +210,7 @@ export default function AdminOrderDetailPage() {
                 }
                 className="w-full rounded-md border border-gray-300 px-4 py-2"
               >
-                {["PENDING", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map((s) => (
+                {["PENDING", "SCHEDULED", "IN_PROGRESS", "IN_GROUND", "COMPLETED", "CANCELLED"].map((s) => (
                   <option key={s} value={s}>
                     {s}
                   </option>

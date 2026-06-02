@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import PDFUploadModal from './components/PDFUploadModal';
 
 interface Ticket811 {
   id: string;
@@ -33,6 +34,7 @@ export default function Ticket811ListPage() {
   });
   const [filter, setFilter] = useState<'ALL' | 'ACTIVE' | 'NEEDS_REVIEW' | 'CLEARED'>('ALL');
   const [polling, setPolling] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
 
   // Fetch tickets
   async function fetchTickets() {
@@ -131,11 +133,12 @@ export default function Ticket811ListPage() {
             >
               {polling ? 'Polling...' : 'Manual Poll'}
             </button>
-            <Link href="/admin/811/create">
-              <button className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">
-                Create Ticket
-              </button>
-            </Link>
+            <button
+              onClick={() => setShowPdfModal(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            >
+              Create Ticket
+            </button>
           </div>
         </div>
 
@@ -241,6 +244,9 @@ export default function Ticket811ListPage() {
             </table>
           </div>
         )}
+
+        {/* PDF Upload Modal */}
+        <PDFUploadModal isOpen={showPdfModal} onClose={() => setShowPdfModal(false)} />
       </div>
     </div>
   );

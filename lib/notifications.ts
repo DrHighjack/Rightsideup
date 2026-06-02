@@ -299,6 +299,105 @@ export async function getSMSStats(startDate?: Date, endDate?: Date) {
 }
 
 /**
+ * Notify realtor that 811 process has started
+ */
+export async function notifyRealtorAbout811Start(
+  realtorId: string,
+  ticketNumber: string,
+  address: string
+): Promise<void> {
+  try {
+    const realtor = await prisma.user.findUnique({
+      where: { id: realtorId },
+      select: { email: true, firstName: true, phone: true },
+    });
+
+    if (!realtor) {
+      console.warn(`Realtor ${realtorId} not found`);
+      return;
+    }
+
+    const title = '811 Ticket Submitted';
+    const message = `Your 811 locate request (Ticket #${ticketNumber}) for ${address} has been submitted.`;
+
+    // Send SMS
+    if (realtor.phone) {
+      await sendSMS(realtor.phone, message, 'ORDER_CREATED');
+    }
+
+    // Send email
+    const emailHtml = `
+      <h2>${title}</h2>
+      <p>Hi ${realtor.firstName},</p>
+      <p>Your 811 locate request has been submitted:</p>
+      <ul>
+        <li><strong>Ticket Number:</strong> ${ticketNumber}</li>
+        <li><strong>Address:</strong> ${address}</li>
+      </ul>
+      <p>We'll notify you when the location is confirmed and the ticket is processed.</p>
+    `;
+
+    if (realtor.email) {
+      await sendEmailNotification(realtor.email, title, emailHtml);
+    }
+
+    console.log(`✅ 811 start notification sent to realtor ${realtorId}`);
+  } catch (error) {
+    console.error('Error notifying about 811 start:', error);
+  }
+}
+
+/**
+ * Notify realtor that post location has been confirmed
+ */
+export async function notifyRealtorAbout811Confirmed(
+  realtorId: string,
+  ticketNumber: string,
+  address: string
+): Promise<void> {
+  try {
+    const realtor = await prisma.user.findUnique({
+      where: { id: realtorId },
+      select: { email: true, firstName: true, phone: true },
+    });
+
+    if (!realtor) {
+      console.warn(`Realtor ${realtorId} not found`);
+      return;
+    }
+
+    const title = '811 Location Confirmed';
+    const message = `The post location for your 811 ticket #${ticketNumber} has been confirmed. The ticket is now in the system and ready for scheduling.`;
+
+    // Send SMS
+    if (realtor.phone) {
+      await sendSMS(realtor.phone, message, 'ORDER_CONFIRMED');
+    }
+
+    // Send email
+    const emailHtml = `
+      <h2>${title}</h2>
+      <p>Hi ${realtor.firstName},</p>
+      <p>Great news! The post location for your 811 locate request has been confirmed:</p>
+      <ul>
+        <li><strong>Ticket Number:</strong> ${ticketNumber}</li>
+        <li><strong>Address:</strong> ${address}</li>
+        <li><strong>Status:</strong> Location Confirmed</li>
+      </ul>
+      <p>The ticket is now in the system and ready for scheduling. We'll proceed with your sign installation.</p>
+    `;
+
+    if (realtor.email) {
+      await sendEmailNotification(realtor.email, title, emailHtml);
+    }
+
+    console.log(`✅ 811 confirmation notification sent to realtor ${realtorId}`);
+  } catch (error) {
+    console.error('Error notifying about 811 confirmation:', error);
+  }
+}
+
+/**
  * Phase 5 — DB-level Notifications
  * These notifications appear in the user's dashboard notification center
  */

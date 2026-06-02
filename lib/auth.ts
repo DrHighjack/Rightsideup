@@ -3,6 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import * as Sentry from "@sentry/nextjs";
 
 const credentialsSchema = z.object({
   email: z.string().email(),
@@ -63,6 +64,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (session.user) {
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
+        
+        // Set Sentry user context
+        Sentry.setUser({
+          id: String(token.id),
+          email: session.user.email || undefined,
+          username: session.user.name || undefined,
+          ip_address: "{{auto}}",
+        });
       }
       return session;
     },

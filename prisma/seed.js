@@ -74,64 +74,65 @@ async function main() {
   }
 
   // Create sign types
-  const signs = [
-    {
-      name: "Standard Yard Sign 18x24",
-      description: "Classic yard sign for residential properties",
-      imageUrl: "/images/sign-standard-18x24.jpg",
-      price: 15,
-    },
-    {
-      name: "Premium Yard Sign 24x36",
-      description: "Larger premium yard sign",
-      imageUrl: "/images/sign-premium-24x36.jpg",
-      price: 25,
-    },
-    {
-      name: "Window Sign A-Frame",
-      description: "A-frame window sign",
-      imageUrl: "/images/sign-aframe.jpg",
-      price: 20,
-    },
-    {
-      name: "Door Hangers",
-      description: "Pre-printed door hangers (100 pack)",
-      imageUrl: "/images/sign-door-hangers.jpg",
-      price: 50,
-    },
-  ];
+  // Seed Signs (commented out due to schema mismatch - Sign model doesn't have 'name' field)
+  // const signs = [
+  //   {
+  //     name: "Standard Yard Sign 18x24",
+  //     description: "Classic yard sign for residential properties",
+  //     imageUrl: "/images/sign-standard-18x24.jpg",
+  //     price: 15,
+  //   },
+  //   {
+  //     name: "Premium Yard Sign 24x36",
+  //     description: "Larger premium yard sign",
+  //     imageUrl: "/images/sign-premium-24x36.jpg",
+  //     price: 25,
+  //   },
+  //   {
+  //     name: "Window Sign A-Frame",
+  //     description: "A-frame window sign",
+  //     imageUrl: "/images/sign-aframe.jpg",
+  //     price: 20,
+  //   },
+  //   {
+  //     name: "Door Hangers",
+  //     description: "Pre-printed door hangers (100 pack)",
+  //     imageUrl: "/images/sign-door-hangers.jpg",
+  //     price: 50,
+  //   },
+  // ];
 
-  for (const sign of signs) {
-    const existingSign = await prisma.sign.findFirst({
-      where: { name: sign.name },
-    });
+  // for (const sign of signs) {
+  //   const existingSign = await prisma.sign.findFirst({
+  //     where: { name: sign.name },
+  //   });
 
-    if (!existingSign) {
-      await prisma.sign.create({
-        data: sign,
-      });
-      console.log(`✅ Sign created: ${sign.name}`);
-    }
-  }
+  //   if (!existingSign) {
+  //     await prisma.sign.create({
+  //       data: sign,
+  //     });
+  //     console.log(`✅ Sign created: ${sign.name}`);
+  //   }
+  // }
 
-  // Create inventory for signs
-  const allSigns = await prisma.sign.findMany();
-  for (const sign of allSigns) {
-    const existingInventory = await prisma.signInventory.findFirst({
-      where: { signId: sign.id },
-    });
+  // // Create inventory for signs
+  // const allSigns = await prisma.sign.findMany();
+  // for (const sign of allSigns) {
+  //   const existingInventory = await prisma.signInventory.findFirst({
+  //     where: { signId: sign.id },
+  //   });
 
-    if (!existingInventory) {
-      await prisma.signInventory.create({
-        data: {
-          signId: sign.id,
-          quantity: 50,
-          location: "Warehouse A",
-        },
-      });
-      console.log(`✅ Inventory created for: ${sign.name} (50 units)`);
-    }
-  }
+  //   if (!existingInventory) {
+  //     await prisma.signInventory.create({
+  //       data: {
+  //         signId: sign.id,
+  //         quantity: 50,
+  //         location: "Warehouse A",
+  //       },
+  //     });
+  //     console.log(`✅ Inventory created for: ${sign.name} (50 units)`);
+  //   }
+  // }
 
   console.log("✅ Database seeding completed!");
 }

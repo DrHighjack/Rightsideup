@@ -155,11 +155,14 @@ model Order {
   staleAt        DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
+  self811Accepted Boolean      @default(false) // true if realtor opted out of 811 service and accepted policy
   
   items          OrderItem[]
   discounts      OrderDiscount[]
+  addons         OrderAddon[]
   assignedSigns  Sign[] @relation("AssignedToOrder")
   jobAssignment  JobAssignment?
+  ticket811      Ticket811?   @relation("Ticket811Orders")
   
   @@map("orders")
   @@index([realtorId])
@@ -403,12 +406,21 @@ model Ticket811 {
   // New 811 ticket tracker fields
   realtorId            String?           // which realtor this ticket belongs to
   realtor              User?             @relation("RealtorTickets", fields: [realtorId], references: [id], onDelete: SetNull)
-  utilityLines         Json?             // array of { name: string, status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT', respondedAt?: DateTime }
+  utilityLines         Json?             // array of { name: string, status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT', respondedAt?: DateTime, contactName?: string, contactPhone?: string, contactEmail?: string }
   requestedDate        DateTime?         // when realtor submitted the request
   ticketSubmittedAt    DateTime?         // when 811 confirmed ticket number
   allLinesRespondedAt  DateTime?         // when last utility responded
   clearanceDate        DateTime?         // when officially cleared to dig
   stage                String            @default("REQUESTED") // REQUESTED | TICKET_SUBMITTED | LINES_RESPONDED | CLEAR
+  
+  // PDF and post location fields
+  pdfUrl               String?           // URL to uploaded 811 PDF
+  postAddressLat       Float?            // latitude of the actual post location
+  postAddressLng       Float?            // longitude of the actual post location
+  
+  // Order assignment for scheduling
+  orderId              String?           @unique  // which order/sign this 811 is for
+  order                Order?            @relation("Ticket811Orders", fields: [orderId], references: [id], onDelete: SetNull)
   
   createdAt            DateTime          @default(now())
   updatedAt            DateTime          @updatedAt
@@ -419,6 +431,7 @@ model Ticket811 {
   @@index([ticketNumber])
   @@index([clearedByUserId])
   @@index([realtorId])
+  @@index([orderId])
   @@index([stage])
 }
 
@@ -525,4 +538,93 @@ model PriceOverride {
   @@index([brokerageId])
 }
 
+model InventoryItem {
+  id                String                @id @default(cuid())
+  name              String
+  category          String                // SIGN, FLYER_BOX, RIDER, OTHER
+  description       String?
+  imageUrl          String?               // uploaded photo of the item
+  totalQuantity     Int                   @default(0)
+  availableQuantity Int                   @default(0)
+  lowStockThreshold Int                   @default(5)
+  isActive          Boolean               @default(true)
+  isOrderable       Boolean               @default(true) // can realtors request more
+  pricePerUnit      Int?                  // cents, null = included in service
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  printers          InventoryItemPrinter[]
+  orderItems        OrderAddon[]
+  
+  @@map("inventory_items")
+  @@index([category])
+  @@index([isActive])
+  @@index([isOrderable])
+}
 
+model SignPrinter {
+  id        String                @id @default(cuid())
+  name      String
+  website   String?
+  phone     String?
+  email     String?
+  notes     String?
+  isActive  Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  
+  items     InventoryItemPrinter[]
+  
+  @@map("sign_printers")
+  @@index([isActive])
+}
+
+model InventoryItemPrinter {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  printerId       String
+  printer         SignPrinter   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  
+  @@map("inventory_item_printers")
+  @@unique([inventoryItemId, printerId])
+  @@index([inventoryItemId])
+  @@index([printerId])
+}
+
+model OrderAddon {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  quantity        Int           @default(1)
+  priceAtOrder    Int           // cents — snapshot of price when ordered
+  createdAt       DateTime      @default(now())
+  
+  @@map("order_addons")
+  @@index([orderId])
+  @@index([inventoryItemId])
+}
+
+model Self811Policy {
+  id        String   @id @default(cuid())
+  content   String   // markdown text of the policy
+  version   String
+  updatedAt DateTime @updatedAt
+  
+  @@map("self_811_policies")
+}
+
+model Instaads {
+  id        String   @id @default(cuid())
+  fullName  String
+  phone     String
+  email     String
+  brokerage String
+  createdAt DateTime @default(now())
+  
+  @@map("instaads")
+  @@index([email])
+  @@index([createdAt])
+}

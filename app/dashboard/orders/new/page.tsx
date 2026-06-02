@@ -1,7 +1,10 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
+import { SignSelector } from './components/SignSelector';
+import { AddOnSelector } from './components/AddOnSelector';
+import { Self811PolicyModal } from './components/Self811PolicyModal';
 
 declare global {
   interface Window {
@@ -11,16 +14,21 @@ declare global {
 
 export default function NewOrderPage() {
   const [formData, setFormData] = useState({
-    type: "INSTALL",
-    address: "",
+    type: 'INSTALL',
+    address: '',
     addressLat: null as number | null,
     addressLng: null as number | null,
-    scheduledDate: "",
-    notes: "",
+    scheduledDate: '',
+    notes: '',
   });
-  const [error, setError] = useState("");
+  const [selectedSignId, setSelectedSignId] = useState<string | null>(null);
+  const [selectedAddOns, setSelectedAddOns] = useState<{ [key: string]: number }>({});
+  const [use811Service, setUse811Service] = useState(true);
+  const [self811Accepted, setSelf811Accepted] = useState(false);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const [successOrderNumber, setSuccessOrderNumber] = useState("");
+  const [successOrderNumber, setSuccessOrderNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
@@ -56,8 +64,8 @@ export default function NewOrderPage() {
     script.defer = true;
     script.onload = () => setMapsLoaded(true);
     script.onerror = () => {
-      setMapsLoaded(true);
       console.warn("Google Maps API failed to load");
+      // DO NOT set mapsLoaded to true on error!
     };
     document.head.appendChild(script);
 
@@ -66,7 +74,7 @@ export default function NewOrderPage() {
 
   // Initialize autocomplete when Maps is loaded
   useEffect(() => {
-    if (mapsLoaded && addressInputRef.current && !autocompleteRef.current) {
+    if (mapsLoaded && addressInputRef.current && !autocompleteRef.current && window.google?.maps?.places?.Autocomplete) {
       try {
         autocompleteRef.current = new window.google.maps.places.Autocomplete(
           addressInputRef.current,
@@ -77,13 +85,17 @@ export default function NewOrderPage() {
         );
 
         autocompleteRef.current.addListener("place_changed", () => {
-          const place = autocompleteRef.current.getPlace();
-          if (place.geometry && place.geometry.location) {
+          const place = autocompleteRef.current?.getPlace();
+          if (place?.geometry?.location) {
             setFormData((prev) => ({
               ...prev,
               address: place.formatted_address || "",
-              addressLat: place.geometry.location.lat(),
-              addressLng: place.geometry.location.lng(),
+              addressLat: typeof place.geometry.location.lat === 'function' 
+                ? place.geometry.location.lat() 
+                : place.geometry.location.lat,
+              addressLng: typeof place.geometry.location.lng === 'function' 
+                ? place.geometry.location.lng() 
+                : place.geometry.location.lng,
             }));
           }
         });
@@ -100,41 +112,96 @@ export default function NewOrderPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handle811Toggle = () => {
+    if (!use811Service) {
+      // Toggling ON - just enable it
+      setUse811Service(true);
+      setSelf811Accepted(false);
+    } else {
+      // Toggling OFF - show policy modal
+      setShowPolicyModal(true);
+    }
+  };
+
+  const handlePolicyAccepted = () => {
+    setUse811Service(false);
+    setSelf811Accepted(true);
+    setShowPolicyModal(false);
+  };
+
+  const handlePolicyCancel = () => {
+    setShowPolicyModal(false);
+  };
+
+  const handleAddOnChange = (addOnId: string, quantity: number) => {
+    setSelectedAddOns((prev) => {
+      const updated = { ...prev };
+      if (quantity === 0) {
+        delete updated[addOnId];
+      } else {
+        updated[addOnId] = quantity;
+      }
+      return updated;
+    });
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
+    setError('');
 
     if (!formData.address) {
-      setError("Address is required");
+      setError('Address is required');
       return;
     }
 
     setLoading(true);
 
     try {
-      const response = await fetch("/api/orders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: formData.type,
-          address: formData.address,
-          addressLat: formData.addressLat,
-          addressLng: formData.addressLng,
-          scheduledDate: formData.scheduledDate || undefined,
-          notes: formData.notes || undefined,
-        }),
+      // Prepare addons array
+      const addons = Object.entries(selectedAddOns)
+        .filter(([_, qty]) => qty > 0)
+        .map(([itemId, quantity]) => ({
+          inventoryItemId: itemId,
+          quantity,
+        }));
+
+      const requestBody = {
+        type: formData.type,
+        address: formData.address,
+        addressLat: formData.addressLat,
+        addressLng: formData.addressLng,
+        scheduledDate: formData.scheduledDate || undefined,
+        notes: formData.notes || undefined,
+        selectedSignId: selectedSignId || undefined,
+        addons: addons,
+        self811Accepted: !use811Service ? self811Accepted : false,
+      };
+
+      console.log('🔵 Submitting order with data:', {
+        ...requestBody,
+        addressLat_type: typeof requestBody.addressLat,
+        addressLng_type: typeof requestBody.addressLng,
+      });
+
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Failed to create order");
+        console.error('❌ API Error Response:', data);
+        throw new Error(data.error || 'Failed to create order');
       }
 
       const order = await response.json();
+      console.log('✅ Order created:', order);
       setSuccessOrderNumber(order.orderNumber);
       setSuccess(true);
     } catch (err: any) {
-      setError(err.message || "An error occurred. Please try again.");
+      console.error('❌ Error caught:', err);
+      setError(err.message || 'An error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -170,6 +237,10 @@ export default function NewOrderPage() {
                   scheduledDate: "",
                   notes: "",
                 });
+                setSelectedSignId(null);
+                setSelectedAddOns({});
+                setUse811Service(true);
+                setSelf811Accepted(false);
               }}
               className="rounded-md border border-green-600 px-6 py-2 text-green-600 font-medium hover:bg-green-50"
             >
@@ -270,8 +341,46 @@ export default function NewOrderPage() {
           />
         </div>
 
+        {/* Sign Selection */}
+        <div className="border-t border-gray-200 pt-6">
+          <SignSelector selectedSignId={selectedSignId} onSelectSign={setSelectedSignId} />
+        </div>
+
+        {/* Add-Ons Selection */}
+        <div className="border-t border-gray-200 pt-6">
+          <AddOnSelector selectedAddOns={selectedAddOns} onAddOnChange={handleAddOnChange} />
+        </div>
+
+        {/* 811 Service Toggle */}
+        <div className="border-t border-gray-200 pt-6">
+          <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div>
+              <h3 className="font-semibold text-gray-900">811 Call Service</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                We will contact 811 to mark utilities before installation
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handle811Toggle}
+              className={`ml-4 flex-shrink-0 rounded-full px-4 py-2 font-medium transition ${
+                use811Service
+                  ? 'bg-green-500 text-white hover:bg-green-600'
+                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+              }`}
+            >
+              {use811Service ? 'ON' : 'OFF'}
+            </button>
+          </div>
+          {!use811Service && (
+            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+              ⚠️ You have opted out of 811 service and accepted the Self 811 Policy
+            </div>
+          )}
+        </div>
+
         {/* Submit button */}
-        <div className="flex gap-4">
+        <div className="flex gap-4 border-t border-gray-200 pt-6">
           <button
             type="submit"
             disabled={loading}
@@ -287,6 +396,13 @@ export default function NewOrderPage() {
           </Link>
         </div>
       </form>
+
+      {/* Policy Modal */}
+      <Self811PolicyModal
+        isOpen={showPolicyModal}
+        onAccept={handlePolicyAccepted}
+        onCancel={handlePolicyCancel}
+      />
     </div>
   );
 }

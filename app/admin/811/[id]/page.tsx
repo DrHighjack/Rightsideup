@@ -3,11 +3,15 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import PDFUploadSection from '../components/PDFUploadSection';
 
 interface UtilityLine {
   name: string;
   status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT';
   respondedAt?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
 }
 
 interface Order {
@@ -46,6 +50,11 @@ interface Ticket811 {
   allLinesRespondedAt?: string;
   clearanceDate?: string;
   stage?: string;
+  // PDF and location fields
+  pdfUrl?: string;
+  postAddressLat?: number;
+  postAddressLng?: number;
+  orderId?: string;
 }
 
 export default function Ticket811DetailPage() {
@@ -67,6 +76,13 @@ export default function Ticket811DetailPage() {
   const [newUtilityName, setNewUtilityName] = useState('');
   const [newUtilityStatus, setNewUtilityStatus] = useState<'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT'>('PENDING');
   const [utilityUpdating, setUtilityUpdating] = useState(false);
+
+  // PDF upload state
+  const [showPdfUploadModal, setShowPdfUploadModal] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [postLat, setPostLat] = useState<string>('');
+  const [postLng, setPostLng] = useState<string>('');
+  const [pdfSubmitting, setPdfSubmitting] = useState(false);
 
   // Form state for editing
   const [formData, setFormData] = useState({
@@ -258,6 +274,94 @@ export default function Ticket811DetailPage() {
       alert('Failed to update ticket');
     } finally {
       setProcessing(false);
+    }
+  }
+
+  async function handleUploadPDF() {
+    if (!postLat || !postLng) {
+      alert('Please enter both latitude and longitude');
+      return;
+    }
+
+    const lat = parseFloat(postLat);
+    const lng = parseFloat(postLng);
+
+    if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      alert('Invalid coordinates. Latitude: -90 to 90, Longitude: -180 to 180');
+      return;
+    }
+
+    try {
+      setPdfSubmitting(true);
+
+      // Prepare utility lines data with basic structure
+      const utilityLinesData = (ticket?.utilityLines || []).map((line) => ({
+        name: line.name,
+        status: line.status,
+        contactName: line.contactName,
+        contactPhone: line.contactPhone,
+        contactEmail: line.contactEmail,
+      }));
+
+      const res = await fetch(`/api/admin/811/upload-pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketId: id,
+          utilityLines: utilityLinesData,
+          postLat: lat,
+          postLng: lng,
+          pdfUrl: pdfFile ? `pdf-${Date.now()}.pdf` : undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTicket(data.ticket);
+        setPdfFile(null);
+        setPostLat('');
+        setPostLng('');
+        setShowPdfUploadModal(false);
+        alert('PDF and coordinates uploaded successfully');
+      } else {
+        const error = await res.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to upload PDF:', error);
+      alert('Failed to upload PDF');
+    } finally {
+      setPdfSubmitting(false);
+    }
+  }
+
+  async function handleAssignOrder(orderId: string) {
+    if (!ticket?.pdfUrl && (!ticket?.postAddressLat || !ticket?.postAddressLng)) {
+      alert('Please upload coordinates first');
+      return;
+    }
+
+    try {
+      setPdfSubmitting(true);
+      const res = await fetch(`/api/admin/811/${id}/assign-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setTicket(data.ticket);
+        alert(`Order assigned and realtor notified!`);
+      } else {
+        const error = await res.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Failed to assign order:', error);
+      alert('Failed to assign order');
+    } finally {
+      setPdfSubmitting(false);
     }
   }
 
@@ -599,6 +703,24 @@ export default function Ticket811DetailPage() {
             </div>
           </div>
         )}
+
+        {/* PDF Upload and Coordinates Section */}
+        <PDFUploadSection
+          ticketId={id}
+          postLat={postLat}
+          postLng={postLng}
+          pdfUrl={ticket.pdfUrl}
+          postAddressLat={ticket.postAddressLat}
+          postAddressLng={ticket.postAddressLng}
+          matchedOrders={ticket.matchedOrders}
+          onPostLatChange={setPostLat}
+          onPostLngChange={setPostLng}
+          onUploadClick={handleUploadPDF}
+          onAssignOrder={handleAssignOrder}
+          isSubmitting={pdfSubmitting}
+          showModal={showPdfUploadModal}
+          onShowModalChange={setShowPdfUploadModal}
+        />
 
         {/* Admin Notes */}
         <div className="bg-white rounded-lg shadow-md p-6 mb-6">

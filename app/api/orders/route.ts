@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { orderSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
@@ -64,23 +63,116 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, address, addressLat, addressLng, scheduledDate, notes } =
-      orderSchema.parse(body);
+    const { type, address, addressLat, addressLng, scheduledDate, notes, selectedSignId, addons, self811Accepted } =
+      body;
+
+    console.log("📝 Order submission received:", {
+      type,
+      address,
+      addressLat: { value: addressLat, type: typeof addressLat },
+      addressLng: { value: addressLng, type: typeof addressLng },
+      selectedSignId,
+      addonsCount: addons?.length || 0,
+      self811Accepted,
+    });
+
+    // Validate required fields
+    if (!type || !address) {
+      return NextResponse.json(
+        { error: "Type and address are required" },
+        { status: 400 }
+      );
+    }
 
     const orderNumber = await generateOrderNumber();
 
-    const order = await prisma.order.create({
-      data: {
-        orderNumber,
-        realtorId: session.user.id,
-        type,
-        address,
-        addressLat: addressLat || null,
-        addressLng: addressLng || null,
-        scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
-        notes: notes || null,
-      },
-    });
+    // Prepare addons data - fetch prices before creating order
+    let addonData = [];
+    
+    // Add selected sign as an addon with quantity 1
+    if (selectedSignId) {
+      try {
+        console.log(`   Fetching sign: ${selectedSignId}`);
+        const signItem = await prisma.inventoryItem.findUnique({
+          where: { id: selectedSignId },
+          select: { pricePerUnit: true }
+        });
+        if (signItem && signItem.pricePerUnit !== null) {
+          console.log(`   ✓ Sign found: price=$${(signItem.pricePerUnit/100).toFixed(2)}`);
+          addonData.push({
+            inventoryItemId: selectedSignId,
+            quantity: 1,
+            priceAtOrder: signItem.pricePerUnit || 0,
+          });
+        } else {
+          console.warn(`   ⚠ Sign not found: ${selectedSignId}`);
+        }
+      } catch (err: any) {
+        console.error(`   ❌ Error fetching selected sign: ${err.message}`);
+        throw new Error(`Failed to fetch sign item: ${err.message}`);
+      }
+    }
+    
+    // Add other addons
+    if (addons && Array.isArray(addons) && addons.length > 0) {
+      for (const addon of addons) {
+        try {
+          console.log(`   Fetching addon: ${addon.inventoryItemId}`);
+          const item = await prisma.inventoryItem.findUnique({
+            where: { id: addon.inventoryItemId },
+            select: { pricePerUnit: true }
+          });
+          if (item && item.pricePerUnit !== null) {
+            console.log(`   ✓ Addon found: qty=${addon.quantity}, price=$${(item.pricePerUnit/100).toFixed(2)}`);
+            addonData.push({
+              inventoryItemId: addon.inventoryItemId,
+              quantity: addon.quantity,
+              priceAtOrder: item?.pricePerUnit || 0,
+            });
+          } else {
+            console.warn(`   ⚠ Addon item not found: ${addon.inventoryItemId}`);
+          }
+        } catch (err: any) {
+          console.error(`   ❌ Error fetching addon item ${addon.inventoryItemId}: ${err.message}`);
+          throw new Error(`Failed to fetch addon item: ${err.message}`);
+        }
+      }
+    }
+
+    console.log(`📦 Addon data prepared: ${addonData.length} items`);
+
+    // Create order with addons
+    console.log('🛠️ Creating order with Prisma...');
+    let order;
+    try {
+      order = await prisma.order.create({
+        data: {
+          orderNumber,
+          realtorId: session.user.id,
+          type,
+          address,
+          addressLat: addressLat ? parseFloat(addressLat) : null,
+          addressLng: addressLng ? parseFloat(addressLng) : null,
+          scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
+          notes: notes || null,
+          self811Accepted: self811Accepted || false,
+          addons: {
+            create: addonData,
+          },
+        },
+        include: {
+          addons: true,
+        },
+      });
+      console.log(`✅ Order created: ${order.orderNumber}`);
+    } catch (createErr: any) {
+      console.error('❌ Prisma create failed:', {
+        message: createErr.message,
+        code: createErr.code,
+        meta: createErr.meta,
+      });
+      throw new Error(`Order creation failed: ${createErr.message}`);
+    }
 
     // Send confirmation email
     // Email sending temporarily disabled due to Resend/react-email version conflict
@@ -122,15 +214,15 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(order, { status: 201 });
   } catch (error: any) {
-    if (error.name === "ZodError") {
-      return NextResponse.json(
-        { error: "Invalid input", details: error.errors },
-        { status: 400 }
-      );
-    }
-
+    console.error('FULL ERROR:', JSON.stringify(error, Object.getOwnPropertyNames(error)));
+    console.error("❌ Order creation error:", {
+      message: error.message,
+      code: error.code,
+      stack: error.stack,
+      fullError: error,
+    });
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error.message },
       { status: 500 }
     );
   }

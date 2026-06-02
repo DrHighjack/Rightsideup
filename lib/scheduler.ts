@@ -1,4 +1,5 @@
 import cron from 'node-cron';
+import * as Sentry from '@sentry/nextjs';
 
 async function checkInvoiceAging() {
   try {
@@ -110,6 +111,14 @@ async function checkInvoiceAging() {
     console.log('[SCHEDULER] Invoice aging check complete');
   } catch (err) {
     console.error('[SCHEDULER] Invoice aging check error:', err);
+    Sentry.captureException(err, {
+      contexts: {
+        scheduler: {
+          job: 'checkInvoiceAging',
+          cron: '0 8 * * *',
+        },
+      },
+    });
   }
 }
 
@@ -156,6 +165,14 @@ async function checkStaleOrders() {
     console.log('[SCHEDULER] Stale order check complete');
   } catch (err) {
     console.error('[SCHEDULER] Stale order check error:', err);
+    Sentry.captureException(err, {
+      contexts: {
+        scheduler: {
+          job: 'checkStaleOrders',
+          cron: '0 9 * * *',
+        },
+      },
+    });
   }
 }
 
@@ -170,6 +187,14 @@ export async function startScheduler() {
       await pollAndProcess();
     } catch (err) {
       console.error('[SCHEDULER] 811 poll error:', err);
+      Sentry.captureException(err, {
+        contexts: {
+          scheduler: {
+            job: 'pollAndProcess',
+            cron: '*/5 * * * *',
+          },
+        },
+      });
     }
   });
 

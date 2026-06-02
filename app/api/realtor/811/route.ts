@@ -31,6 +31,9 @@ export async function GET() {
           clearedByUser: {
             select: { id: true, firstName: true, lastName: true },
           },
+          order: {
+            select: { id: true, orderNumber: true, address: true, addressLat: true, addressLng: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -52,6 +55,9 @@ export async function GET() {
           clearedByUser: {
             select: { id: true, firstName: true, lastName: true },
           },
+          order: {
+            select: { id: true, orderNumber: true, address: true, addressLat: true, addressLng: true },
+          },
         },
         orderBy: { createdAt: 'desc' },
       });
@@ -62,7 +68,24 @@ export async function GET() {
       );
     }
 
-    return NextResponse.json({ tickets });
+    // Sanitize utility lines to hide contact information from realtor
+    const sanitized = tickets.map((ticket: any) => {
+      const safeUtilityLines = (ticket.utilityLines as any[] || []).map(
+        (line: any) => ({
+          name: line.name,
+          status: line.status,
+          respondedAt: line.respondedAt,
+          // NO contact information returned
+        })
+      );
+
+      return {
+        ...ticket,
+        utilityLines: safeUtilityLines,
+      };
+    });
+
+    return NextResponse.json({ tickets: sanitized });
   } catch (error) {
     console.error('Error fetching 811 tickets:', error);
     return NextResponse.json(

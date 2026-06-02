@@ -150,6 +150,18 @@ export default function AdminLayout({
               >
                 💰 Pricing
               </Link>
+              <Link
+                href="/admin/reports"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                📊 Reports
+              </Link>
+              <Link
+                href="/admin/leads"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                🎁 Lead Responses
+              </Link>
               <div className="pt-4 mt-4 border-t border-gray-200">
                 <p className="px-4 py-2 text-xs text-gray-500 uppercase font-semibold">
                   Coming Soon

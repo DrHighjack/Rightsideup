@@ -40,6 +40,20 @@ interface OrderDetail {
   }>;
 }
 
+interface Photo {
+  id: string;
+  data: string;
+  name: string;
+  uploadedAt: string;
+}
+
+interface PhotoData {
+  photos: Photo[];
+  completedAt: string | null;
+  techNotes: string | null;
+  jobAssignmentId: string;
+}
+
 export default function AdminOrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -49,6 +63,11 @@ export default function AdminOrderDetailPage() {
   const [editData, setEditData] = useState<Partial<OrderDetail>>({});
   const [saving, setSaving] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [photos, setPhotos] = useState<Photo[]>([]);
+  const [completedAt, setCompletedAt] = useState<string | null>(null);
+  const [techNotes, setTechNotes] = useState<string | null>(null);
+  const [newPhotos, setNewPhotos] = useState<File[]>([]);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
 
   useEffect(() => {
     async function fetchOrder() {
@@ -67,7 +86,23 @@ export default function AdminOrderDetailPage() {
       }
     }
 
+    async function fetchPhotos() {
+      try {
+        const response = await fetch(`/api/admin/orders/${id}/photos`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch photos");
+        }
+        const data: PhotoData = await response.json();
+        setPhotos(data.photos);
+        setCompletedAt(data.completedAt);
+        setTechNotes(data.techNotes);
+      } catch (error) {
+        console.error("Error fetching photos:", error);
+      }
+    }
+
     fetchOrder();
+    fetchPhotos();
   }, [id]);
 
   async function handleSave() {
@@ -111,6 +146,79 @@ export default function AdminOrderDetailPage() {
       console.error("Error deleting order:", error);
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeletePhoto(photoId: string) {
+    if (!confirm("Are you sure you want to delete this photo?")) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/admin/orders/${id}/photos`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoId }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete photo");
+      }
+
+      const data = await response.json();
+      setPhotos(data.photos);
+      alert("Photo deleted successfully!");
+    } catch (error) {
+      console.error("Error deleting photo:", error);
+      alert("Failed to delete photo");
+    }
+  }
+
+  async function handleUploadPhotos() {
+    if (newPhotos.length === 0) {
+      alert("Please select at least one photo to upload");
+      return;
+    }
+
+    try {
+      setUploadingPhotos(true);
+      
+      // Convert files to base64
+      const photosData = await Promise.all(
+        newPhotos.map(async (file) => {
+          return new Promise<{ data: string; name: string }>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              resolve({
+                data: reader.result as string,
+                name: file.name,
+              });
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+          });
+        })
+      );
+
+      const response = await fetch(`/api/admin/orders/${id}/photos`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photos: photosData }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to upload photos");
+      }
+
+      const data = await response.json();
+      setPhotos(data.photos);
+      setNewPhotos([]);
+      alert("Photos uploaded successfully!");
+    } catch (error) {
+      console.error("Error uploading photos:", error);
+      alert("Failed to upload photos");
+    } finally {
+      setUploadingPhotos(false);
     }
   }
 
@@ -368,6 +476,125 @@ export default function AdminOrderDetailPage() {
         ) : (
           <p className="text-gray-600">No items in this order</p>
         )}
+      </div>
+
+      {/* Photos Section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        {photos.length > 0 ? (
+          <>
+            <div className="mb-4">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2">📸 Job Photos ({photos.length})</h2>
+              {completedAt && (
+                <p className="text-sm text-gray-600">
+                  Completed: {new Date(completedAt).toLocaleString()}
+                </p>
+              )}
+            </div>
+
+            {techNotes && (
+              <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                <p className="text-sm font-medium text-gray-900">Field Tech Notes:</p>
+                <p className="text-sm text-gray-600 mt-1">{techNotes}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 mb-6">
+              {photos.map((photo) => (
+                <div key={photo.id} className="relative group">
+                  <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                    <img
+                      src={photo.data}
+                      alt={photo.name}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-gray-600 truncate">{photo.name}</p>
+                    <button
+                      onClick={() => handleDeletePhoto(photo.id)}
+                      className="ml-1 p-1 text-red-600 hover:bg-red-50 rounded"
+                      title="Delete photo"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {photo.uploadedAt && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {new Date(photo.uploadedAt).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Add More Photos</h3>
+            </div>
+          </>
+        ) : (
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">📸 Job Photos</h2>
+            <p className="text-gray-600 mb-4">No photos yet. Add photos below.</p>
+          </div>
+        )}
+
+        {/* Add New Photos Section */}
+        <div className={photos.length > 0 ? "pt-0" : ""}>
+          <h3 className={photos.length > 0 ? "text-lg font-semibold text-gray-900 mb-4" : "text-lg font-semibold text-gray-900 mb-4"}>
+            {photos.length > 0 ? "" : "Add Job Photos"}
+          </h3>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Select Photos to Upload
+              </label>
+              <input
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={(e) => {
+                  const files = Array.from(e.currentTarget.files || []);
+                  setNewPhotos(files);
+                }}
+                disabled={uploadingPhotos}
+                className="w-full px-3 py-2 border-2 border-dashed border-gray-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+              />
+              {newPhotos.length > 0 && (
+                <p className="text-sm text-gray-600 mt-2">
+                  {newPhotos.length} photo{newPhotos.length !== 1 ? "s" : ""} selected
+                </p>
+              )}
+            </div>
+            
+            {newPhotos.length > 0 && (
+              <div>
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Preview</h4>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+                  {newPhotos.map((file, idx) => (
+                    <div key={idx} className="relative">
+                      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={file.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <p className="text-xs text-gray-600 truncate mt-1">{file.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleUploadPhotos}
+              disabled={uploadingPhotos || newPhotos.length === 0}
+              className="w-full py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {uploadingPhotos ? "Uploading..." : "Upload Photos"}
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Audit Log */}

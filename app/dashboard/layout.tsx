@@ -50,6 +50,12 @@ export default function DashboardLayout({
             My Signs
           </Link>
           <Link
+            href="/dashboard/inventory"
+            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+          >
+            Inventory
+          </Link>
+          <Link
             href="/dashboard/811"
             className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
           >
@@ -83,34 +89,40 @@ export default function DashboardLayout({
         </div>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden border-t border-gray-200 bg-white flex gap-1 px-2 py-2">
+        <nav className="md:hidden border-t border-gray-200 bg-white flex gap-1 px-1 py-2 overflow-x-auto">
           <Link
             href="/dashboard"
-            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
           >
             Home
           </Link>
           <Link
             href="/dashboard/orders"
-            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
           >
             Orders
           </Link>
           <Link
+            href="/dashboard/inventory"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
+          >
+            📦 Inv
+          </Link>
+          <Link
             href="/dashboard/signs"
-            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
           >
             Signs
           </Link>
           <Link
             href="/dashboard/811"
-            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
           >
             811
           </Link>
           <Link
             href="/dashboard/account"
-            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary"
+            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
           >
             Account
           </Link>

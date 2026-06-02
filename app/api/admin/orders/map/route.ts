@@ -18,6 +18,8 @@ interface OrderMapData {
   };
   createdAt: string;
   scheduledDate: string | null;
+  photoData?: string | null; // Base64 encoded first photo
+  photoName?: string | null; // Name of first photo
 }
 
 /**
@@ -63,6 +65,12 @@ export async function GET() {
         },
         createdAt: true,
         scheduledDate: true,
+        jobAssignment: {
+          select: {
+            images: true,
+            completedAt: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -70,18 +78,42 @@ export async function GET() {
     });
 
     // Transform data for map display
-    const mapData: OrderMapData[] = orders.map((order) => ({
-      id: order.id,
-      orderNumber: order.orderNumber,
-      type: order.type,
-      status: order.status,
-      address: order.address,
-      addressLat: order.addressLat,
-      addressLng: order.addressLng,
-      realtor: order.realtor,
-      createdAt: order.createdAt.toISOString(),
-      scheduledDate: order.scheduledDate?.toISOString() || null,
-    }));
+    const mapData: OrderMapData[] = orders.map((order) => {
+      // Get first photo from job assignment if it's completed
+      let photoData: string | null = null;
+      let photoName: string | null = null;
+
+      try {
+        if (order.jobAssignment && order.jobAssignment.completedAt) {
+          const images = order.jobAssignment.images as any;
+          if (images && Array.isArray(images) && images.length > 0) {
+            const firstImage = images[0];
+            if (firstImage && typeof firstImage === 'object') {
+              photoData = (firstImage as any).data || null;
+              photoName = (firstImage as any).name || null;
+            }
+          }
+        }
+      } catch (imgErr) {
+        console.warn(`Error processing images for order ${order.id}:`, imgErr);
+        // Continue without photo data
+      }
+
+      return {
+        id: order.id,
+        orderNumber: order.orderNumber,
+        type: order.type,
+        status: order.status,
+        address: order.address,
+        addressLat: order.addressLat,
+        addressLng: order.addressLng,
+        realtor: order.realtor,
+        createdAt: order.createdAt.toISOString(),
+        scheduledDate: order.scheduledDate?.toISOString() || null,
+        photoData,
+        photoName,
+      };
+    });
 
     return NextResponse.json({
       orders: mapData,

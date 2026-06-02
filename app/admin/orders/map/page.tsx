@@ -20,6 +20,8 @@ interface OrderLocation {
   };
   createdAt: string;
   scheduledDate: string | null;
+  photoData?: string | null;
+  photoName?: string | null;
 }
 
 const getMarkerColor = (order: OrderLocation): string => {
@@ -374,6 +376,17 @@ export default function OrdersMapPage() {
                 return (
                   <div>
                     <h3 className="font-bold text-lg mb-3">{order.orderNumber}</h3>
+
+                    {/* Photo Section */}
+                    {order.photoData && (
+                      <div className="mb-4 border border-gray-300 rounded-lg overflow-hidden bg-gray-100">
+                        <img
+                          src={order.photoData}
+                          alt={order.photoName || "Order photo"}
+                          className="w-full h-48 object-cover"
+                        />
+                      </div>
+                    )}
 
                     <div className="space-y-3 text-sm">
                       <div>

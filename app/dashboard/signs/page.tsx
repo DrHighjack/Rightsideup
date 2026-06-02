@@ -16,9 +16,21 @@ interface ReportForm {
   description: string;
 }
 
+interface PickupForm {
+  signIds: string[];
+  preferredDate: string;
+  notes: string;
+}
+
 const initialReportForm: ReportForm = {
   type: "OTHER",
   description: "",
+};
+
+const initialPickupForm: PickupForm = {
+  signIds: [],
+  preferredDate: "",
+  notes: "",
 };
 
 export default function DashboardSignsPage() {
@@ -41,6 +53,12 @@ export default function DashboardSignsPage() {
   });
   const [reorderSubmitting, setReorderSubmitting] = useState(false);
   const [reorderError, setReorderError] = useState("");
+
+  // Schedule Pickup Modal
+  const [showPickupModal, setShowPickupModal] = useState(false);
+  const [pickupForm, setPickupForm] = useState<PickupForm>(initialPickupForm);
+  const [pickupSubmitting, setPickupSubmitting] = useState(false);
+  const [pickupError, setPickupError] = useState("");
 
   useEffect(() => {
     fetchSigns();
@@ -144,6 +162,50 @@ export default function DashboardSignsPage() {
     }
   };
 
+  const handlePickupSubmit = async () => {
+    if (pickupForm.signIds.length === 0) {
+      setPickupError("Please select at least one sign to pick up");
+      return;
+    }
+
+    if (!pickupForm.preferredDate) {
+      setPickupError("Please select a preferred pickup date");
+      return;
+    }
+
+    try {
+      setPickupSubmitting(true);
+      setPickupError("");
+
+      const res = await fetch("/api/signs/schedule-pickup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          signIds: pickupForm.signIds,
+          preferredDate: pickupForm.preferredDate,
+          notes: pickupForm.notes || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert("Pickup scheduled successfully! We'll contact you to confirm.");
+        setPickupForm(initialPickupForm);
+        setShowPickupModal(false);
+        // Refresh signs list
+        await fetchSigns();
+      } else {
+        const error = await res.json();
+        setPickupError(error.error || "Failed to schedule pickup");
+      }
+    } catch (err) {
+      setPickupError("Failed to schedule pickup");
+      console.error(err);
+    } finally {
+      setPickupSubmitting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, { bg: string; text: string; label: string }> = {
       DEPLOYED: {
@@ -193,6 +255,12 @@ export default function DashboardSignsPage() {
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg"
           >
             + Request More Signs
+          </button>
+          <button
+            onClick={() => setShowPickupModal(true)}
+            className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-medium rounded-lg"
+          >
+            📦 Schedule Pickup
           </button>
         </div>
 
@@ -427,6 +495,110 @@ export default function DashboardSignsPage() {
                 className="flex-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg"
               >
                 {reorderSubmitting ? "Requesting..." : "Request"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Pickup Modal */}
+      {showPickupModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-lg">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Schedule Sign Pickup</h2>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-2">
+                  Select Signs to Pick Up
+                </label>
+                <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-lg p-3">
+                  {signs.length === 0 ? (
+                    <p className="text-sm text-gray-500">No signs available for pickup</p>
+                  ) : (
+                    signs.map((sign) => (
+                      <label key={sign.id} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={pickupForm.signIds.includes(sign.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setPickupForm({
+                                ...pickupForm,
+                                signIds: [...pickupForm.signIds, sign.id],
+                              });
+                            } else {
+                              setPickupForm({
+                                ...pickupForm,
+                                signIds: pickupForm.signIds.filter((id) => id !== sign.id),
+                              });
+                            }
+                          }}
+                          className="rounded"
+                        />
+                        <span className="text-sm text-gray-700">
+                          {sign.signNumber || "Sign"} - {sign.type} ({sign.status})
+                        </span>
+                      </label>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Preferred Pickup Date *
+                </label>
+                <input
+                  type="date"
+                  value={pickupForm.preferredDate}
+                  onChange={(e) =>
+                    setPickupForm({ ...pickupForm, preferredDate: e.target.value })
+                  }
+                  min={new Date().toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-900 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  placeholder="Any special instructions..."
+                  value={pickupForm.notes}
+                  onChange={(e) =>
+                    setPickupForm({ ...pickupForm, notes: e.target.value })
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                />
+              </div>
+
+              {pickupError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{pickupError}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowPickupModal(false);
+                  setPickupForm(initialPickupForm);
+                  setPickupError("");
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePickupSubmit}
+                disabled={pickupSubmitting}
+                className="flex-1 px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-400 text-white font-medium rounded-lg"
+              >
+                {pickupSubmitting ? "Scheduling..." : "Schedule Pickup"}
               </button>
             </div>
           </div>

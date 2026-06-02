@@ -151,6 +151,12 @@ export default function AdminLayout({
                 💰 Pricing
               </Link>
               <Link
+                href="/admin/analytics"
+                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+              >
+                📈 Analytics
+              </Link>
+              <Link
                 href="/admin/reports"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >

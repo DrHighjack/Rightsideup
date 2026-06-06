@@ -36,6 +36,7 @@ export default function AdminInvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [offset, setOffset] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const [createForm, setCreateForm] = useState({
     userId: "",
     amount: "",
@@ -112,6 +113,28 @@ export default function AdminInvoicesPage() {
       console.error(error);
     } finally {
       setCreateSubmitting(false);
+    }
+  };
+
+  const handleSendInvoice = async (invoiceId: string) => {
+    try {
+      setSendingId(invoiceId);
+      const res = await fetch(`/api/admin/invoices/${invoiceId}/send`, {
+        method: "POST",
+      });
+
+      if (res.ok) {
+        alert("Invoice sent successfully!");
+        await fetchInvoices();
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send invoice");
+      }
+    } catch (error) {
+      alert("Failed to send invoice");
+      console.error(error);
+    } finally {
+      setSendingId(null);
     }
   };
 
@@ -233,12 +256,23 @@ export default function AdminInvoicesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <Link
-                            href={`/admin/invoices/${invoice.id}`}
-                            className="text-blue-600 hover:text-blue-900 font-medium text-sm"
-                          >
-                            View
-                          </Link>
+                          <div className="flex gap-2 justify-end">
+                            {invoice.status === "DRAFT" && (
+                              <button
+                                onClick={() => handleSendInvoice(invoice.id)}
+                                disabled={sendingId === invoice.id}
+                                className="text-green-600 hover:text-green-900 font-medium text-sm disabled:opacity-50"
+                              >
+                                {sendingId === invoice.id ? "Sending..." : "Send"}
+                              </button>
+                            )}
+                            <Link
+                              href={`/admin/invoices/${invoice.id}`}
+                              className="text-blue-600 hover:text-blue-900 font-medium text-sm"
+                            >
+                              View
+                            </Link>
+                          </div>
                         </td>
                       </tr>
                     );

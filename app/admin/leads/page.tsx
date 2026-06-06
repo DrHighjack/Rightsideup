@@ -70,6 +70,8 @@ export default function LeadResponsesPage() {
     role: 'REALTOR',
     showPassword: false,
     tempPassword: '',
+    sendEmail: true,
+    sendSMS: false,
   });
   const [showConvertModal, setShowConvertModal] = useState(false);
 
@@ -184,6 +186,21 @@ export default function LeadResponsesPage() {
       const data = await response.json();
       setConvertForm({ ...convertForm, tempPassword: data.tempPassword, showPassword: true });
       alert(`Lead converted! Temporary password: ${data.tempPassword}`);
+
+      // Send SMS if enabled and phone available
+      if (convertForm.sendSMS && selectedLead.phone) {
+        try {
+          await fetch(`/api/admin/leads/${selectedLead.id}/send-welcome-sms`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clientId: data.client.id }),
+          });
+          alert('Welcome SMS sent!');
+        } catch (err) {
+          console.error('Failed to send SMS:', err);
+        }
+      }
+
       await fetchLeads();
       setShowConvertModal(false);
       setShowModal(false);
@@ -284,7 +301,7 @@ export default function LeadResponsesPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {leads.map((lead) => {
-                    const colors = statusColors[lead.status];
+                    const colors = statusColors[lead.status] || statusColors['NEW'];
                     return (
                       <tr key={lead.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => openLeadDetail(lead)}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{lead.fullName}</td>
@@ -358,8 +375,8 @@ export default function LeadResponsesPage() {
               {/* Status Badge */}
               <div>
                 <p className="text-sm text-gray-600 mb-2">Current Status</p>
-                <span className={`inline-block px-4 py-2 rounded-lg text-sm font-semibold ${statusColors[selectedLead.status].bg} ${statusColors[selectedLead.status].text}`}>
-                  {statusColors[selectedLead.status].label}
+                <span className={`inline-block px-4 py-2 rounded-lg text-sm font-semibold ${(statusColors[selectedLead.status] || statusColors['NEW']).bg} ${(statusColors[selectedLead.status] || statusColors['NEW']).text}`}>
+                  {(statusColors[selectedLead.status] || statusColors['NEW']).label}
                 </span>
               </div>
 
@@ -373,24 +390,6 @@ export default function LeadResponsesPage() {
                     </option>
                   ))}
                 </select>
-              </div>
-
-              {/* Assignment */}
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">Assign To</label>
-                <select value={formData.assignedToUserId} onChange={(e) => setFormData({ ...formData, assignedToUserId: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                  <option value="">Unassigned</option>
-                  {admins.map((admin) => (
-                    <option key={admin.id} value={admin.id}>
-                      {admin.firstName} {admin.lastName}
-                    </option>
-                  ))}
-                </select>
-                {selectedLead.assignedToUser && (
-                  <p className="text-sm text-gray-600 mt-1">
-                    Currently assigned to: {selectedLead.assignedToUser.firstName} {selectedLead.assignedToUser.lastName}
-                  </p>
-                )}
               </div>
 
               {/* Follow-up Date */}
@@ -515,6 +514,36 @@ export default function LeadResponsesPage() {
                   <p className="text-xs text-emerald-600 mt-2">Share this with the client. They must change it on first login.</p>
                 </div>
               )}
+
+              <div className="space-y-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-xs font-semibold text-blue-900">Send Notifications:</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="sendEmail"
+                    checked={convertForm.sendEmail}
+                    onChange={(e) => setConvertForm({ ...convertForm, sendEmail: e.target.checked })}
+                    className="rounded border-gray-300"
+                  />
+                  <label htmlFor="sendEmail" className="text-sm text-gray-700">
+                    Send welcome email with magic login link
+                  </label>
+                </div>
+                {selectedLead?.phone && (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="sendSMS"
+                      checked={convertForm.sendSMS}
+                      onChange={(e) => setConvertForm({ ...convertForm, sendSMS: e.target.checked })}
+                      className="rounded border-gray-300"
+                    />
+                    <label htmlFor="sendSMS" className="text-sm text-gray-700">
+                      Send welcome text message (SMS)
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="bg-gray-50 border-t border-gray-200 px-6 py-4 flex gap-3 justify-end">

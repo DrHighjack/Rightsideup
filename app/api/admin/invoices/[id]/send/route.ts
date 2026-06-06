@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendEmail } from "@/lib/email";
+import { getNewInvoiceEmail } from "@/lib/email";
 
 /**
  * POST /api/admin/invoices/[id]/send
@@ -66,6 +68,28 @@ export async function POST(
         },
       },
     };
+
+    // Send new invoice email
+    try {
+      const invoiceEmail = getNewInvoiceEmail(
+        updated.user.firstName,
+        `INV-${updated.id.slice(0, 8).toUpperCase()}`,
+        new Date(updated.createdAt).toLocaleDateString(),
+        updated.dueDate ? new Date(updated.dueDate).toLocaleDateString() : "Not specified",
+        "Service provided",
+        ((updated.amount || 0) / 100).toFixed(2),
+        `${process.env.NEXTAUTH_URL}/admin/invoices/${updated.id}`
+      );
+
+      await sendEmail({
+        to: updated.user.email,
+        subject: invoiceEmail.subject,
+        html: invoiceEmail.html,
+      });
+    } catch (emailError) {
+      console.error("Failed to send invoice email:", emailError);
+      // Don't fail if email fails
+    }
 
     return NextResponse.json(response);
   } catch (error) {

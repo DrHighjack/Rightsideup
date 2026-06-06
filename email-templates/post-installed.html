@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation Complete</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .success-banner {
+            background-color: #d1fae5;
+            border: 2px solid #a7f3d0;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 24px 0;
+            text-align: center;
+        }
+        
+        .success-text {
+            font-size: 14px;
+            color: #047857;
+            font-weight: 600;
+        }
+        
+        .image-section {
+            margin: 24px 0;
+            text-align: center;
+            background-color: #f0fdf4;
+            padding: 20px;
+            border-radius: 6px;
+            border: 2px solid #d1fae5;
+        }
+        
+        .image-label {
+            font-size: 12px;
+            color: #166534;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            letter-spacing: 0.5px;
+        }
+        
+        .installation-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 12px 0;
+        }
+        
+        .detail-box {
+            background-color: #ecfdf5;
+            border: 1px solid #d1fae5;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #d1fae5;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .detail-label {
+            font-size: 13px;
+            color: #065f46;
+            font-weight: 600;
+        }
+        
+        .detail-value {
+            font-size: 13px;
+            color: #047857;
+            font-weight: 500;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 24px;
+            margin: 24px 0;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(5, 150, 105, 0.3);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(5, 150, 105, 0.4);
+        }
+        
+        .next-steps {
+            background-color: #f0fdf4;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .next-steps-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #047857;
+            margin-bottom: 8px;
+        }
+        
+        .next-steps-list {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #065f46;
+            line-height: 1.8;
+        }
+        
+        .next-steps-list li {
+            margin-bottom: 6px;
+        }
+        
+        .rating-box {
+            background-color: #fef3c7;
+            border: 2px solid #fcd34d;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .rating-text {
+            font-size: 13px;
+            color: #92400e;
+            margin-bottom: 12px;
+        }
+        
+        .rating-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #fcd34d;
+            color: #92400e;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+        
+        .support-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .support-text {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .support-link {
+            color: #059669;
+            text-decoration: none;
+        }
+        
+        .footer {
+            background-color: #f1f5f9;
+            padding: 24px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .footer-links {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .footer-links a {
+            color: #059669;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 24px 20px;
+            }
+            
+            .image-section {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>✅ Installation Complete!</h1>
+            <p>Your sign is now installed and looking great</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                <p>Hi {{CUSTOMER_NAME}},</p>
+                <p style="margin-top: 12px;">We're thrilled to let you know that your sign installation is now complete! Check out the photo below to see your new sign in action.</p>
+            </div>
+            
+            <!-- Success Banner -->
+            <div class="success-banner">
+                <div class="success-text">🎉 Installation Successfully Completed</div>
+            </div>
+            
+            <!-- Installation Image -->
+            <div class="image-section">
+                <div class="image-label">Your Installed Sign</div>
+                <img src="{{INSTALLATION_IMAGE_URL}}" alt="Installation Photo" class="installation-image" style="max-width: 100%; border-radius: 4px;">
+            </div>
+            
+            <!-- Details -->
+            <div class="detail-box">
+                <div class="detail-row">
+                    <span class="detail-label">Order #</span>
+                    <span class="detail-value">{{ORDER_NUMBER}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Location</span>
+                    <span class="detail-value">{{INSTALLATION_ADDRESS}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Completion Date</span>
+                    <span class="detail-value">{{COMPLETION_DATE}}</span>
+                </div>
+            </div>
+            
+            <!-- View Order Button -->
+            <a href="{{ORDER_LINK}}" class="cta-button">View Full Order Details</a>
+            
+            <!-- Next Steps -->
+            <div class="next-steps">
+                <div class="next-steps-title">📋 What's Next?</div>
+                <ul class="next-steps-list">
+                    <li><strong>Maintenance:</strong> Your sign will require periodic maintenance. We offer maintenance packages if interested.</li>
+                    <li><strong>Support:</strong> If you notice any issues, contact us right away for support.</li>
+                    <li><strong>Thank You:</strong> We appreciate your business and hope you love your new sign!</li>
+                </ul>
+            </div>
+            
+            <!-- Rating Request -->
+            <div class="rating-box">
+                <div class="rating-text">How was your experience with us?</div>
+                <a href="{{REVIEW_LINK}}" class="rating-link">Leave a Review ⭐</a>
+            </div>
+            
+            <!-- Support -->
+            <div class="support-section">
+                <div class="support-text">
+                    <p><strong>Need Maintenance or Support?</strong> We're here to help! <a href="mailto:support@northshoresignco.com" class="support-link">Contact our team</a> for any questions or future sign services.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="{{SUPPORT_URL}}">Help Center</a> | 
+                <a href="{{PRIVACY_URL}}">Privacy Policy</a> | 
+                <a href="{{TERMS_URL}}">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

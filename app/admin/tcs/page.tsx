@@ -39,6 +39,7 @@ export default function AdminTCsPage() {
   const [tcs, setTcs] = useState<TC[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTcId, setExpandedTcId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   // Link Modal State
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -182,6 +183,34 @@ export default function AdminTCsPage() {
     }
   };
 
+  const handleSendInvitation = async (tcId: string, realtorId: string) => {
+    const signupLink = `${process.env.NEXT_PUBLIC_NEXTAUTH_URL || "http://localhost:3000"}/signup?role=TC`;
+
+    try {
+      setSendingId(tcId);
+      const res = await fetch(`/api/admin/tcs/${tcId}/send-invitation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          realtorId,
+          signupLink,
+        }),
+      });
+
+      if (res.ok) {
+        alert("Invitation sent successfully!");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send invitation");
+      }
+    } catch (err) {
+      alert("Failed to send invitation");
+      console.error(err);
+    } finally {
+      setSendingId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
@@ -238,14 +267,25 @@ export default function AdminTCsPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() =>
-                              setExpandedTcId(expandedTcId === tc.id ? null : tc.id)
-                            }
-                            className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
-                          >
-                            {expandedTcId === tc.id ? "Hide" : "View"} Details
-                          </button>
+                          <div className="flex gap-2 justify-center items-center">
+                            <button
+                              onClick={() =>
+                                setExpandedTcId(expandedTcId === tc.id ? null : tc.id)
+                              }
+                              className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
+                            >
+                              {expandedTcId === tc.id ? "Hide" : "View"} Details
+                            </button>
+                            {tc.agentCount > 0 && (
+                              <button
+                                onClick={() => handleSendInvitation(tc.id, tc.agents[0]?.agentId || "")}
+                                disabled={sendingId === tc.id}
+                                className="text-green-600 hover:text-green-900 font-medium text-sm disabled:opacity-50"
+                              >
+                                {sendingId === tc.id ? "Sending..." : "Invite"}
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
 

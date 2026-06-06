@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import { sendWelcomeEmailWithMagicLink } from "@/lib/send-welcome";
 
 export async function POST(
   request: NextRequest,
@@ -74,6 +75,19 @@ export async function POST(
         },
       },
     });
+
+    // Send welcome email with magic login
+    try {
+      await sendWelcomeEmailWithMagicLink(
+        newClient.id,
+        newClient.firstName,
+        newClient.email,
+        tempPassword
+      );
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
+      // Don't fail the conversion if email fails
+    }
 
     return NextResponse.json({
       success: true,

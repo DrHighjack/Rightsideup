@@ -29,6 +29,7 @@ export default function AdminOrdersPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [exporting, setExporting] = useState(false);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchOrders() {
@@ -132,6 +133,32 @@ export default function AdminOrdersPage() {
       console.error("Failed to export CSV:", error);
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function handleSendCompletionEmail(orderId: string) {
+    const installationImageUrl = prompt("Enter the installation image URL:");
+    if (!installationImageUrl) return;
+
+    try {
+      setSendingId(orderId);
+      const res = await fetch(`/api/admin/orders/${orderId}/send-completion`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ installationImageUrl }),
+      });
+
+      if (res.ok) {
+        alert("Completion email sent successfully!");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send email");
+      }
+    } catch (error) {
+      alert("Failed to send email");
+      console.error(error);
+    } finally {
+      setSendingId(null);
     }
   }
 
@@ -264,6 +291,9 @@ export default function AdminOrdersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
                     Date
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -299,6 +329,25 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-2">
+                        {order.status === "COMPLETED" && (
+                          <button
+                            onClick={() => handleSendCompletionEmail(order.id)}
+                            disabled={sendingId === order.id}
+                            className="text-green-600 hover:text-green-900 font-medium text-sm disabled:opacity-50"
+                          >
+                            {sendingId === order.id ? "Sending..." : "Send Email"}
+                          </button>
+                        )}
+                        <Link
+                          href={`/admin/orders/${order.id}`}
+                          className="text-blue-600 hover:text-blue-900 font-medium text-sm"
+                        >
+                          View
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

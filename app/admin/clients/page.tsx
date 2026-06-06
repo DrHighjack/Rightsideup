@@ -26,6 +26,7 @@ export default function AdminClientsPage() {
   const [balanceFilter, setBalanceFilter] = useState<"all" | "has-balance" | "no-balance">("all");
   const [allTags, setAllTags] = useState<string[]>([]);
   const [clientsWithInvoices, setClientsWithInvoices] = useState<Map<string, boolean>>(new Map());
+  const [sendingSMSId, setSendingSMSId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchRealtors() {
@@ -142,6 +143,32 @@ export default function AdminClientsPage() {
     document.body.removeChild(link);
   };
 
+  const handleSendSMS = async (realtorId: string) => {
+    const message = prompt("Enter SMS message to send:");
+    if (!message) return;
+
+    try {
+      setSendingSMSId(realtorId);
+      const res = await fetch(`/api/admin/users/${realtorId}/send-sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+
+      if (res.ok) {
+        alert("SMS sent successfully!");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send SMS");
+      }
+    } catch (error) {
+      alert("Failed to send SMS");
+      console.error(error);
+    } finally {
+      setSendingSMSId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -255,6 +282,9 @@ export default function AdminClientsPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
                     Joined
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -294,6 +324,22 @@ export default function AdminClientsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(realtor.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
+                      <div className="flex gap-2">
+                        {realtor.phone && (
+                          <button
+                            onClick={() => handleSendSMS(realtor.id)}
+                            disabled={sendingSMSId === realtor.id}
+                            className="text-blue-600 hover:text-blue-900 font-medium text-sm disabled:opacity-50"
+                          >
+                            {sendingSMSId === realtor.id ? "Sending..." : "SMS"}
+                          </button>
+                        )}
+                        <a href={`/admin/clients/${realtor.id}`} className="text-blue-600 hover:text-blue-900 font-medium text-sm">
+                          View
+                        </a>
+                      </div>
                     </td>
                   </tr>
                 ))}

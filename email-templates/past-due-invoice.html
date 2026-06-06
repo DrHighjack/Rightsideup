@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Past Due</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .warning-box {
+            background-color: #fee2e2;
+            border: 2px solid #fecaca;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        
+        .warning-title {
+            font-size: 16px;
+            color: #991b1b;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .warning-text {
+            font-size: 14px;
+            color: #7f1d1d;
+            line-height: 1.6;
+        }
+        
+        .invoice-box {
+            background-color: #fef2f2;
+            border: 1px solid #fee2e2;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .invoice-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #fee2e2;
+        }
+        
+        .invoice-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .invoice-label {
+            font-size: 13px;
+            color: #991b1b;
+            font-weight: 600;
+        }
+        
+        .invoice-value {
+            font-size: 13px;
+            color: #7f1d1d;
+            font-weight: 500;
+        }
+        
+        .amount-due {
+            background-color: #dc2626;
+            color: white;
+            padding: 14px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 12px;
+        }
+        
+        .amount-due-label {
+            font-size: 14px;
+            font-weight: 700;
+        }
+        
+        .amount-due-value {
+            font-size: 16px;
+            font-weight: 700;
+        }
+        
+        .urgent-box {
+            background-color: #ffe5e5;
+            border-left: 4px solid #dc2626;
+            padding: 16px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .urgent-text {
+            font-size: 13px;
+            color: #991b1b;
+            line-height: 1.6;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 24px;
+            margin: 24px 0;
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(220, 38, 38, 0.3);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(220, 38, 38, 0.4);
+        }
+        
+        .support-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .support-text {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .support-link {
+            color: #dc2626;
+            text-decoration: none;
+        }
+        
+        .footer {
+            background-color: #f1f5f9;
+            padding: 24px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .footer-links {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .footer-links a {
+            color: #dc2626;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>⚠️ Invoice Past Due</h1>
+            <p>Action required: Payment is overdue</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                <p>Hi {{CUSTOMER_NAME}},</p>
+                <p style="margin-top: 12px;">We notice that your invoice {{INVOICE_NUMBER}} is now {{DAYS_OVERDUE}} days overdue. Please submit payment as soon as possible.</p>
+            </div>
+            
+            <!-- Warning Box -->
+            <div class="warning-box">
+                <div class="warning-title">🚨 Immediate Action Required</div>
+                <div class="warning-text">
+                    Your payment is overdue. Please remit payment immediately to avoid service interruption or additional fees.
+                </div>
+            </div>
+            
+            <!-- Invoice Details -->
+            <div class="invoice-box">
+                <div class="invoice-row">
+                    <span class="invoice-label">Invoice #</span>
+                    <span class="invoice-value">{{INVOICE_NUMBER}}</span>
+                </div>
+                
+                <div class="invoice-row">
+                    <span class="invoice-label">Original Due Date</span>
+                    <span class="invoice-value">{{DUE_DATE}}</span>
+                </div>
+                
+                <div class="invoice-row">
+                    <span class="invoice-label">Days Overdue</span>
+                    <span class="invoice-value">{{DAYS_OVERDUE}}</span>
+                </div>
+                
+                <div class="amount-due">
+                    <span class="amount-due-label">Amount Due Now:</span>
+                    <span class="amount-due-value">{{TOTAL_AMOUNT}}</span>
+                </div>
+            </div>
+            
+            <!-- Urgent Notice -->
+            <div class="urgent-box">
+                <div class="urgent-text">
+                    <strong>Note:</strong> Continued non-payment may result in account suspension or legal action. Please contact us immediately to arrange payment or discuss payment options.
+                </div>
+            </div>
+            
+            <!-- CTA Button -->
+            <a href="{{PAYMENT_LINK}}" class="cta-button">Pay Invoice Now</a>
+            
+            <!-- Support -->
+            <div class="support-section">
+                <div class="support-text">
+                    <p><strong>Need to arrange payment?</strong> Please <a href="mailto:billing@northshoresignco.com" class="support-link">contact our billing department</a> right away to discuss your account.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="{{SUPPORT_URL}}">Help Center</a> | 
+                <a href="{{PRIVACY_URL}}">Privacy Policy</a> | 
+                <a href="{{TERMS_URL}}">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

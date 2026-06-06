@@ -26,6 +26,7 @@ interface SummaryData {
 export default function Ticket811ListPage() {
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [loading, setLoading] = useState(true);
+  const [sendingId, setSendingId] = useState<string | null>(null);
   const [summary, setSummary] = useState<SummaryData>({
     active: 0,
     needsReview: 0,
@@ -99,6 +100,37 @@ export default function Ticket811ListPage() {
       alert('Poll failed');
     } finally {
       setPolling(false);
+    }
+  }
+
+  async function handleSendClearedEmail(ticketId: string) {
+    // For demo purposes, using a hardcoded userId. In production, this should be the customer associated with the order
+    const userId = ""; // This would come from the order matched to this ticket
+    
+    if (!userId) {
+      alert("Customer information not available. Please view ticket details to send email.");
+      return;
+    }
+
+    try {
+      setSendingId(ticketId);
+      const res = await fetch(`/api/admin/811/${ticketId}/send-cleared`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      });
+
+      if (res.ok) {
+        alert("Clearance email sent successfully!");
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to send email");
+      }
+    } catch (error) {
+      alert("Failed to send email");
+      console.error(error);
+    } finally {
+      setSendingId(null);
     }
   }
 
@@ -232,11 +264,22 @@ export default function Ticket811ListPage() {
                       {new Date(ticket.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4">
-                      <Link href={`/admin/811/${ticket.id}`}>
-                        <span className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
-                          View Details
-                        </span>
-                      </Link>
+                      <div className="flex gap-2">
+                        {ticket.status === 'CLEARED' && (
+                          <button
+                            onClick={() => handleSendClearedEmail(ticket.id)}
+                            disabled={sendingId === ticket.id}
+                            className="text-green-600 hover:text-green-900 font-medium text-sm disabled:opacity-50"
+                          >
+                            {sendingId === ticket.id ? "Sending..." : "Email"}
+                          </button>
+                        )}
+                        <Link href={`/admin/811/${ticket.id}`}>
+                          <span className="text-sm text-blue-600 hover:text-blue-800 cursor-pointer">
+                            View Details
+                          </span>
+                        </Link>
+                      </div>
                     </td>
                   </tr>
                 ))}

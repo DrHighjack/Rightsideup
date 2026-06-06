@@ -42,12 +42,13 @@ export async function POST(request: NextRequest) {
     resetTokens.set(token, {
       userId: user.id,
       expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      phone: user.phone,
+      phone: user.phone || undefined,
     });
 
     // Send via email (always)
     try {
-      const emailTemplate = getPasswordResetEmail(user.firstName, resetLink);
+      const firstName = typeof user.firstName === "string" ? user.firstName : "User";
+      const emailTemplate = getPasswordResetEmail(firstName, resetLink);
       await sendEmail({
         to: user.email,
         subject: emailTemplate.subject,

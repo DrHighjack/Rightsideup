@@ -9,7 +9,7 @@ import { sendSMS, getWelcomeSMS } from "@/lib/sms";
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params: _params }: { params: { id: string } }
 ) {
   try {
     const session = await auth();

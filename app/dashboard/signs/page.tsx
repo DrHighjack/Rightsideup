@@ -188,7 +188,6 @@ export default function DashboardSignsPage() {
       });
 
       if (res.ok) {
-        const data = await res.json();
         alert("Pickup scheduled successfully! We'll contact you to confirm.");
         setPickupForm(initialPickupForm);
         setShowPickupModal(false);

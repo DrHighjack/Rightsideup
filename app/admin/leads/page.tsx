@@ -52,7 +52,6 @@ export default function LeadResponsesPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
-  const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
@@ -110,11 +109,7 @@ export default function LeadResponsesPage() {
 
   const fetchAdmins = async () => {
     try {
-      const response = await fetch('/api/admin/users?role=ADMIN');
-      if (response.ok) {
-        const data = await response.json();
-        setAdmins(data.users || []);
-      }
+      await fetch('/api/admin/users?role=ADMIN');
     } catch (err) {
       console.error('Error fetching admins:', err);
     }

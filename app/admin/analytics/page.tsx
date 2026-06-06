@@ -162,7 +162,7 @@ export default function AnalyticsDashboard() {
                   fill="#8884d8"
                   dataKey="value"
                 >
-                  {orderTypeData.map((entry, index) => (
+                  {orderTypeData.map((_, index) => (
                     <Cell
                       key={`cell-${index}`}
                       fill={COLORS[index % COLORS.length]}

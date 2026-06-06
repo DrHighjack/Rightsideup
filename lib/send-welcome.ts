@@ -1,5 +1,5 @@
 import { sendEmail, getWelcomeEmailWithMagicLink } from "@/lib/email";
-import { generateLoginToken } from "@/app/api/auth/magic-login/route";
+import { generateLoginToken } from "@/lib/magic-login";
 
 /**
  * Send welcome email with direct login link

@@ -30,13 +30,6 @@ interface Lead {
   updatedAt?: string;
 }
 
-interface Admin {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-}
-
 const statusColors: Record<string, { bg: string; text: string; label: string }> = {
   NEW: { bg: 'bg-blue-100', text: 'text-blue-800', label: 'New' },
   CONTACTED: { bg: 'bg-purple-100', text: 'text-purple-800', label: 'Contacted' },

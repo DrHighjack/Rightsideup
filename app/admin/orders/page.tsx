@@ -30,6 +30,10 @@ export default function AdminOrdersPage() {
   const [dateTo, setDateTo] = useState("");
   const [exporting, setExporting] = useState(false);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [removalModal, setRemovalModal] = useState<{ isOpen: boolean; orderId: string | null }>({ isOpen: false, orderId: null });
+  const [removalDate, setRemovalDate] = useState("");
+  const [removalNotes, setRemovalNotes] = useState("");
+  const [schedulingRemoval, setSchedulingRemoval] = useState(false);
 
   useEffect(() => {
     async function fetchOrders() {
@@ -159,6 +163,43 @@ export default function AdminOrdersPage() {
       console.error(error);
     } finally {
       setSendingId(null);
+    }
+  }
+
+  async function handleScheduleRemoval() {
+    if (!removalModal.orderId || !removalDate) {
+      alert("Please select a removal date");
+      return;
+    }
+
+    try {
+      setSchedulingRemoval(true);
+      const res = await fetch(`/api/admin/orders/${removalModal.orderId}/schedule-removal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          removalScheduledDate: removalDate,
+          removalNotes: removalNotes || undefined,
+        }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        alert(`Removal scheduled successfully! Order: ${data.removalOrder.orderNumber}`);
+        setRemovalModal({ isOpen: false, orderId: null });
+        setRemovalDate("");
+        setRemovalNotes("");
+        // Trigger refetch by resetting to page 1
+        setPage(1);
+      } else {
+        const error = await res.json();
+        alert(error.error || "Failed to schedule removal");
+      }
+    } catch (error) {
+      alert("Failed to schedule removal");
+      console.error(error);
+    } finally {
+      setSchedulingRemoval(false);
     }
   }
 
@@ -341,6 +382,18 @@ export default function AdminOrdersPage() {
                             {sendingId === order.id ? "Sending..." : "Send Email"}
                           </button>
                         )}
+                        {order.type === "INSTALL" && order.status === "COMPLETED" && (
+                          <button
+                            onClick={() => {
+                              setRemovalModal({ isOpen: true, orderId: order.id });
+                              setRemovalDate("");
+                              setRemovalNotes("");
+                            }}
+                            className="text-orange-600 hover:text-orange-900 font-medium text-sm"
+                          >
+                            Schedule Removal
+                          </button>
+                        )}
                         <Link
                           href={`/admin/orders/${order.id}`}
                           className="text-blue-600 hover:text-blue-900 font-medium text-sm"
@@ -374,6 +427,61 @@ export default function AdminOrdersPage() {
             >
               Next
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Removal Modal */}
+      {removalModal.isOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Schedule Removal</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Removal Date *
+                </label>
+                <input
+                  type="date"
+                  value={removalDate}
+                  onChange={(e) => setRemovalDate(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-4 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Notes (Optional)
+                </label>
+                <textarea
+                  value={removalNotes}
+                  onChange={(e) => setRemovalNotes(e.target.value)}
+                  placeholder="Add any notes about the removal..."
+                  className="w-full rounded-md border border-gray-300 px-4 py-2 h-24 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  setRemovalModal({ isOpen: false, orderId: null });
+                  setRemovalDate("");
+                  setRemovalNotes("");
+                }}
+                className="flex-1 px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleScheduleRemoval}
+                disabled={schedulingRemoval || !removalDate}
+                className="flex-1 px-4 py-2 rounded-md bg-orange-600 text-white font-medium hover:bg-orange-700 disabled:opacity-50"
+              >
+                {schedulingRemoval ? "Scheduling..." : "Schedule Removal"}
+              </button>
+            </div>
           </div>
         </div>
       )}

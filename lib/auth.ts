@@ -22,6 +22,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           });
 
           if (!user) {
+            console.error("[AUTH] User not found:", email);
             return null;
           }
 
@@ -31,6 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           );
 
           if (!isPasswordValid) {
+            console.error("[AUTH] Invalid password for user:", email);
             return null;
           }
 
@@ -46,7 +48,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: `${user.firstName} ${user.lastName}`,
             role: user.role,
           };
-        } catch {
+        } catch (error: any) {
+          console.error("[AUTH] Authorization error:", error?.message || error);
+          Sentry.captureException(error, {
+            tags: { component: "auth-credentials" },
+          });
           return null;
         }
       },

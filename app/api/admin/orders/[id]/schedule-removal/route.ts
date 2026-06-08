@@ -20,7 +20,7 @@ export async function POST(
 
     const { id } = params;
     const body = await request.json();
-    const { removalScheduledDate, removalNotes } = body;
+    const { removalScheduledDate, removalNotes, fieldTechId } = body;
 
     if (!removalScheduledDate) {
       return NextResponse.json(
@@ -49,7 +49,7 @@ export async function POST(
       );
     }
 
-    // Create a new REMOVAL order
+    // Create a new REMOVAL order with optional job assignment
     const removalOrder = await prisma.order.create({
       data: {
         orderNumber: `${installationOrder.orderNumber}-REM`,
@@ -64,6 +64,18 @@ export async function POST(
         adminNotes: `Linked to installation order: ${installationOrder.orderNumber}`,
       },
     });
+
+    // If fieldTechId is provided, assign the job to the installer
+    if (fieldTechId) {
+      await prisma.jobAssignment.create({
+        data: {
+          orderId: removalOrder.id,
+          fieldTechId: fieldTechId,
+          assignedByUserId: session.user.id,
+          scheduledFor: new Date(removalScheduledDate),
+        },
+      });
+    }
 
     return NextResponse.json(
       {

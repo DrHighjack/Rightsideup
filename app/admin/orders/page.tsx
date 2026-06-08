@@ -34,6 +34,8 @@ export default function AdminOrdersPage() {
   const [removalDate, setRemovalDate] = useState("");
   const [removalNotes, setRemovalNotes] = useState("");
   const [schedulingRemoval, setSchedulingRemoval] = useState(false);
+  const [fieldTechs, setFieldTechs] = useState<Array<{ id: string; firstName: string; lastName: string }>>([]);
+  const [selectedFieldTech, setSelectedFieldTech] = useState("");
 
   useEffect(() => {
     async function fetchOrders() {
@@ -69,6 +71,21 @@ export default function AdminOrdersPage() {
 
     fetchOrders();
   }, [filter, page, search, dateFrom, dateTo]);
+
+  useEffect(() => {
+    // Fetch field techs for the removal assignment dropdown
+    async function fetchFieldTechs() {
+      try {
+        const response = await fetch("/api/admin/field-techs");
+        const data = await response.json();
+        setFieldTechs(data.fieldTechs || []);
+      } catch (error) {
+        console.error("Failed to fetch field techs:", error);
+      }
+    }
+
+    fetchFieldTechs();
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -180,6 +197,7 @@ export default function AdminOrdersPage() {
         body: JSON.stringify({
           removalScheduledDate: removalDate,
           removalNotes: removalNotes || undefined,
+          fieldTechId: selectedFieldTech || undefined,
         }),
       });
 
@@ -189,6 +207,7 @@ export default function AdminOrdersPage() {
         setRemovalModal({ isOpen: false, orderId: null });
         setRemovalDate("");
         setRemovalNotes("");
+        setSelectedFieldTech("");
         // Trigger refetch by resetting to page 1
         setPage(1);
       } else {
@@ -388,6 +407,7 @@ export default function AdminOrdersPage() {
                               setRemovalModal({ isOpen: true, orderId: order.id });
                               setRemovalDate("");
                               setRemovalNotes("");
+                              setSelectedFieldTech("");
                             }}
                             className="text-orange-600 hover:text-orange-900 font-medium text-sm"
                           >
@@ -461,6 +481,24 @@ export default function AdminOrdersPage() {
                   className="w-full rounded-md border border-gray-300 px-4 py-2 h-24 resize-none"
                 />
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assign to Installer (Optional)
+                </label>
+                <select
+                  value={selectedFieldTech}
+                  onChange={(e) => setSelectedFieldTech(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-4 py-2"
+                >
+                  <option value="">Select an installer...</option>
+                  {fieldTechs.map((tech) => (
+                    <option key={tech.id} value={tech.id}>
+                      {tech.firstName} {tech.lastName}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <div className="flex gap-3 mt-6">
@@ -469,6 +507,7 @@ export default function AdminOrdersPage() {
                   setRemovalModal({ isOpen: false, orderId: null });
                   setRemovalDate("");
                   setRemovalNotes("");
+                  setSelectedFieldTech("");
                 }}
                 className="flex-1 px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
               >

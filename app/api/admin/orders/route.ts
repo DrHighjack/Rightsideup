@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { adminOrderSchema } from "@/lib/schemas";
 import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { createAuthenticatedCachedResponse } from "@/lib/cache-response";
+
+// Cache this API response for 60 seconds
+export const revalidate = 60;
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,15 +65,18 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.order.count({ where });
 
-    return NextResponse.json({
-      orders,
-      pagination: {
-        page,
-        limit,
-        total,
-        pages: Math.ceil(total / limit),
+    return createAuthenticatedCachedResponse(
+      {
+        orders,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
       },
-    });
+      60 // Cache for 60 seconds
+    );
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },

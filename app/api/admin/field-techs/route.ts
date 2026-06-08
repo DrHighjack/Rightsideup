@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { createAuthenticatedCachedResponse } from '@/lib/cache-response';
 
 export const dynamic = 'force-dynamic';
+
+// Cache field techs list for 5 minutes (doesn't change often)
+export const revalidate = 300;
 
 export async function GET(_: NextRequest) {
   try {
@@ -37,7 +41,7 @@ export async function GET(_: NextRequest) {
       assignedJobs: undefined, // Remove the array, keep only count
     }));
 
-    return NextResponse.json(fieldTechsWithCounts);
+    return createAuthenticatedCachedResponse(fieldTechsWithCounts, 300);
   } catch (error: any) {
     console.error('[ADMIN FIELD-TECHS] Error:', error);
     return NextResponse.json(

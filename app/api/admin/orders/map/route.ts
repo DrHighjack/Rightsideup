@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { createAuthenticatedCachedResponse } from "@/lib/cache-response";
 
 interface OrderMapData {
   id: string;
@@ -27,6 +28,9 @@ interface OrderMapData {
  * Get all orders with coordinates for map display
  * Only accessible to ADMIN
  */
+// Cache map data for 60 seconds (same as dashboard)
+export const revalidate = 60;
+
 export async function GET() {
   try {
     const session = await auth();
@@ -115,10 +119,13 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({
-      orders: mapData,
-      total: mapData.length,
-    });
+    return createAuthenticatedCachedResponse(
+      {
+        orders: mapData,
+        total: mapData.length,
+      },
+      60 // Cache for 60 seconds
+    );
   } catch (error) {
     console.error("Error fetching orders for map:", error);
     return NextResponse.json(

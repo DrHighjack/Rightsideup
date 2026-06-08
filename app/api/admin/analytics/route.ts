@@ -21,8 +21,10 @@ import {
   getTechMetrics,
 } from '@/lib/analytics';
 import { NextResponse } from 'next/server';
+import { createAuthenticatedCachedResponse } from '@/lib/cache-response';
 
-export const dynamic = 'force-dynamic';
+// Cache analytics for 60 seconds (dashboard refreshes every minute)
+export const revalidate = 60;
 
 export async function GET(req: Request) {
   try {
@@ -88,12 +90,12 @@ export async function GET(req: Request) {
 // New Phase 5 handlers
 async function dashboardHandler(startDate: Date, endDate: Date) {
   const metrics = await getDashboardMetrics(startDate, endDate);
-  return NextResponse.json(metrics);
+  return createAuthenticatedCachedResponse(metrics, 60);
 }
 
 async function revenueHandler(startDate: Date, endDate: Date) {
   const data = await getRevenueData(startDate, endDate);
-  return NextResponse.json({ data });
+  return createAuthenticatedCachedResponse({ data }, 60);
 }
 
 async function ordersHandler(startDate: Date, endDate: Date) {

@@ -5,6 +5,7 @@
 
 import { prisma } from '@/lib/prisma';
 import { getEffectivePrice } from '@/lib/pricing';
+import { getOrSet } from '@/lib/cache';
 
 export interface DashboardStats {
   orders: {
@@ -420,184 +421,174 @@ export async function getDashboardMetrics(
   startDate: Date,
   endDate: Date
 ): Promise<DashboardMetrics> {
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  // Use Redis cache to avoid recalculating on every request
+  const cacheKey = `dashboard-metrics:${startDate.getTime()}:${endDate.getTime()}`;
+  
+  return getOrSet(
+    cacheKey,
+    async () => {
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-  // Helper to calculate revenue using pricing system
-  const getRevenue = async (start: Date, end: Date) => {
-    const orders = await prisma.order.findMany({
-      where: {
-        status: { in: ['IN_GROUND', 'COMPLETED'] },
-        updatedAt: { gte: start, lte: end },
-      },
-      include: {
-        realtor: true,
-        items: true,
-        discounts: true,
-      },
-    });
+      // Revenue metrics - use Invoice amounts (faster than dynamic pricing)
+      const getRevenueOptimized = async (start: Date, end: Date) => {
+        // Use aggregation on invoices which have pre-calculated amounts
+        const invoiceResult = await prisma.invoice.aggregate({
+          where: {
+            createdAt: { gte: start, lte: end },
+            status: { in: ['SENT', 'VIEWED', 'PAID', 'OVERDUE'] },
+          },
+          _sum: { amount: true },
+        });
 
-    let total = 0;
-    for (const order of orders) {
-      let subtotal = 0;
-      for (const item of order.items) {
-        const serviceType = order.type || 'INSTALL';
-        const priceInCents = await getEffectivePrice(serviceType, order.realtor.id, order.realtor.brokerageId || undefined);
-        subtotal += priceInCents * item.quantity;
-      }
-      const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
-      total += subtotal - discount;
-    }
-    return total;
-  };
+        return invoiceResult._sum.amount || 0;
+      };
 
-  // Revenue metrics
-  const revenueToday = await getRevenue(todayStart, now);
-  const revenueThisMonth = await getRevenue(thisMonthStart, now);
-  const revenueLastMonth = await getRevenue(lastMonthStart, lastMonthEnd);
-  const revenueGrowthPercent =
-    revenueLastMonth > 0 ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100 : 0;
+      const [revenueToday, revenueThisMonth, revenueLastMonth] = await Promise.all([
+        getRevenueOptimized(todayStart, now),
+        getRevenueOptimized(thisMonthStart, now),
+        getRevenueOptimized(lastMonthStart, lastMonthEnd),
+      ]);
 
-  // Orders this week by type
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - now.getDay());
-  const weekOrders = await prisma.order.findMany({
-    where: {
-      createdAt: { gte: weekStart, lte: now },
-    },
-  });
+      const revenueGrowthPercent =
+        revenueLastMonth > 0 ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100 : 0;
 
-  const ordersThisWeekByType: Record<string, number> = {
-    INSTALL: 0,
-    REMOVAL: 0,
-    CHANGE: 0,
-  };
+      // Orders this week by type - use aggregation
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      
+      const weekOrderStats = await prisma.order.groupBy({
+        by: ['type'],
+        where: {
+          createdAt: { gte: weekStart, lte: now },
+        },
+        _count: true,
+      });
 
-  weekOrders.forEach((order) => {
-    const type = (order.type || 'INSTALL').toUpperCase() as keyof typeof ordersThisWeekByType;
-    if (type in ordersThisWeekByType) {
-      ordersThisWeekByType[type]++;
-    }
-  });
+      const ordersThisWeekByType: Record<string, number> = {
+        INSTALL: 0,
+        REMOVAL: 0,
+        CHANGE: 0,
+      };
 
-  // Completion rate
-  const [totalOrders, completedOrders] = await Promise.all([
-    prisma.order.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
-    prisma.order.count({
-      where: { status: { in: ['IN_GROUND', 'COMPLETED'] }, createdAt: { gte: startDate, lte: endDate } },
-    }),
-  ]);
+      weekOrderStats.forEach((stat) => {
+        const type = (stat.type || 'INSTALL').toUpperCase() as keyof typeof ordersThisWeekByType;
+        if (type in ordersThisWeekByType) {
+          ordersThisWeekByType[type] = stat._count;
+        }
+      });
 
-  const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
+      // Completion rate - use count instead of fetching all
+      const [totalOrders, completedOrders] = await Promise.all([
+        prisma.order.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
+        prisma.order.count({
+          where: { status: { in: ['IN_GROUND', 'COMPLETED'] }, createdAt: { gte: startDate, lte: endDate } },
+        }),
+      ]);
 
-  // Outstanding invoices
-  const outstandingInvoices = await prisma.invoice.findMany({
-    where: {
-      status: { in: ['SENT', 'VIEWED', 'OVERDUE'] },
-    },
-  });
+      const completionRate = totalOrders > 0 ? (completedOrders / totalOrders) * 100 : 0;
 
-  const outstandingInvoiceTotal = outstandingInvoices.reduce(
-    (sum, inv) => sum + (inv.amount || 0),
-    0
-  );
+      // Outstanding invoices - use aggregation instead of fetching all
+      const outstandingInvoiceAgg = await prisma.invoice.aggregate({
+        where: {
+          status: { in: ['SENT', 'VIEWED', 'OVERDUE'] },
+        },
+        _sum: { amount: true },
+      });
 
-  // Active realtors this month
-  const activeRealtorsThisMonth = (
-    await prisma.user.findMany({
-      where: {
-        role: 'REALTOR',
-        orders: {
-          some: {
-            createdAt: { gte: thisMonthStart },
+      const outstandingInvoiceTotal = outstandingInvoiceAgg._sum.amount || 0;
+
+      // Active realtors this month - use _count
+      const activeRealtorsThisMonth = await prisma.user.count({
+        where: {
+          role: 'REALTOR',
+          orders: {
+            some: {
+              createdAt: { gte: thisMonthStart },
+            },
           },
         },
-      },
-      select: { id: true },
-    })
-  ).length;
+      });
 
-  // Signs deployed vs available ratio
-  const [deployedSigns, totalSigns] = await Promise.all([
-    prisma.sign.count({ where: { status: 'DEPLOYED' } }),
-    prisma.sign.count(),
-  ]);
+      // Signs deployed vs available ratio
+      const [deployedSigns, totalSigns] = await Promise.all([
+        prisma.sign.count({ where: { status: 'DEPLOYED' } }),
+        prisma.sign.count(),
+      ]);
 
-  const signsDeployedRatio =
-    totalSigns > 0 ? `${((deployedSigns / totalSigns) * 100).toFixed(1)}%` : '0%';
+      const signsDeployedRatio =
+        totalSigns > 0 ? `${((deployedSigns / totalSigns) * 100).toFixed(1)}%` : '0%';
 
-  // Average job completion time
-  const completedJobs = await prisma.jobAssignment.findMany({
-    where: {
-      completedAt: { not: null },
-    },
-  });
+      // Average job completion time - fetch completed jobs and calculate
+      const completedJobs = await prisma.jobAssignment.findMany({
+        where: {
+          completedAt: { not: null },
+        },
+        select: { createdAt: true, completedAt: true },
+      });
 
-  let avgCompletionTimeHours = 0;
-  if (completedJobs.length > 0) {
-    const totalHours = completedJobs.reduce((sum, job) => {
-      if (job.completedAt && job.createdAt) {
-        const hours = (job.completedAt.getTime() - job.createdAt.getTime()) / (1000 * 60 * 60);
-        return sum + hours;
+      let avgCompletionTimeHours = 0;
+      if (completedJobs.length > 0) {
+        const totalHours = completedJobs.reduce((sum, job) => {
+          if (job.completedAt && job.createdAt) {
+            const hours = (job.completedAt.getTime() - job.createdAt.getTime()) / (1000 * 60 * 60);
+            return sum + hours;
+          }
+          return sum;
+        }, 0);
+        avgCompletionTimeHours = totalHours / completedJobs.length;
       }
-      return sum;
-    }, 0);
-    avgCompletionTimeHours = totalHours / completedJobs.length;
-  }
 
-  return {
-    revenueToday,
-    revenueLastMonth,
-    revenueThisMonth,
-    revenueGrowthPercent: parseFloat(revenueGrowthPercent.toFixed(2)),
-    ordersThisWeekByType,
-    completionRate: parseFloat(completionRate.toFixed(2)),
-    outstandingInvoiceTotal,
-    activeRealtorsThisMonth,
-    signsDeployedRatio,
-    avgJobCompletionTimeHours: parseFloat(avgCompletionTimeHours.toFixed(2)),
-  };
+      return {
+        revenueToday,
+        revenueLastMonth,
+        revenueThisMonth,
+        revenueGrowthPercent: parseFloat(revenueGrowthPercent.toFixed(2)),
+        ordersThisWeekByType,
+        completionRate: parseFloat(completionRate.toFixed(2)),
+        outstandingInvoiceTotal,
+        activeRealtorsThisMonth,
+        signsDeployedRatio,
+        avgJobCompletionTimeHours: parseFloat(avgCompletionTimeHours.toFixed(2)),
+      };
+    },
+    { ttl: 60 } // Cache for 60 seconds
+  );
 }
 
 /**
- * Get daily revenue data for the date range
+ * Get daily revenue data for the date range - OPTIMIZED with caching
  */
 export async function getRevenueData(startDate: Date, endDate: Date): Promise<RevenueData[]> {
-  const orders = await prisma.order.findMany({
-    where: {
-      status: { in: ['IN_GROUND', 'COMPLETED'] },
-      updatedAt: { gte: startDate, lte: endDate },
-    },
-    include: {
-      realtor: true,
-      items: true,
-      discounts: true,
-    },
-  });
+  const cacheKey = `revenue-data:${startDate.getTime()}:${endDate.getTime()}`;
+  
+  return getOrSet(
+    cacheKey,
+    async () => {
+      // Get invoices grouped by date
+      const invoices = await prisma.invoice.findMany({
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+          status: { in: ['SENT', 'VIEWED', 'PAID', 'OVERDUE'] },
+        },
+        select: { createdAt: true, amount: true },
+      });
 
-  const revenueByDay: Record<string, number> = {};
+      const revenueByDay: Record<string, number> = {};
 
-  for (const order of orders) {
-    const day = order.updatedAt.toISOString().split('T')[0];
-    let subtotal = 0;
-    for (const item of order.items) {
-      const serviceType = order.type || 'INSTALL';
-      const priceInCents = await getEffectivePrice(serviceType, order.realtor.id, order.realtor.brokerageId || undefined);
-      subtotal += priceInCents * item.quantity;
-    }
-    const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
-    const revenue = subtotal - discount;
+      // Map revenue to days
+      for (const invoice of invoices) {
+        const day = invoice.createdAt.toISOString().split('T')[0];
+        revenueByDay[day] = (revenueByDay[day] || 0) + (invoice.amount || 0);
+      }
 
-    revenueByDay[day] = (revenueByDay[day] || 0) + revenue;
-  }
-
-  // Fill in missing days
-  const data: RevenueData[] = [];
-  for (
-    let d = new Date(startDate);
+      // Fill in missing days
+      const data: RevenueData[] = [];
+      for (
+        let d = new Date(startDate);
     d <= endDate;
     d.setDate(d.getDate() + 1)
   ) {
@@ -608,66 +599,89 @@ export async function getRevenueData(startDate: Date, endDate: Date): Promise<Re
     });
   }
 
-  return data;
+      return data;
+    },
+    { ttl: 60 }
+  );
 }
 
 /**
- * Get weekly orders grouped by type
+ * Get weekly orders grouped by type - OPTIMIZED
  */
 export async function getOrdersData(startDate: Date, endDate: Date): Promise<OrdersData[]> {
-  const orders = await prisma.order.findMany({
-    where: {
-      createdAt: { gte: startDate, lte: endDate },
+  const cacheKey = `orders-data:${startDate.getTime()}:${endDate.getTime()}`;
+  
+  return getOrSet(
+    cacheKey,
+    async () => {
+      // Use groupBy aggregation instead of fetching all orders
+      const ordersByType = await prisma.order.groupBy({
+        by: ['createdAt', 'type'],
+        where: {
+          createdAt: { gte: startDate, lte: endDate },
+        },
+        _count: true,
+      });
+
+      const ordersByWeek: Record<string, Record<string, number>> = {};
+
+      // Process aggregated data
+      for (const stat of ordersByType) {
+        const date = new Date(stat.createdAt);
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        const week = weekStart.toISOString().split('T')[0];
+
+        const type = (stat.type || 'INSTALL').toUpperCase() as string;
+
+        if (!ordersByWeek[week]) {
+          ordersByWeek[week] = { INSTALL: 0, REMOVAL: 0, CHANGE: 0 };
+        }
+
+        if (type in ordersByWeek[week]) {
+          ordersByWeek[week][type] += stat._count;
+        }
+      }
+
+      return Object.entries(ordersByWeek)
+        .map(([week, data]) => ({
+          week,
+          INSTALL: data.INSTALL || 0,
+          REMOVAL: data.REMOVAL || 0,
+          CHANGE: data.CHANGE || 0,
+        }))
+        .sort((a, b) => new Date(a.week).getTime() - new Date(b.week).getTime());
     },
-  });
-
-  const ordersByWeek: Record<string, Record<string, number>> = {};
-
-  orders.forEach((order) => {
-    const date = new Date(order.createdAt);
-    const weekStart = new Date(date);
-    weekStart.setDate(date.getDate() - date.getDay());
-    const week = weekStart.toISOString().split('T')[0];
-
-    const type = (order.type || 'INSTALL').toUpperCase() as string;
-
-    if (!ordersByWeek[week]) {
-      ordersByWeek[week] = { INSTALL: 0, REMOVAL: 0, CHANGE: 0 };
-    }
-
-    if (type in ordersByWeek[week]) {
-      ordersByWeek[week][type]++;
-    }
-  });
-
-  return Object.entries(ordersByWeek)
-    .map(([week, data]) => ({
-      week,
-      INSTALL: data.INSTALL || 0,
-      REMOVAL: data.REMOVAL || 0,
-      CHANGE: data.CHANGE || 0,
-    }))
-    .sort((a, b) => new Date(a.week).getTime() - new Date(b.week).getTime());
+    { ttl: 60 }
+  );
 }
 
 /**
- * Get current order status distribution
+ * Get current order status distribution - OPTIMIZED
  */
 export async function getStatusData(): Promise<StatusData[]> {
-  const statuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
+  const cacheKey = 'status-data';
+  
+  return getOrSet(
+    cacheKey,
+    async () => {
+      const statuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 
-  const counts = await Promise.all(
-    statuses.map((status) =>
-      prisma.order.count({ where: { status: status as any } })
-    )
+      const counts = await Promise.all(
+        statuses.map((status) =>
+          prisma.order.count({ where: { status: status as any } })
+        )
+      );
+
+      return statuses
+        .map((status, idx) => ({
+          name: status,
+          value: counts[idx],
+        }))
+        .filter((s) => s.value > 0);
+    },
+    { ttl: 60 }
   );
-
-  return statuses
-    .map((status, idx) => ({
-      name: status,
-      value: counts[idx],
-    }))
-    .filter((s) => s.value > 0);
 }
 
 /**

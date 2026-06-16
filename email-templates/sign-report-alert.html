@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Report Alert</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; color: #334155; }
+    .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; }
+    .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: #fff; padding: 36px 28px; text-align: center; }
+    .content { padding: 28px; }
+    .box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 14px; }
+    .label { font-weight: 700; color: #991b1b; }
+    .btn { display: inline-block; margin-top: 16px; background: #991b1b; color: #fff; text-decoration: none; padding: 12px 16px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>Sign Report Submitted</h1><p>A sign was marked lost, damaged, or flagged</p></div>
+    <div class="content">
+      <div class="box">
+        <p><span class="label">Sign Number:</span> {{sign_number}}</p>
+        <p><span class="label">Type:</span> {{report_type}}</p>
+        <p><span class="label">Reported By:</span> {{reported_by}}</p>
+        <p><span class="label">Updated Status:</span> {{new_status}}</p>
+      </div>
+      <p><span class="label">Description:</span> {{description}}</p>
+      <div style="text-align: center;"><a href="{{sign_link}}" class="btn">View Sign Details</a></div>
+    </div>
+  </div>
+</body>
+</html>

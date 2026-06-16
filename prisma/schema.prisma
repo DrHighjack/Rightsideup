@@ -1,0 +1,658 @@
+// prisma/schema.prisma
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  REALTOR
+  ADMIN
+  SALESMEN
+  TC
+  FIELD_TECH
+}
+
+enum OrderStatus {
+  PENDING
+  SCHEDULED
+  ON_HOLD
+  IN_PROGRESS
+  IN_GROUND
+  COMPLETED
+  CANCELLED
+}
+
+enum Ticket811Status {
+  NEW
+  NEEDS_REVIEW
+  ACTIVE
+  CLEARED
+  DISMISSED
+}
+
+enum SignStatus {
+  AVAILABLE
+  DEPLOYED
+  DAMAGED
+  LOST
+  RETIRED
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PAID
+  VOIDED
+  OVERDUE
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  INTERESTED
+  AWAITING_LISTING
+  FOLLOW_UP_SCHEDULED
+  CONVERTED
+  NOT_INTERESTED
+  INACTIVE
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+}
+
+enum ActivityAction {
+  ORDER_CREATED
+  ORDER_STATUS_CHANGED
+  ORDER_CANCELLED
+  ORDER_PUT_ON_HOLD
+  ORDER_RELEASED_FROM_HOLD
+  INVOICE_CREATED
+  INVOICE_PAID
+  INVOICE_VOIDED
+  INVOICE_REMINDER_SENT
+  USER_CREATED
+  USER_UPDATED
+  SIGN_REPORT_FILED
+  SIGN_REPORT_RESOLVED
+  TICKET_811_CREATED
+  TICKET_811_CLEARED
+  JOB_ASSIGNED
+  JOB_COMPLETED
+  JOB_FLAGGED
+  COUPON_REDEEMED
+  QB_CONNECTED
+  QB_DISCONNECTED
+}
+
+model User {
+  id             String     @id @default(cuid())
+  email          String     @unique
+  passwordHash   String
+  firstName      String
+  lastName       String
+  phone          String?
+  brokerageName  String?
+  brokerageId    String?
+  brokerage      Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: SetNull)
+  role           Role       @default(REALTOR)
+  paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
+  qboCustomerId  String?    // QuickBooks customer ID for this realtor
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  lastLoginAt    DateTime?  // Track last login time for admin dashboard
+  
+  orders         Order[]
+  invoices       Invoice[]
+  managedBrokerages Brokerage[] @relation("BrokerageAdmin")
+  
+  // TC relations
+  tcAgentLinks   TCAgentLink[] @relation("TCUser")
+  linkedTCs      TCAgentLink[] @relation("AgentUser")
+  tcInvitesSent  TCInvite[] @relation("InvitedBy")
+  signReports    SignReport[]
+  assignedSigns  Sign[] @relation("AssignedRealtor")
+  placedByTCOrders Order[] @relation("PlacedByTC")
+  
+  // Phase 4 — Field tech relations
+  jobAssignments JobAssignment[] @relation("FieldTech")
+  assignedJobs   JobAssignment[] @relation("AssignedBy")
+  clearedTickets Ticket811[] @relation("ClearedBy")
+  realtorTickets Ticket811[] @relation("RealtorTickets")
+  
+  // Phase 5 — Activity and notifications
+  activityLogs   ActivityLog[]
+  notifications  Notification[]
+  priceOverrides PriceOverride[]
+  
+  // Lead management
+  assignedLeads  Instaads[] @relation("LeadAssignedTo")
+  convertedLeads Instaads[] @relation("LeadConvertedTo")
+  
+  // CRM Polish
+  tags           String[]      @default([])  // Freeform tags for organizing clients
+  adminNotes     String?       // JSON array of timestamped notes: [{ text, createdAt, adminId }, ...]
+  
+  // Sales tracking
+  freeInstallGivenBy String?   // ID of the salesman who gave the free install
+  freeInstallDate    DateTime? // Date when free install was given
+  
+  @@map("users")
+  @@index([brokerageId])
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  orderNumber    String        @unique
+  realtorId      String
+  realtor        User          @relation(fields: [realtorId], references: [id], onDelete: Cascade)
+  placedByTCId   String?       // null if placed by realtor directly, set if placed by TC
+  placedByTC     User?         @relation("PlacedByTC", fields: [placedByTCId], references: [id], onDelete: SetNull)
+  type           String
+  status         OrderStatus   @default(PENDING)
+  address        String
+  addressLat     Float?
+  addressLng     Float?
+  scheduledDate  DateTime?
+  notes          String?
+  adminNotes     String?
+  cancelledAt    DateTime?
+  cancelReason   String?
+  holdReason     String?       // e.g. "811 ticket #12345"
+  heldAt         DateTime?
+  isStale        Boolean       @default(false)
+  staleAt        DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  self811Accepted Boolean      @default(false) // true if realtor opted out of 811 service and accepted policy
+  
+  items          OrderItem[]
+  discounts      OrderDiscount[]
+  addons         OrderAddon[]
+  assignedSigns  Sign[] @relation("AssignedToOrder")
+  jobAssignment  JobAssignment?
+  ticket811      Ticket811?   @relation("Ticket811Orders")
+  
+  @@map("orders")
+  @@index([realtorId])
+  @@index([placedByTCId])
+  @@index([status])
+  @@index([heldAt])
+  @@index([isStale])
+}
+
+model Invoice {
+  id                String           @id @default(cuid())
+  userId            String
+  user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId           String?          // Link to order if created from order
+  invoiceNumber     String?          @unique // QB invoice number
+  qboInvoiceId      String?          // QB Online invoice ID
+  amount            Float?
+  discountAmount    Float?           @default(0)
+  status            InvoiceStatus    @default(DRAFT)
+  dueDate           DateTime?
+  paidAt            DateTime?
+  paidAmount        Float?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  lastReminderSentAt DateTime?
+  reminderCount     Int              @default(0)
+  
+  @@map("invoices")
+  @@index([userId])
+  @@index([status])
+  @@index([dueDate])
+  @@index([qboInvoiceId])
+}
+
+model Sign {
+  id                String     @id @default(cuid())
+  signNumber        String?    @unique  // Physical ID on the sign e.g. SPF-S-0042 — nullable for migration, will be required in production
+  type              String     @default("Standard")  // e.g. "Standard", "Rider", "Open House", "Custom"
+  status            SignStatus @default(AVAILABLE)
+  assignedToUserId  String?    // FK to User — which realtor has it deployed
+  assignedToUser    User?      @relation("AssignedRealtor", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  assignedToOrderId String?    // FK to Order — which order it's currently on
+  assignedToOrder   Order?     @relation("AssignedToOrder", fields: [assignedToOrderId], references: [id], onDelete: SetNull)
+  deployedAddress   String?    // Current location if deployed
+  deployedLat       Float?
+  deployedLng       Float?
+  notes             String?    // Admin notes, condition notes
+  purchasedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+  
+  orderItems        OrderItem[]
+  reports           SignReport[]
+  
+  @@map("signs")
+  @@index([status])
+  @@index([assignedToUserId])
+  @@index([assignedToOrderId])
+  @@index([type])
+}
+
+model OrderItem {
+  id             String     @id @default(cuid())
+  orderId        String
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  signId         String?
+  sign           Sign?      @relation(fields: [signId], references: [id], onDelete: SetNull)
+  quantity       Int        @default(1)
+  isHangingSelf  Boolean    @default(false)
+  storagePlannedAfter Boolean? // null = not applicable, true = yes store, false = no store
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("order_items")
+  @@index([orderId])
+  @@index([signId])
+}
+
+model Brokerage {
+  id             String     @id @default(cuid())
+  name           String
+  phone          String?
+  email          String?
+  adminId        String
+  admin          User       @relation("BrokerageAdmin", fields: [adminId], references: [id], onDelete: Cascade)
+  agents         User[]
+  priceOverrides PriceOverride[]
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("brokerages")
+  @@index([adminId])
+}
+
+model QBOConnection {
+  id             String     @id @default(cuid())
+  realmId        String     @unique
+  companyName    String?
+  accessToken    String     // Encrypted
+  refreshToken   String     // Encrypted
+  expiresAt      DateTime
+  refreshExpiresAt DateTime?
+  isConnected    Boolean    @default(true)
+  connectedAt    DateTime   @default(now())
+  disconnectedAt DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("qbo_connections")
+}
+
+model Coupon {
+  id             String     @id @default(cuid())
+  code           String     @unique
+  type           String     @default("FIXED")  // FIXED or PERCENTAGE
+  value          Float      // Dollar amount or percentage
+  maxUses        Int?       // null = unlimited
+  usedCount      Int        @default(0)
+  expiresAt      DateTime?  // null = no expiration
+  isActive       Boolean    @default(true)
+  description    String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  orderDiscounts OrderDiscount[]
+  
+  @@map("coupons")
+  @@index([code])
+  @@index([isActive])
+}
+
+model OrderDiscount {
+  id             String     @id @default(cuid())
+  orderId        String
+  order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  couponId       String
+  coupon         Coupon     @relation(fields: [couponId], references: [id], onDelete: Restrict)
+  discountAmount Float      // Calculated discount amount
+  createdAt      DateTime   @default(now())
+  
+  @@map("order_discounts")
+  @@unique([orderId, couponId])
+  @@index([orderId])
+  @@index([couponId])
+}
+
+model SMSLog {
+  id             String     @id @default(cuid())
+  toNumber       String
+  message        String
+  status         String     @default("PENDING")  // PENDING, SENT, FAILED
+  eventType      String     // ORDER_CREATED, ORDER_COMPLETED, ORDER_CANCELLED, etc.
+  orderId        String?
+  userId         String?
+  sentAt         DateTime?
+  failureReason  String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  
+  @@map("sms_logs")
+  @@index([toNumber])
+  @@index([eventType])
+  @@index([status])
+}
+
+model TCAgentLink {
+  id            String   @id @default(cuid())
+  tcUserId      String
+  tcUser        User     @relation("TCUser", fields: [tcUserId], references: [id], onDelete: Cascade)
+  agentUserId   String
+  agentUser     User     @relation("AgentUser", fields: [agentUserId], references: [id], onDelete: Cascade)
+  grantedBy     String   // REALTOR | ADMIN
+  createdAt     DateTime @default(now())
+  
+  @@map("tc_agent_links")
+  @@unique([tcUserId, agentUserId])
+  @@index([tcUserId])
+  @@index([agentUserId])
+}
+
+model TCInvite {
+  id               String   @id @default(cuid())
+  email            String
+  invitedByUserId  String
+  invitedByUser    User     @relation("InvitedBy", fields: [invitedByUserId], references: [id], onDelete: Cascade)
+  token            String   @unique
+  expiresAt        DateTime
+  usedAt           DateTime?
+  createdAt        DateTime @default(now())
+  
+  @@map("tc_invites")
+  @@index([email])
+  @@index([token])
+  @@index([expiresAt])
+}
+
+model SignReport {
+  id               String   @id @default(cuid())
+  signId           String
+  sign             Sign     @relation(fields: [signId], references: [id], onDelete: Cascade)
+  reportedByUserId String
+  reportedByUser   User     @relation(fields: [reportedByUserId], references: [id], onDelete: Cascade)
+  type             String   // LOST | DAMAGED | OTHER
+  description      String
+  resolvedAt       DateTime?
+  createdAt        DateTime @default(now())
+  
+  @@map("sign_reports")
+  @@index([signId])
+  @@index([reportedByUserId])
+  @@index([type])
+  @@index([resolvedAt])
+}
+
+model LowInventoryAlert {
+  id        String   @id @default(cuid())
+  signType  String   // e.g. "Standard", "Rider", "Open House", "Custom"
+  sentAt    DateTime @default(now())
+  threshold Int      @default(5)
+  
+  @@map("low_inventory_alerts")
+  @@index([signType])
+  @@index([sentAt])
+}
+
+model Ticket811 {
+  id                   String            @id @default(cuid())
+  ticketNumber         String?           // extracted from email, null if not parseable
+  sourceEmail          String
+  emailSubject         String
+  emailBody            String            // full raw email body for audit
+  parsedAddress        String?           // address extracted by parser
+  workStartDate        DateTime?         // excavation start date from email
+  status               Ticket811Status   @default(NEW)
+  matchedOrderIds      String[]          // array of order IDs put on hold
+  clearedAt            DateTime?
+  clearedByUserId      String?
+  clearedByUser        User?             @relation("ClearedBy", fields: [clearedByUserId], references: [id], onDelete: SetNull)
+  adminNotes           String?
+  
+  // New 811 ticket tracker fields
+  realtorId            String?           // which realtor this ticket belongs to
+  realtor              User?             @relation("RealtorTickets", fields: [realtorId], references: [id], onDelete: SetNull)
+  utilityLines         Json?             // array of { name: string, status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT', respondedAt?: DateTime, contactName?: string, contactPhone?: string, contactEmail?: string }
+  requestedDate        DateTime?         // when realtor submitted the request
+  ticketSubmittedAt    DateTime?         // when 811 confirmed ticket number
+  allLinesRespondedAt  DateTime?         // when last utility responded
+  clearanceDate        DateTime?         // when officially cleared to dig
+  stage                String            @default("REQUESTED") // REQUESTED | TICKET_SUBMITTED | LINES_RESPONDED | CLEAR
+  
+  // PDF and post location fields
+  pdfUrl               String?           // URL to uploaded 811 PDF
+  postAddressLat       Float?            // latitude of the actual post location
+  postAddressLng       Float?            // longitude of the actual post location
+  
+  // Order assignment for scheduling
+  orderId              String?           @unique  // which order/sign this 811 is for
+  order                Order?            @relation("Ticket811Orders", fields: [orderId], references: [id], onDelete: SetNull)
+  
+  createdAt            DateTime          @default(now())
+  updatedAt            DateTime          @updatedAt
+  
+  @@map("tickets_811")
+  @@index([status])
+  @@index([createdAt])
+  @@index([ticketNumber])
+  @@index([clearedByUserId])
+  @@index([realtorId])
+  @@index([orderId])
+  @@index([stage])
+}
+
+model JobAssignment {
+  id              String     @id @default(cuid())
+  orderId         String     @unique
+  order           Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fieldTechId     String
+  fieldTech       User       @relation("FieldTech", fields: [fieldTechId], references: [id], onDelete: Cascade)
+  assignedByUserId String
+  assignedByUser  User       @relation("AssignedBy", fields: [assignedByUserId], references: [id], onDelete: Restrict)
+  scheduledFor    DateTime?
+  startedAt       DateTime?
+  completedAt     DateTime?
+  techNotes       String?
+  issue           String?    // issue flagged by tech, triggers admin alert
+  images          Json?      // array of { id, url, uploadedAt } - store base64 or file URLs
+  createdAt       DateTime   @default(now())
+  
+  @@map("job_assignments")
+  @@index([fieldTechId])
+  @@index([orderId])
+  @@index([startedAt])
+  @@index([completedAt])
+}
+
+model AppSettings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  isEncrypted Boolean  @default(false)
+  updatedAt   DateTime @updatedAt
+  
+  @@map("app_settings")
+  @@index([key])
+}
+
+model ActivityLog {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action      ActivityAction
+  entityType  String         // Order, Invoice, User, Sign, Ticket811, Job
+  entityId    String
+  description String
+  metadata    Json?          // before/after values, additional context
+  createdAt   DateTime       @default(now())
+  
+  @@map("activity_logs")
+  @@index([userId])
+  @@index([action])
+  @@index([entityType])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String               @id @default(cuid())
+  userId    String
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String               // ORDER_UPDATE, INVOICE_READY, JOB_ASSIGNED, etc.
+  status    NotificationStatus   @default(UNREAD)
+  link      String?              // URL to related entity
+  createdAt DateTime             @default(now())
+  
+  @@map("notifications")
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model MasterPrice {
+  id          String   @id @default(cuid())
+  serviceType String   @unique  // INSTALL, REMOVAL, CHANGE, or custom label
+  amountCents Int      // stored as cents e.g. 4500 = $45.00
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("master_prices")
+  @@index([serviceType])
+  @@index([isActive])
+}
+
+model PriceOverride {
+  id          String   @id @default(cuid())
+  serviceType String   // matches MasterPrice.serviceType
+  amountCents Int
+  isLocked    Boolean  @default(false)
+  userId      String?  // realtor-level override
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokerageId String?  // brokerage-level override
+  brokerage   Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("price_overrides")
+  @@unique([serviceType, userId])
+  @@unique([serviceType, brokerageId])
+  @@index([serviceType])
+  @@index([userId])
+  @@index([brokerageId])
+}
+
+model InventoryItem {
+  id                String                @id @default(cuid())
+  name              String
+  category          String                // SIGN, FLYER_BOX, RIDER, OTHER
+  description       String?
+  imageUrl          String?               // uploaded photo of the item
+  totalQuantity     Int                   @default(0)
+  availableQuantity Int                   @default(0)
+  lowStockThreshold Int                   @default(5)
+  isActive          Boolean               @default(true)
+  isOrderable       Boolean               @default(true) // can realtors request more
+  pricePerUnit      Int?                  // cents, null = included in service
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  
+  printers          InventoryItemPrinter[]
+  orderItems        OrderAddon[]
+  
+  @@map("inventory_items")
+  @@index([category])
+  @@index([isActive])
+  @@index([isOrderable])
+}
+
+model SignPrinter {
+  id        String                @id @default(cuid())
+  name      String
+  website   String?
+  phone     String?
+  email     String?
+  notes     String?
+  isActive  Boolean               @default(true)
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  
+  items     InventoryItemPrinter[]
+  
+  @@map("sign_printers")
+  @@index([isActive])
+}
+
+model InventoryItemPrinter {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  printerId       String
+  printer         SignPrinter   @relation(fields: [printerId], references: [id], onDelete: Cascade)
+  
+  @@map("inventory_item_printers")
+  @@unique([inventoryItemId, printerId])
+  @@index([inventoryItemId])
+  @@index([printerId])
+}
+
+model OrderAddon {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Restrict)
+  quantity        Int           @default(1)
+  priceAtOrder    Int           // cents — snapshot of price when ordered
+  createdAt       DateTime      @default(now())
+  
+  @@map("order_addons")
+  @@index([orderId])
+  @@index([inventoryItemId])
+}
+
+model Self811Policy {
+  id        String   @id @default(cuid())
+  content   String   // markdown text of the policy
+  version   String
+  updatedAt DateTime @updatedAt
+  
+  @@map("self_811_policies")
+}
+
+model Instaads {
+  id                    String     @id @default(cuid())
+  fullName              String
+  phone                 String
+  email                 String
+  brokerage             String
+  status                LeadStatus @default(NEW)
+  notes                 String?    // Staff notes from interactions
+  assignedToUserId      String?    // Which admin/staff member is handling this lead
+  assignedToUser        User?      @relation("LeadAssignedTo", fields: [assignedToUserId], references: [id], onDelete: SetNull)
+  convertedToClientId   String?    // Links to User when they become a client
+  convertedToClient     User?      @relation("LeadConvertedTo", fields: [convertedToClientId], references: [id], onDelete: SetNull)
+  convertedAt           DateTime?  // When they were converted to a client
+  followUpDate          DateTime?  // When to follow up with this lead
+  lastContactedAt       DateTime?  // When was the last interaction
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+  
+  @@map("instaads")
+  @@index([email])
+  @@index([createdAt])
+  @@index([status])
+  @@index([assignedToUserId])
+  @@index([convertedToClientId])
+}

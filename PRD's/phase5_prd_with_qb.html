@@ -1,0 +1,490 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .prd { max-width: 820px; margin: 0 auto; padding: 2rem 1.5rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .cover { border-bottom: 0.5px solid var(--color-border-tertiary); padding-bottom: 1.75rem; margin-bottom: 2rem; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #e8f5ee; color: #1a6640; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; margin-bottom: 1rem; }
+  .cover h1 { font-size: 26px; font-weight: 500; margin-bottom: 0.4rem; }
+  .cover .sub { font-size: 14px; color: var(--color-text-secondary); line-height: 1.6; max-width: 580px; margin-bottom: 1.25rem; }
+  .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+  .meta-card { background: var(--color-background-secondary); border-radius: 8px; padding: 0.65rem 0.9rem; }
+  .meta-card .label { font-size: 11px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+  .meta-card .val { font-size: 13px; font-weight: 500; }
+
+  .section { margin-bottom: 2.25rem; padding-bottom: 2.25rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .section:last-child { border-bottom: none; margin-bottom: 0; }
+  .section-header { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 1.1rem; }
+  .snum { font-size: 11px; font-weight: 500; color: #1a6640; background: #e8f5ee; border-radius: 4px; padding: 2px 7px; margin-top: 3px; flex-shrink: 0; }
+  .snum-qb { background: #e8f0fb; color: #1a4080; }
+  .section h2 { font-size: 18px; font-weight: 500; }
+  .section-sub { font-size: 13px; color: var(--color-text-secondary); margin-top: 3px; line-height: 1.5; }
+
+  .callout { display: flex; gap: 10px; background: #e8f5ee; border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 1rem; }
+  .callout i { font-size: 17px; color: #1a6640; flex-shrink: 0; margin-top: 1px; }
+  .callout p { font-size: 13px; color: #1a4a30; line-height: 1.55; }
+  .callout-warn { background: #faeeda; }
+  .callout-warn i { color: #7a4a0a; }
+  .callout-warn p { color: #5a3208; }
+  .callout-blue { background: #e8f0fb; }
+  .callout-blue i { color: #1a4080; }
+  .callout-blue p { color: #0d2a5e; }
+  .callout-red { background: #ffeaea; }
+  .callout-red i { color: #a02020; }
+  .callout-red p { color: #7a0a0a; }
+
+  .card { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); border-radius: 12px; padding: 1rem 1.1rem; margin-bottom: 0.75rem; }
+  .card-title { font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 7px; margin-bottom: 8px; }
+  .card-title i { font-size: 15px; color: var(--color-text-secondary); }
+
+  ul.spec { list-style: none; }
+  ul.spec li { font-size: 13px; color: var(--color-text-secondary); padding: 3px 0; display: flex; gap: 7px; align-items: flex-start; line-height: 1.5; }
+  ul.spec li::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: #4caf7d; margin-top: 6px; flex-shrink: 0; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .three-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+
+  .schema-block { background: var(--color-background-secondary); border-radius: 8px; padding: 0.9rem 1rem; margin-bottom: 0.75rem; }
+  .schema-block .schema-name { font-size: 13px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-primary); display: flex; align-items: center; gap: 6px; }
+  .schema-block .schema-name span { font-size: 11px; background: #e8f0fb; color: #1a4080; border-radius: 3px; padding: 1px 5px; font-weight: 400; }
+  .field-row { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .field-row:last-child { border-bottom: none; }
+  .field-name { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 200px; }
+  .field-type { font-size: 11px; color: #1a4080; background: #e8f0fb; border-radius: 3px; padding: 1px 5px; flex-shrink: 0; }
+  .field-note { font-size: 12px; color: var(--color-text-tertiary); }
+
+  .flow-step { display: flex; gap: 12px; margin-bottom: 0.6rem; align-items: flex-start; }
+  .flow-num { width: 22px; height: 22px; border-radius: 50%; background: #e8f0fb; color: #1a4080; font-size: 11px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+  .flow-text { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; padding-top: 2px; }
+  .flow-text strong { color: var(--color-text-primary); font-weight: 500; }
+
+  .route-row { display: flex; gap: 10px; align-items: flex-start; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .route-row:last-child { border-bottom: none; }
+  .method { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 3px; min-width: 44px; text-align: center; flex-shrink: 0; }
+  .get { background: #e8f5ee; color: #1a6640; }
+  .post { background: #e8f0fb; color: #1a4080; }
+  .put { background: #faeeda; color: #7a4a0a; }
+  .route-path { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 260px; }
+  .route-desc { font-size: 12px; color: var(--color-text-secondary); }
+
+  .screen-block { border: 0.5px solid var(--color-border-tertiary); border-radius: 10px; overflow: hidden; margin-bottom: 0.75rem; }
+  .screen-header { background: var(--color-background-secondary); padding: 0.55rem 0.9rem; display: flex; align-items: center; justify-content: space-between; }
+  .screen-name { font-size: 13px; font-weight: 500; }
+  .screen-role { font-size: 11px; color: var(--color-text-tertiary); }
+  .screen-body { padding: 0.9rem; }
+
+  .stack-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .stack-row:last-child { border-bottom: none; }
+  .stack-label { font-size: 13px; font-weight: 500; min-width: 180px; }
+  .stack-val { font-size: 13px; color: var(--color-text-secondary); flex: 1; }
+  .stag { font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 500; flex-shrink: 0; }
+  .stag-green { background: #e8f5ee; color: #1a6640; }
+  .stag-blue { background: #e8f0fb; color: #1a4080; }
+  .stag-warn { background: #faeeda; color: #7a4a0a; }
+
+  .accept-row { display: flex; gap: 8px; padding: 6px 0; border-bottom: 0.5px solid var(--color-border-tertiary); align-items: flex-start; }
+  .accept-row:last-child { border-bottom: none; }
+  .ac-role { font-size: 12px; font-weight: 500; min-width: 130px; color: var(--color-text-secondary); }
+  .ac-criteria { font-size: 13px; color: var(--color-text-secondary); line-height: 1.45; }
+
+  .tag-pill { display: inline-flex; align-items: center; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 500; margin-right: 4px; }
+  .out { background: #ffeaea; color: #a02020; }
+  .in { background: #e8f5ee; color: #1a6640; }
+  .in-qb { background: #e8f0fb; color: #1a4080; }
+
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-bottom: 1rem; }
+  .metric-card { background: var(--color-background-secondary); border-radius: 8px; padding: 0.75rem; }
+  .metric-card .metric-label { font-size: 11px; color: var(--color-text-tertiary); margin-bottom: 3px; }
+  .metric-card .metric-val { font-size: 13px; font-weight: 500; color: var(--color-text-primary); }
+
+  .qb-section { border: 1.5px solid #c7d7f5; border-radius: 12px; padding: 1.25rem; margin-bottom: 1.5rem; background: linear-gradient(135deg, #f0f5ff 0%, #ffffff 100%); }
+  .qb-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; }
+  .qb-badge { background: #2ca01c; color: white; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .qb-title { font-size: 16px; font-weight: 500; }
+
+  h3 { font-size: 14px; font-weight: 500; margin-bottom: 0.6rem; margin-top: 0.9rem; }
+  h3:first-child { margin-top: 0; }
+</style>
+
+<div class="prd">
+  <div class="cover">
+    <div class="badge"><i class="ti ti-chart-bar" aria-hidden="true"></i> Phase 5 — Analytics, CRM, QuickBooks & Polish</div>
+    <h1>SignPost Field — Phase 5 PRD</h1>
+    <p class="sub">The final phase. Full analytics dashboard, QuickBooks billing integration, CRM polish, exportable reports, in-app notifications, onboarding flow, rate limiting, Sentry error monitoring, HTML emails, and UI refresh prep.</p>
+    <div class="meta-grid">
+      <div class="meta-card"><div class="label">Depends on</div><div class="val">Phase 1–4 complete</div></div>
+      <div class="meta-card"><div class="label">Phase</div><div class="val">5 of 5 — Final</div></div>
+      <div class="meta-card"><div class="label">QB scaffolding</div><div class="val">Already in codebase</div></div>
+      <div class="meta-card"><div class="label">New integrations</div><div class="val">QuickBooks, Sentry, Upstash</div></div>
+      <div class="meta-card"><div class="label">DB changes</div><div class="val">ActivityLog, Notification</div></div>
+      <div class="meta-card"><div class="label">After this</div><div class="val">Style agent UI pass</div></div>
+    </div>
+  </div>
+
+  <!-- SCOPE -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">01</span>
+      <div><h2>Scope</h2></div>
+    </div>
+    <div class="two-col">
+      <div>
+        <h3><span class="tag-pill in">✓ In scope</span></h3>
+        <ul class="spec">
+          <li><strong>QuickBooks OAuth 2.0</strong> — fix auth, connect/disconnect</li>
+          <li><strong>QB auto-invoicing</strong> — create invoice on order complete</li>
+          <li><strong>QB customer sync</strong> — realtor → QBO customer</li>
+          <li><strong>QB payment status sync</strong> — webhook + manual sync</li>
+          <li><strong>QB invoice view</strong> — realtor sees invoices in portal</li>
+          <li>Full analytics dashboard with recharts</li>
+          <li>Revenue, order, tech performance metrics</li>
+          <li>Exportable reports (CSV + PDF)</li>
+          <li>CRM client tracker full polish</li>
+          <li>Admin activity log</li>
+          <li>Realtor onboarding flow</li>
+          <li>In-app notification center</li>
+          <li>API rate limiting (Upstash)</li>
+          <li>Sentry error monitoring</li>
+          <li>HTML email templates (MJML)</li>
+          <li>UI refresh handoff prep</li>
+        </ul>
+      </div>
+      <div>
+        <h3><span class="tag-pill out">✗ Out of scope</span></h3>
+        <ul class="spec">
+          <li>Stripe / in-app payment processing</li>
+          <li>QB recurring billing</li>
+          <li>QB payroll integration</li>
+          <li>Mobile app store submission</li>
+          <li>Multi-tenant / white label</li>
+          <li>Route optimization for field techs</li>
+          <li>Predictive inventory forecasting</li>
+          <li>Bulk SMS campaigns</li>
+          <li>Full UI redesign (style agent handles this)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICKBOOKS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum snum-qb">02</span>
+      <div><h2>QuickBooks Integration</h2><p class="section-sub">The scaffolding already exists from Phase 2 attempts. This section fixes the OAuth flow and builds the full billing integration on top of it.</p></div>
+    </div>
+
+    <div class="qb-section">
+      <div class="qb-header">
+        <span class="qb-badge">QB Online</span>
+        <span class="qb-title">What's already built vs what needs fixing</span>
+      </div>
+      <div class="two-col">
+        <div>
+          <div style="font-size:12px; font-weight:500; color: #1a6640; margin-bottom:6px;">✅ Already scaffolded</div>
+          <ul class="spec">
+            <li>QBOConnection model in schema</li>
+            <li>/api/quickbooks/connect route exists</li>
+            <li>/api/quickbooks/callback route exists</li>
+            <li>QB credentials in env vars</li>
+            <li>/admin/settings/quickbooks page exists</li>
+            <li>Token encryption using ENCRYPTION_KEY</li>
+          </ul>
+        </div>
+        <div>
+          <div style="font-size:12px; font-weight:500; color: #a02020; margin-bottom:6px;">❌ Needs fixing / building</div>
+          <ul class="spec">
+            <li>OAuth redirect URI was localhost — now fix to production URL</li>
+            <li>Token refresh logic (1-hour expiry handling)</li>
+            <li>Auto-invoice creation on order COMPLETED</li>
+            <li>QBO customer lookup/create per realtor</li>
+            <li>Webhook receiver for payment status sync</li>
+            <li>Manual sync button</li>
+            <li>Realtor invoice view in portal</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Step 1 — Fix OAuth flow</h3>
+    <div class="callout callout-red">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      <p>The most likely reason QB auth failed before: the redirect URI in developer.intuit.com didn't match. Now that you have <strong>https://app.northshoresignco.com</strong>, add <strong>https://app.northshoresignco.com/api/quickbooks/callback</strong> as an authorized redirect URI in your Intuit app settings. This must be an exact match including https.</p>
+    </div>
+
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">Update QB_REDIRECT_URI env var in Vercel to <strong>https://app.northshoresignco.com/api/quickbooks/callback</strong></div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Add the same URL in developer.intuit.com → your app → Keys & OAuth → Redirect URIs</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Review /api/quickbooks/connect — confirm it builds the Intuit OAuth URL with correct scopes: <strong>com.intuit.quickbooks.accounting</strong></div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Review /api/quickbooks/callback — confirm it exchanges code for tokens, stores encrypted in QBOConnection table, sets QB_REALM_ID env var or saves realmId to DB</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Add token refresh helper — before every QB API call check if accessToken expires within 5 minutes, refresh automatically using refreshToken, update QBOConnection record</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">Test: Admin visits /admin/settings/quickbooks → clicks Connect → completes Intuit OAuth → page shows "Connected — [Company Name]"</div></div>
+
+    <h3 style="margin-top:1rem;">Step 2 — Auto-invoice on order completion</h3>
+    <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">When field tech marks job complete OR admin sets order status to COMPLETED — check if QB is connected (QBOConnection exists)</div></div>
+    <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Check: does an Invoice already exist for this order? If yes, skip. Prevents duplicates.</div></div>
+    <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Look up QBO Customer by realtor email. If not found, create a new QBO Customer and store qboCustomerId on the User record.</div></div>
+    <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Create QBO Invoice: line item = order type + address, amount from service pricing (configurable in AppSettings), due date = 30 days from today</div></div>
+    <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Save local Invoice record: qboInvoiceId, status = SENT, amountCents, dueDate, realtorId, orderId</div></div>
+    <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">QBO emails invoice to realtor natively — no extra email code needed for this</div></div>
+
+    <h3 style="margin-top:1rem;">Step 3 — Payment status sync</h3>
+    <ul class="spec">
+      <li>Register webhook in QBO developer portal for Invoice events (create, update, void)</li>
+      <li>Build POST /api/quickbooks/webhook — verify HMAC signature using QB_WEBHOOK_VERIFIER_TOKEN, parse event, update local Invoice status</li>
+      <li>QBO "Paid" → local PAID, set paidAt timestamp</li>
+      <li>QBO "Voided" → local VOIDED</li>
+      <li>Add "Sync Now" button to /admin/settings/quickbooks — polls QBO for status of all open invoices</li>
+      <li>Add daily sync job to scheduler at 6am — auto-sync all open invoices</li>
+    </ul>
+
+    <h3 style="margin-top:1rem;">Step 4 — Realtor invoice portal</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/invoices</span><span class="screen-role">Realtor</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>List all invoices: number, amount, status badge, due date, linked order address</li>
+        <li>Filter tabs: All, Outstanding, Paid</li>
+        <li>Outstanding balance total at top</li>
+        <li>Each row links to invoice detail</li>
+        <li>Add Invoices to bottom mobile nav tab bar</li>
+      </ul></div>
+    </div>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/dashboard/invoices/[id]</span><span class="screen-role">Realtor</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Invoice details: number, amount, due date, status, linked order</li>
+        <li>Coupon code input — validate and show discount preview</li>
+        <li>"View in QuickBooks" link if qboInvoiceId exists</li>
+        <li>Payment happens in QBO — no in-app payment in Phase 5</li>
+        <li>Download PDF button (generates from local data)</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Step 5 — Admin invoice management</h3>
+    <div class="screen-block">
+      <div class="screen-header"><span class="screen-name">/admin/invoices</span><span class="screen-role">Admin</span></div>
+      <div class="screen-body"><ul class="spec">
+        <li>Full invoice table: number, realtor, amount, discount, status, due date, order #, QBO sync status</li>
+        <li>Summary cards: Total Outstanding, Paid This Month, Overdue Count</li>
+        <li>Filter by status, realtor, date range</li>
+        <li>Create Invoice button → manual invoice creation</li>
+        <li>Sync QBO button → triggers manual sync</li>
+        <li>Export to CSV</li>
+        <li>Add Invoices link to admin sidebar (currently greyed out — activate it)</li>
+      </ul></div>
+    </div>
+
+    <h3 style="margin-top:1rem;">Service pricing configuration</h3>
+    <div class="callout callout-blue">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>Add service pricing to AppSettings so invoice amounts can be configured without code changes. Keys: <strong>price_install</strong>, <strong>price_removal</strong>, <strong>price_change</strong> — stored as cents (e.g. 4500 = $45.00). Admin configures these in /admin/settings under a new "Pricing" section.</p>
+    </div>
+
+    <h3>New QB env vars</h3>
+    <div class="schema-block">
+      <div class="field-row"><span class="field-name">QB_CLIENT_ID</span><span class="field-note">From developer.intuit.com — already set</span></div>
+      <div class="field-row"><span class="field-name">QB_CLIENT_SECRET</span><span class="field-note">From developer.intuit.com — already set</span></div>
+      <div class="field-row"><span class="field-name">QB_REDIRECT_URI</span><span class="field-note">UPDATE to https://app.northshoresignco.com/api/quickbooks/callback</span></div>
+      <div class="field-row"><span class="field-name">QB_ENVIRONMENT</span><span class="field-note">"sandbox" for testing, "production" when ready to go live</span></div>
+      <div class="field-row"><span class="field-name">QB_WEBHOOK_VERIFIER_TOKEN</span><span class="field-note">From QBO webhook setup in developer.intuit.com</span></div>
+      <div class="field-row"><span class="field-name">QB_REALM_ID</span><span class="field-note">Auto-populated after first OAuth connection — leave blank</span></div>
+    </div>
+
+    <h3>QB acceptance criteria</h3>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="accept-row"><span class="ac-role">OAuth connect</span><span class="ac-criteria">Admin clicks Connect on /admin/settings/quickbooks, completes Intuit login, page shows "Connected — [Company Name]" with green badge.</span></div>
+      <div class="accept-row"><span class="ac-role">Auto-invoice</span><span class="ac-criteria">Admin marks order COMPLETED. Within 10 seconds an invoice appears in QBO and in /admin/invoices with status SENT.</span></div>
+      <div class="accept-row"><span class="ac-role">No duplicate</span><span class="ac-criteria">Marking an already-completed order COMPLETED again does not create a second invoice.</span></div>
+      <div class="accept-row"><span class="ac-role">Payment sync</span><span class="ac-criteria">Marking invoice paid in QBO sandbox updates local status to PAID via webhook within 60 seconds, OR via manual Sync Now button.</span></div>
+      <div class="accept-row"><span class="ac-role">Realtor view</span><span class="ac-criteria">Realtor sees their invoices at /dashboard/invoices with correct amounts, statuses, and View in QuickBooks link.</span></div>
+      <div class="accept-row"><span class="ac-role">Graceful fallback</span><span class="ac-criteria">If QB is not connected, order completion still works normally — no invoice is created and no error is shown to the realtor or field tech.</span></div>
+    </div>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">03</span>
+      <div><h2>Analytics Dashboard</h2><p class="section-sub">Extend the existing /api/admin/analytics endpoint. Use recharts — already in the stack.</p></div>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card"><div class="metric-label">Revenue today</div><div class="metric-val">$ total invoiced</div></div>
+      <div class="metric-card"><div class="metric-label">Revenue this month</div><div class="metric-val">vs last month %</div></div>
+      <div class="metric-card"><div class="metric-label">Orders this week</div><div class="metric-val">by type breakdown</div></div>
+      <div class="metric-card"><div class="metric-label">Completion rate</div><div class="metric-val">completed / total %</div></div>
+      <div class="metric-card"><div class="metric-label">Outstanding invoices</div><div class="metric-val">$ total overdue</div></div>
+      <div class="metric-card"><div class="metric-label">Active realtors</div><div class="metric-val">ordered this month</div></div>
+      <div class="metric-card"><div class="metric-label">Signs deployed</div><div class="metric-val">vs available ratio</div></div>
+      <div class="metric-card"><div class="metric-label">Avg job completion</div><div class="metric-val">hours from assign</div></div>
+    </div>
+    <div class="three-col">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-chart-line" aria-hidden="true"></i>Revenue over time</div>
+        <ul class="spec">
+          <li>Line chart — daily for last 30 days</li>
+          <li>Toggle: 7 / 30 / 90 days / 1 year</li>
+          <li>Hover tooltip with exact amount</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-chart-bar" aria-hidden="true"></i>Orders by type</div>
+        <ul class="spec">
+          <li>Bar chart — Install vs Removal vs Change</li>
+          <li>Grouped by week for last 8 weeks</li>
+          <li>Color coded by order type</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-chart-donut" aria-hidden="true"></i>Status breakdown</div>
+        <ul class="spec">
+          <li>Donut chart — current snapshot</li>
+          <li>All statuses including ON_HOLD</li>
+          <li>Click segment filters orders list</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- CRM -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">04</span>
+      <div><h2>CRM Client Tracker Polish</h2></div>
+    </div>
+    <div class="three-col">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-user" aria-hidden="true"></i>Client profile</div>
+        <ul class="spec">
+          <li>Editable fields: name, email, phone, brokerage</li>
+          <li>Admin tags with add/remove</li>
+          <li>Timestamped note history</li>
+          <li>Account status toggle</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-history" aria-hidden="true"></i>Activity timeline</div>
+        <ul class="spec">
+          <li>Chronological feed of all activity</li>
+          <li>Orders, invoices, sign reports, TC links</li>
+          <li>Admin notes shown inline</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-currency-dollar" aria-hidden="true"></i>Financial summary</div>
+        <ul class="spec">
+          <li>Total invoiced, paid, outstanding</li>
+          <li>Average order value</li>
+          <li>Overdue invoice alert</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- REPORTS -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">05</span>
+      <div><h2>Exportable Reports</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="stack-row"><span class="stack-label">Orders report</span><span class="stack-val">Date range — status, realtor, address, type, tech, completion time</span><span class="stag stag-green">CSV + PDF</span></div>
+      <div class="stack-row"><span class="stack-label">Revenue report</span><span class="stack-val">Invoices — realtor, amount, status, paid date, days to pay</span><span class="stag stag-green">CSV + PDF</span></div>
+      <div class="stack-row"><span class="stack-label">Client report</span><span class="stack-val">All clients — orders, revenue, outstanding, last active</span><span class="stag stag-green">CSV</span></div>
+      <div class="stack-row"><span class="stack-label">Field tech report</span><span class="stack-val">Jobs per tech — completed, avg time, issues flagged</span><span class="stag stag-green">CSV</span></div>
+      <div class="stack-row"><span class="stack-label">Inventory report</span><span class="stack-val">All signs — status, realtor, address, reports</span><span class="stag stag-green">CSV</span></div>
+      <div class="stack-row"><span class="stack-label">811 report</span><span class="stack-val">Tickets — status, address, matched orders, resolution time</span><span class="stag stag-green">CSV</span></div>
+    </div>
+    <div class="callout callout-warn" style="margin-top:0.5rem;">
+      <i class="ti ti-info-circle" aria-hidden="true"></i>
+      <p>Use <strong>@react-pdf/renderer</strong> for PDF generation in Next.js API routes. Build a reusable generateCSV() utility in /lib/reports.ts that all report types share.</p>
+    </div>
+  </div>
+
+  <!-- ACTIVITY LOG -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">06</span>
+      <div><h2>Admin Activity Log</h2></div>
+    </div>
+    <div class="schema-block">
+      <div class="schema-name">ActivityLog <span>new table</span></div>
+      <div class="field-row"><span class="field-name">id</span><span class="field-type">UUID PK</span></div>
+      <div class="field-row"><span class="field-name">userId</span><span class="field-type">FK → User</span><span class="field-note">who performed the action</span></div>
+      <div class="field-row"><span class="field-name">action</span><span class="field-type">String</span><span class="field-note">ORDER_STATUS_CHANGED, INVOICE_VOIDED, etc.</span></div>
+      <div class="field-row"><span class="field-name">entityType</span><span class="field-type">String</span><span class="field-note">Order, Invoice, User, Sign, Ticket811</span></div>
+      <div class="field-row"><span class="field-name">entityId</span><span class="field-type">String</span></div>
+      <div class="field-row"><span class="field-name">description</span><span class="field-type">String</span><span class="field-note">human readable summary</span></div>
+      <div class="field-row"><span class="field-name">metadata</span><span class="field-type">Json?</span><span class="field-note">before/after values</span></div>
+      <div class="field-row"><span class="field-name">createdAt</span><span class="field-type">DateTime</span></div>
+    </div>
+    <ul class="spec">
+      <li>/admin/activity page — paginated, filter by user/action/date</li>
+      <li>Shown inline on CRM client profile as activity timeline</li>
+      <li>12 month retention — auto-delete older entries via scheduler</li>
+    </ul>
+  </div>
+
+  <!-- NOTIFICATIONS + ONBOARDING -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">07</span>
+      <div><h2>Notifications & Onboarding</h2></div>
+    </div>
+    <div class="two-col">
+      <div class="card">
+        <div class="card-title"><i class="ti ti-bell" aria-hidden="true"></i>In-app notifications</div>
+        <ul class="spec">
+          <li>Bell icon in header with unread badge</li>
+          <li>Dropdown shows last 10 notifications</li>
+          <li>Mark all read button</li>
+          <li>Same triggers as email/SMS events</li>
+          <li>Auto-delete after 30 days</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><i class="ti ti-checklist" aria-hidden="true"></i>Realtor onboarding</div>
+        <ul class="spec">
+          <li>Welcome banner on first login</li>
+          <li>Checklist: profile → first order → add TC → install PWA</li>
+          <li>Dismisses when complete or skipped</li>
+          <li>Admin sees incomplete onboarding in client list</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- HARDENING -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">08</span>
+      <div><h2>Rate Limiting, Sentry & HTML Emails</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem; margin-bottom:0.75rem;">
+      <div class="stack-row"><span class="stack-label">Rate limiting</span><span class="stack-val">upstash/ratelimit + Upstash Redis free tier. Login: 5/15min, Register: 3/hr, Coupon: 10/hr, General API: 100/min</span><span class="stag stag-warn">security</span></div>
+      <div class="stack-row"><span class="stack-label">Error monitoring</span><span class="stack-val">@sentry/nextjs — npx @sentry/wizard -i nextjs. Add SENTRY_DSN to Vercel env vars.</span><span class="stag stag-blue">monitoring</span></div>
+      <div class="stack-row"><span class="stack-label">HTML emails</span><span class="stack-val">mjml package — compile .mjml templates to email-safe HTML. 7 templates: welcome, order confirm, status update, invoice ready, invoice reminder, 811 hold, 811 cleared</span><span class="stag stag-green">polish</span></div>
+    </div>
+  </div>
+
+  <!-- FULL ACCEPTANCE CRITERIA -->
+  <div class="section">
+    <div class="section-header">
+      <span class="snum">09</span>
+      <div><h2>Full Acceptance Criteria</h2></div>
+    </div>
+    <div class="card" style="padding: 0.5rem 1rem;">
+      <div class="accept-row"><span class="ac-role">QB OAuth</span><span class="ac-criteria">Admin connects to QBO sandbox via /admin/settings/quickbooks. Page shows company name and Connected status after auth.</span></div>
+      <div class="accept-row"><span class="ac-role">QB auto-invoice</span><span class="ac-criteria">Order marked COMPLETED creates invoice in QBO and local DB within 10 seconds. No duplicate on second completion.</span></div>
+      <div class="accept-row"><span class="ac-role">QB payment sync</span><span class="ac-criteria">Invoice paid in QBO sandbox → local status updates to PAID via webhook or manual sync.</span></div>
+      <div class="accept-row"><span class="ac-role">QB fallback</span><span class="ac-criteria">QB not connected → order completion works normally, no errors shown.</span></div>
+      <div class="accept-row"><span class="ac-role">Realtor invoices</span><span class="ac-criteria">Realtor sees invoices at /dashboard/invoices with correct amounts and View in QuickBooks link.</span></div>
+      <div class="accept-row"><span class="ac-role">Analytics</span><span class="ac-criteria">Admin dashboard shows revenue line chart, orders bar chart, status donut. Date range picker updates all charts.</span></div>
+      <div class="accept-row"><span class="ac-role">Reports</span><span class="ac-criteria">Orders CSV downloads in under 5 seconds for any date range. PDF renders correctly.</span></div>
+      <div class="accept-row"><span class="ac-role">CRM</span><span class="ac-criteria">Admin edits realtor profile, adds tag, writes note, sees full order/invoice history from one page.</span></div>
+      <div class="accept-row"><span class="ac-role">Activity log</span><span class="ac-criteria">Every order status change creates ActivityLog entry. Admin filters by user and sees exact changes.</span></div>
+      <div class="accept-row"><span class="ac-role">Notifications</span><span class="ac-criteria">Realtor sees unread badge after order update. Bell dropdown shows notification. Mark read clears badge.</span></div>
+      <div class="accept-row"><span class="ac-role">Rate limiting</span><span class="ac-criteria">5+ failed logins from same IP returns 429. Coupon guessing returns 429 after 10 attempts.</span></div>
+      <div class="accept-row"><span class="ac-role">Sentry</span><span class="ac-criteria">Deliberate API error appears in Sentry dashboard within 60 seconds.</span></div>
+      <div class="accept-row"><span class="ac-role">HTML emails</span><span class="ac-criteria">Order confirmation email renders with branding in Gmail mobile. No broken images or layout.</span></div>
+    </div>
+  </div>
+
+</div>

@@ -1,0 +1,278 @@
+
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .map { max-width: 780px; margin: 0 auto; padding: 2rem 1.5rem; font-family: var(--font-sans); color: var(--color-text-primary); }
+
+  .cover { margin-bottom: 2rem; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #faeeda; color: #7a4a0a; font-size: 12px; font-weight: 500; padding: 4px 10px; border-radius: 20px; margin-bottom: 0.75rem; }
+  .cover h1 { font-size: 22px; font-weight: 500; margin-bottom: 0.3rem; }
+  .cover p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.5; }
+
+  .track { margin-bottom: 2rem; }
+  .track-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; padding-bottom: 0.6rem; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .track-num { width: 26px; height: 26px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .t1 { background: #faeeda; color: #7a4a0a; }
+  .t2 { background: #e8f0fb; color: #1a4080; }
+  .t3 { background: #f3e8fb; color: #6b21a8; }
+  .t4 { background: #e8f5ee; color: #1a6640; }
+  .track-title { font-size: 15px; font-weight: 500; }
+  .track-sub { font-size: 12px; color: var(--color-text-secondary); margin-top: 1px; }
+
+  .step { display: flex; gap: 12px; margin-bottom: 0.6rem; align-items: flex-start; position: relative; }
+  .step-left { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .step-num { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; flex-shrink: 0; }
+  .s-orange { background: #faeeda; color: #7a4a0a; }
+  .s-blue { background: #e8f0fb; color: #1a4080; }
+  .s-purple { background: #f3e8fb; color: #6b21a8; }
+  .s-green { background: #e8f5ee; color: #1a6640; }
+  .step-line { width: 1px; background: var(--color-border-tertiary); flex: 1; min-height: 16px; margin-top: 4px; }
+  .step-content { padding-bottom: 0.75rem; flex: 1; }
+  .step-title { font-size: 13px; font-weight: 500; margin-bottom: 3px; }
+  .step-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .step-stop { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; margin-top: 5px; padding: 2px 8px; border-radius: 10px; }
+  .stop-test { background: #faeeda; color: #7a4a0a; }
+  .stop-confirm { background: #e8f5ee; color: #1a6640; }
+  .stop-schema { background: #e8f0fb; color: #1a4080; }
+
+  .prompt-block { background: var(--color-background-secondary); border-radius: 8px; padding: 0.9rem 1rem; margin-top: 1.25rem; border-left: 3px solid #d97706; }
+  .prompt-block .prompt-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #7a4a0a; margin-bottom: 0.5rem; }
+  .prompt-block p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.6; }
+  .prompt-block p strong { color: var(--color-text-primary); font-weight: 500; }
+
+  .warn-block { display: flex; gap: 8px; background: #ffeaea; border-radius: 8px; padding: 0.75rem 1rem; margin-top: 0.75rem; }
+  .warn-block i { font-size: 15px; color: #a02020; flex-shrink: 0; margin-top: 1px; }
+  .warn-block p { font-size: 12px; color: #7a0a0a; line-height: 1.5; }
+
+  .info-block { display: flex; gap: 8px; background: #e8f0fb; border-radius: 8px; padding: 0.75rem 1rem; margin-top: 0.75rem; }
+  .info-block i { font-size: 15px; color: #1a4080; flex-shrink: 0; margin-top: 1px; }
+  .info-block p { font-size: 12px; color: #0d2a5e; line-height: 1.5; }
+
+  .divider { height: 0.5px; background: var(--color-border-tertiary); margin: 1.75rem 0; }
+
+  .pkg-row { display: flex; gap: 8px; align-items: center; padding: 5px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .pkg-row:last-child { border-bottom: none; }
+  .pkg-name { font-size: 12px; font-family: var(--font-mono); color: var(--color-text-primary); min-width: 140px; }
+  .pkg-why { font-size: 12px; color: var(--color-text-secondary); flex: 1; }
+
+  .opening-prompt { background: var(--color-background-secondary); border-radius: 10px; padding: 1.1rem 1.25rem; margin-bottom: 2rem; border: 0.5px solid var(--color-border-tertiary); }
+  .opening-prompt .op-label { font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.06em; color: #7a4a0a; margin-bottom: 0.6rem; display: flex; align-items: center; gap: 6px; }
+  .opening-prompt p { font-size: 13px; color: var(--color-text-secondary); line-height: 1.65; }
+  .opening-prompt p strong { color: var(--color-text-primary); }
+</style>
+
+<div class="map">
+  <div class="cover">
+    <div class="badge"><i class="ti ti-map-2" aria-hidden="true"></i> Phase 4 Agent Build Map</div>
+    <h1>Phase 4 — Step-by-Step Agent Instructions</h1>
+    <p>4 tracks, 14 steps. Stop at every checkpoint. Do not let the agent run ahead.</p>
+  </div>
+
+  <!-- OPENING PROMPT -->
+  <div class="opening-prompt">
+    <div class="op-label"><i class="ti ti-clipboard" aria-hidden="true"></i> Opening prompt — paste this first</div>
+    <p>"We are starting Phase 4 of SignPost Field. I'm attaching the Phase 4 PRD and all three completion summaries (Phase 1, 2, 3). <strong>Do not rebuild anything from previous phases.</strong> We will build in 4 tracks with checkpoints after every step. Wait for my explicit confirmation before moving to the next step. Start with Track 1, Step 1 only."</p>
+  </div>
+
+  <!-- TRACK 1 -->
+  <div class="track">
+    <div class="track-header">
+      <div class="track-num t1">1</div>
+      <div>
+        <div class="track-title">Track 1 — Schema & Infrastructure</div>
+        <div class="track-sub">Foundation. Must be done before any feature code.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-orange">1</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Database schema changes</div>
+        <div class="step-desc">Add to schema.prisma: Ticket811 model, JobAssignment model, AppSettings model. Add ON_HOLD to Order status enum. Add holdReason and heldAt fields to Order. Add FIELD_TECH to Role enum. Add jobAssignment relation to Order and User. Run migration and show final schema diff.</div>
+        <span class="step-stop stop-schema">⬛ Stop — show schema diff and wait for approval</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-orange">2</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Install packages</div>
+        <div class="step-desc">npm install imapflow mailparser node-cron geolib and their TypeScript types. Confirm clean install with no peer dependency conflicts.</div>
+        <span class="step-stop stop-confirm">✓ Stop — confirm packages installed</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-orange">3</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Scheduler infrastructure only</div>
+        <div class="step-desc">Create /lib/scheduler.ts with node-cron initialized. Create instrumentation.ts in project root that imports and starts the scheduler on server boot. Add placeholder cron jobs (just console.log for now — no real logic yet). Confirm dev server starts without errors and scheduler logs fire.</div>
+        <span class="step-stop stop-test">🧪 Stop — confirm scheduler fires in dev console</span>
+        <div class="info-block" style="margin-top:8px;">
+          <i class="ti ti-info-circle" aria-hidden="true"></i>
+          <p>If instrumentation.ts causes issues in Next.js 14, fall back to initializing the scheduler in a custom /api/startup/route.ts that's called once. Tell the agent to try instrumentation.ts first.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- TRACK 2 -->
+  <div class="track">
+    <div class="track-header">
+      <div class="track-num t2">2</div>
+      <div>
+        <div class="track-title">Track 2 — 811 Email Monitoring</div>
+        <div class="track-sub">The most complex feature. Build and test each piece before connecting them.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-blue">4</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">IMAP connection + raw email fetcher</div>
+        <div class="step-desc">Create /lib/emailPoller.ts. Build the IMAP connection function using imapflow — connects, fetches unread emails matching 811 keywords in subject, returns raw email objects, marks as read. Reads credentials from env vars (IMAP_HOST, IMAP_PORT, IMAP_USER, IMAP_PASSWORD). Does not parse or process yet — just fetches and returns.</div>
+        <span class="step-stop stop-test">🧪 Stop — test connection with real 811 inbox credentials</span>
+        <div class="warn-block">
+          <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+          <p>Before this step, send a few test emails to your 811 inbox with "811" in the subject. Confirm the fetcher picks them up before building the parser on top of it.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-blue">5</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">811 email address parser</div>
+        <div class="step-desc">Build parseAddress(emailBody: string) in /lib/emailPoller.ts. Use regex to extract street address. Must handle: "excavation address:", "work location:", "site address:", "dig site:" prefixes common in 811 emails. Return { address: string | null, confidence: 'high' | 'low' }. Low confidence → ticket gets NEEDS_REVIEW status. Show the agent real 811 emails you have before it writes the regex.</div>
+        <span class="step-stop stop-test">🧪 Stop — test parser against your real 811 emails</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-blue">6</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Order matching + ticket creation</div>
+        <div class="step-desc">Build the full poll cycle in /lib/emailPoller.ts: fetch emails → parse addresses → fuzzy match against PENDING/SCHEDULED orders using geolib or street name comparison → create Ticket811 record → set matched orders to ON_HOLD with holdReason → send admin alert email. Wire this into the scheduler cron job replacing the console.log placeholder.</div>
+        <span class="step-stop stop-test">🧪 Stop — end-to-end test: send test email → confirm order goes ON_HOLD</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-blue">7</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">811 API routes + admin UI</div>
+        <div class="step-desc">Build all /api/admin/811 routes (GET list, GET detail, POST manual create, PUT clear, PUT dismiss, PUT update, POST manual poll). Then build /admin/811 list page and /admin/811/[id] detail page. Add 811 link to admin sidebar with active ticket count badge.</div>
+        <span class="step-stop stop-confirm">✓ Stop — confirm admin can view tickets, clear them, and see orders release</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- TRACK 3 -->
+  <div class="track">
+    <div class="track-header">
+      <div class="track-num t3">3</div>
+      <div>
+        <div class="track-title">Track 3 — Field Tech & Job Assignment</div>
+        <div class="track-sub">New role, new portal. Keep it mobile-first and simple.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-purple">8</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Field tech auth + route protection</div>
+        <div class="step-desc">Update NextAuth session and middleware to handle FIELD_TECH role. FIELD_TECH users redirect to /field/dashboard on login. Block /field/* from REALTOR, TC, and unauthenticated users. Block FIELD_TECH from /admin/* and /dashboard/*. Seed one test FIELD_TECH user in the database.</div>
+        <span class="step-stop stop-test">🧪 Stop — confirm field tech login redirects correctly and is blocked from other areas</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-purple">9</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Job assignment API routes</div>
+        <div class="step-desc">Build GET /api/admin/field-techs, POST /api/admin/assignments, PUT /api/admin/assignments/[id], DELETE /api/admin/assignments/[id], GET /api/admin/assignments. Also build GET /api/field/jobs, GET /api/field/jobs/[id], PUT /api/field/jobs/[id]/start, PUT /api/field/jobs/[id]/complete, PUT /api/field/jobs/[id]/flag.</div>
+        <span class="step-stop stop-confirm">✓ Stop — confirm assignment creation and job status updates work via API</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-purple">10</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Admin job board UI</div>
+        <div class="step-desc">Build /admin/jobs page. Two sections: Unassigned orders (SCHEDULED, no assignment) and Assigned jobs grouped by field tech. Assign modal with tech selector and date/time picker. Inline reassign and unassign. Add Jobs link to admin sidebar nav.</div>
+        <span class="step-stop stop-test">🧪 Stop — assign a test order to the seeded field tech and confirm it disappears from unassigned</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-purple">11</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Field tech mobile portal</div>
+        <div class="step-desc">Build /field/dashboard (today's jobs + upcoming) and /field/jobs/[id] (job detail with Start / Complete / Flag Issue buttons). Mobile-first: large text, large tap targets, address taps open native Maps app (use geo: URI). Flag Issue sends admin alert email. Complete job triggers invoice creation if QB connected.</div>
+        <span class="step-stop stop-test">🧪 Stop — full loop: admin assigns job → field tech sees it → marks complete → order shows COMPLETED</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- TRACK 4 -->
+  <div class="track">
+    <div class="track-header">
+      <div class="track-num t4">4</div>
+      <div>
+        <div class="track-title">Track 4 — Scheduler Jobs & Settings</div>
+        <div class="track-sub">Polish and automation. Build last so everything it depends on exists.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-green">12</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Invoice aging reminders</div>
+        <div class="step-desc">Add daily 8am cron job to scheduler. Query invoices where status = SENT or OVERDUE. Send reminder emails at 7-day, 14-day, and 30-day overdue milestones. Track last reminder sent on Invoice model (add lastReminderSentAt and reminderCount fields). Do not re-send same milestone reminder.</div>
+        <span class="step-stop stop-confirm">✓ Stop — confirm reminder logic doesn't double-send</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-green">13</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Stale order check</div>
+        <div class="step-desc">Add daily 9am cron job. Find PENDING orders older than 48 hours with no status change. Flag them on admin dashboard with a warning badge. No email needed — just a visual indicator on /admin/orders and /admin dashboard summary card.</div>
+        <span class="step-stop stop-confirm">✓ Stop — confirm stale orders show badge in admin</span>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-left"><div class="step-num s-green">14</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <div class="step-title">Admin settings page</div>
+        <div class="step-desc">Build /admin/settings page with sections: 811 Inbox Config (IMAP credentials + Test Connection button), Notifications (admin email, reminder days), Inventory (threshold per sign type). Save settings to AppSettings DB table. Encrypt sensitive fields (IMAP password) using existing ENCRYPTION_KEY. Add Settings link to admin sidebar.</div>
+        <span class="step-stop stop-test">🧪 Stop — save IMAP credentials via settings page, trigger manual poll, confirm it uses the saved credentials</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PACKAGES REFERENCE -->
+  <div class="divider"></div>
+  <div style="margin-bottom:1.5rem;">
+    <div style="font-size:13px; font-weight:500; margin-bottom:0.75rem;">Packages to install at Step 2</div>
+    <div class="pkg-row"><span class="pkg-name">imapflow</span><span class="pkg-why">IMAP email fetching</span></div>
+    <div class="pkg-row"><span class="pkg-name">mailparser</span><span class="pkg-why">Parse raw email into structured object</span></div>
+    <div class="pkg-row"><span class="pkg-name">node-cron</span><span class="pkg-why">Background job scheduler</span></div>
+    <div class="pkg-row"><span class="pkg-name">geolib</span><span class="pkg-why">Distance/proximity math for address matching</span></div>
+    <div class="pkg-row"><span class="pkg-name">@types/node-cron</span><span class="pkg-why">TypeScript types for node-cron</span></div>
+    <div class="pkg-row"><span class="pkg-name">@types/mailparser</span><span class="pkg-why">TypeScript types for mailparser</span></div>
+  </div>
+
+  <!-- FINAL NOTE -->
+  <div class="prompt-block">
+    <div class="prompt-label">After Step 14 — get the completion summary</div>
+    <p>"Phase 4 is complete. Generate a PHASE4_COMPLETION_SUMMARY.md in the same format as the previous phase summaries. Include all features built, deviations from PRD, known limitations, and any QB-related stubs that are ready for Phase 4b."</p>
+  </div>
+
+</div>

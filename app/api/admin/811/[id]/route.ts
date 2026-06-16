@@ -1,0 +1,268 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import {
+  get811HoldReleasedEmail,
+  get811TicketClearedAdminEmail,
+  get811TicketDismissedAdminEmail,
+  sendEmail,
+} from '@/lib/email';
+import { auth } from '@/lib/auth';
+import { logActivity } from '@/lib/activityLog';
+import { createNotification } from '@/lib/notifications';
+import { ActivityAction } from '@prisma/client';
+
+// GET /api/admin/811/[id] - Get ticket detail with matched orders
+export async function GET(
+  _: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const { id } = params;
+    console.log('[811API GET] Fetching ticket:', id);
+
+    const ticket = await prisma.ticket811.findUnique({
+      where: { id },
+      include: {
+        clearedByUser: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+      },
+    });
+
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    // Get matched orders
+    const matchedOrders = await prisma.order.findMany({
+      where: { id: { in: ticket.matchedOrderIds } },
+    });
+
+    return NextResponse.json({
+      ...ticket,
+      matchedOrders,
+    });
+  } catch (error) {
+    console.error('[811API GET] Error:', error);
+    return NextResponse.json({ error: (error as any).message }, { status: 500 });
+  }
+}
+
+// PUT /api/admin/811/[id] - Update ticket (clear, dismiss, or general update)
+// Body: { action: 'clear' | 'dismiss' | 'update' }
+// For 'clear': { adminNotes? } - releases held orders back to SCHEDULED
+// For 'dismiss': { adminNotes? } - marks as false positive
+// For 'update': { parsedAddress?, adminNotes?, matchedOrderIds? }
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    const { id } = params;
+    const body = await request.json();
+    const { action } = body;
+
+    console.log('[811API PUT] Updating ticket:', id, 'Action:', action);
+
+    // Verify ticket exists
+    const ticket = await prisma.ticket811.findUnique({
+      where: { id },
+    });
+
+    if (!ticket) {
+      return NextResponse.json({ error: 'Ticket not found' }, { status: 404 });
+    }
+
+    if (action === 'clear') {
+      console.log('[811API] Clearing ticket:', id);
+      // Clear the ticket and release held orders back to SCHEDULED
+      const { adminNotes } = body;
+
+      // Get all matched orders
+      const matchedOrders = await prisma.order.findMany({
+        where: { id: { in: ticket.matchedOrderIds } },
+        include: { realtor: { select: { email: true } } },
+      });
+
+      console.log('[811API] Found', matchedOrders.length, 'matched orders');
+
+      // Update all matched orders back to SCHEDULED and send confirmation emails
+      await Promise.all(
+        matchedOrders.map(async (order) => {
+          try {
+            // Update order status
+            console.log('[811API] Updating order:', order.id, 'to SCHEDULED');
+            await prisma.order.update({
+              where: { id: order.id },
+              data: {
+                status: 'SCHEDULED',
+                holdReason: null,
+                heldAt: null,
+              },
+            });
+
+            // Send confirmation email to realtor if they exist
+            if (order.realtor?.email) {
+              try {
+                const holdReleasedEmail = get811HoldReleasedEmail(
+                  order.orderNumber,
+                  ticket.ticketNumber || 'Unknown',
+                  adminNotes
+                );
+
+                await sendEmail({
+                  to: order.realtor.email,
+                  subject: holdReleasedEmail.subject,
+                  html: holdReleasedEmail.html,
+                });
+              } catch (emailError) {
+                console.error(`Failed to send email to realtor ${order.realtor?.email}:`, emailError);
+                // Don't fail the whole operation if email fails
+              }
+            }
+          } catch (orderError) {
+            console.error(`Failed to update order ${order.id}:`, orderError);
+            throw orderError;
+          }
+        })
+      );
+
+      // Send admin notification
+      const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+      if (adminEmail) {
+        try {
+          const clearedEmail = get811TicketClearedAdminEmail(
+            ticket.ticketNumber || 'Unknown',
+            matchedOrders.map((o) => o.orderNumber),
+            adminNotes
+          );
+
+          await sendEmail({
+            to: adminEmail,
+            subject: clearedEmail.subject,
+            html: clearedEmail.html,
+          });
+        } catch (emailError) {
+          console.error(`Failed to send admin email:`, emailError);
+          // Don't fail the whole operation if email fails
+        }
+      }
+
+      // Update ticket status to CLEARED
+      const updatedTicket = await prisma.ticket811.update({
+        where: { id },
+        data: {
+          status: 'CLEARED',
+          clearedAt: new Date(),
+          adminNotes: adminNotes || ticket.adminNotes,
+        },
+      });
+
+      // Log activity
+      if (session?.user?.id) {
+        await logActivity({
+          userId: session.user.id,
+          action: ActivityAction.TICKET_811_CLEARED,
+          entityType: 'Ticket811',
+          entityId: ticket.id,
+          description: `811 ticket cleared - ${matchedOrders.length} orders released`,
+          metadata: {
+            ticketNumber: ticket.ticketNumber,
+            ordersReleased: matchedOrders.map((o) => o.orderNumber),
+            adminNotes,
+          },
+        });
+      }
+
+      // Notify affected realtors that their orders are back in queue
+      await Promise.all(
+        matchedOrders.map((order) =>
+          createNotification({
+            userId: order.realtorId,
+            type: 'ORDER_RELEASED_FROM_811',
+            title: `811 Hold Released - Order ${order.orderNumber}`,
+            message: `The 811 ticket hold on your order has been cleared. Your order is now back to SCHEDULED status.`,
+            link: `/dashboard/orders/${order.id}`,
+          })
+        )
+      );
+
+      console.log('[811API] Ticket cleared successfully');
+      return NextResponse.json({
+        success: true,
+        message: `Ticket cleared. ${matchedOrders.length} orders released back to SCHEDULED.`,
+        ticket: updatedTicket,
+      });
+    }
+
+    if (action === 'dismiss') {
+      // Mark as false positive - does NOT release orders
+      const { adminNotes } = body;
+
+      // Update ticket status to DISMISSED
+      const updatedTicket = await prisma.ticket811.update({
+        where: { id },
+        data: {
+          status: 'DISMISSED',
+          adminNotes: adminNotes || ticket.adminNotes,
+        },
+      });
+
+      // Send admin notification
+      const adminEmail = process.env.ADMIN_ALERT_EMAIL;
+      if (adminEmail) {
+        try {
+          const dismissedEmail = get811TicketDismissedAdminEmail(
+            ticket.ticketNumber || 'Unknown',
+            adminNotes
+          );
+
+          await sendEmail({
+            to: adminEmail,
+            subject: dismissedEmail.subject,
+            html: dismissedEmail.html,
+          });
+        } catch (emailError) {
+          console.error(`Failed to send admin email:`, emailError);
+          // Don't fail the whole operation if email fails
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Ticket dismissed as false positive. Orders remain on hold.',
+        ticket: updatedTicket,
+      });
+    }
+
+    if (action === 'update') {
+      // General update - update notes, address, or matched order IDs
+      const { parsedAddress, adminNotes, matchedOrderIds } = body;
+
+      const updateData: any = {};
+      if (parsedAddress !== undefined) updateData.parsedAddress = parsedAddress;
+      if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+      if (matchedOrderIds !== undefined) updateData.matchedOrderIds = matchedOrderIds;
+
+      const updatedTicket = await prisma.ticket811.update({
+        where: { id },
+        data: updateData,
+      });
+
+      return NextResponse.json(updatedTicket);
+    }
+
+    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+  } catch (error: any) {
+    console.error('[811API PUT] Error:', error);
+    console.error('[811API PUT] Error stack:', error?.stack);
+    const errorMessage = error?.message || String(error);
+    const errorResponse = {
+      error: errorMessage,
+      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+      type: error?.constructor?.name,
+    };
+    return NextResponse.json(errorResponse, { status: 500 });
+  }
+}

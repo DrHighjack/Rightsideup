@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Field Job Issue Alert</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; color: #334155; }
+    .container { max-width: 600px; margin: 0 auto; background: #fff; border-radius: 8px; overflow: hidden; }
+    .header { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); color: #fff; padding: 36px 28px; text-align: center; }
+    .content { padding: 28px; }
+    .box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 8px; padding: 14px; }
+    .label { font-weight: 700; color: #92400e; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header"><h1>Field Job Issue Flagged</h1><p>Immediate admin review recommended</p></div>
+    <div class="content">
+      <div class="box">
+        <p><span class="label">Field Tech:</span> {{field_tech_name}}</p>
+        <p><span class="label">Order:</span> {{order_number}}</p>
+        <p><span class="label">Address:</span> {{address}}</p>
+        <p><span class="label">Order Status:</span> {{order_status}}</p>
+      </div>
+      <p><span class="label">Issue Details:</span> {{issue}}</p>
+    </div>
+  </div>
+</body>
+</html>

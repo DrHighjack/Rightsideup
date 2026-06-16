@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join Your Brokerage on RightSignUP</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .info-box {
+            background-color: #d1fae5;
+            border: 2px solid #a7f3d0;
+            border-radius: 6px;
+            padding: 20px;
+            margin: 24px 0;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #065f46;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+        
+        .info-value {
+            font-size: 16px;
+            color: #064e3b;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+        
+        .info-value:last-child {
+            margin-bottom: 0;
+        }
+        
+        .highlight {
+            background-color: #ecfdf5;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #059669;
+        }
+        
+        .highlight-text {
+            font-size: 14px;
+            color: #065f46;
+            line-height: 1.6;
+        }
+        
+        .benefits {
+            background-color: #f0fdf4;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .benefits-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #15803d;
+            margin-bottom: 12px;
+        }
+        
+        .benefits-list {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #166534;
+            line-height: 1.8;
+        }
+        
+        .benefits-list li {
+            margin-bottom: 6px;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 24px;
+            margin: 24px 0;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(5, 150, 105, 0.3);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(5, 150, 105, 0.4);
+        }
+        
+        .instructions {
+            background-color: #f8fafc;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+        }
+        
+        .instructions h3 {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.8;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .support-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .support-text {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .support-link {
+            color: #059669;
+            text-decoration: none;
+        }
+        
+        .footer {
+            background-color: #f1f5f9;
+            padding: 24px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .footer-links {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .footer-links a {
+            color: #059669;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 24px;
+            }
+            
+            .content {
+                padding: 24px 20px;
+            }
+            
+            .info-box {
+                padding: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏢 Welcome to {{BROKERAGE_NAME}}!</h1>
+            <p>Join your brokerage on RightSignUP</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                <p>Hi {{AGENT_NAME}},</p>
+                <p style="margin-top: 12px;">You've been invited to join {{BROKERAGE_NAME}} on RightSignUP. Create your account below to access your brokerage's tools and manage your business.</p>
+            </div>
+            
+            <!-- Brokerage Info -->
+            <div class="info-box">
+                <div class="info-label">Your Brokerage</div>
+                <div class="info-value">{{BROKERAGE_NAME}}</div>
+                
+                <div class="info-label" style="margin-top: 12px;">Contact</div>
+                <div class="info-value">{{BROKERAGE_EMAIL}}</div>
+            </div>
+            
+            <!-- Highlight -->
+            <div class="highlight">
+                <div class="highlight-text">
+                    ✨ Once you create your account, you'll be part of {{BROKERAGE_NAME}}'s team on RightSignUP with full access to collaboration tools and resources.
+                </div>
+            </div>
+            
+            <!-- Benefits -->
+            <div class="benefits">
+                <div class="benefits-title">What You'll Get Access To:</div>
+                <ul class="benefits-list">
+                    <li>📊 Listing management and tracking</li>
+                    <li>👥 Team collaboration tools</li>
+                    <li>📧 Automated communications</li>
+                    <li>📱 Mobile-friendly interface</li>
+                    <li>📈 Performance analytics</li>
+                </ul>
+            </div>
+            
+            <!-- CTA Button -->
+            <a href="{{SIGNUP_LINK}}" class="cta-button">Create Your Account</a>
+            
+            <!-- Instructions -->
+            <div class="instructions">
+                <h3>Getting Started</h3>
+                <ol>
+                    <li>Click the "Create Your Account" button above</li>
+                    <li>Enter your information (you'll be linked to {{BROKERAGE_NAME}})</li>
+                    <li>Set your password</li>
+                    <li>Start managing your listings and team</li>
+                </ol>
+            </div>
+            
+            <!-- Support -->
+            <div class="support-section">
+                <div class="support-text">
+                    <p><strong>Questions?</strong> Reach out to {{BROKERAGE_NAME}} at <a href="mailto:{{BROKERAGE_EMAIL}}" class="support-link">{{BROKERAGE_EMAIL}}</a> or contact our support team at <a href="mailto:support@northshoresignco.com" class="support-link">support@northshoresignco.com</a>.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="{{SUPPORT_URL}}">Help Center</a> | 
+                <a href="{{PRIVACY_URL}}">Privacy Policy</a> | 
+                <a href="{{TERMS_URL}}">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

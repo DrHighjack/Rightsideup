@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Installation Added</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background-color: #f3f4f6;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            font-size: 16px;
+            opacity: 0.95;
+        }
+        
+        .content {
+            padding: 40px 30px;
+        }
+        
+        .greeting {
+            font-size: 16px;
+            margin-bottom: 24px;
+            line-height: 1.6;
+        }
+        
+        .bonus-box {
+            background: linear-gradient(135deg, #fef3c7 0%, #fef08a 100%);
+            border: 2px solid #fcd34d;
+            border-radius: 6px;
+            padding: 24px;
+            margin: 24px 0;
+            text-align: center;
+        }
+        
+        .bonus-icon {
+            font-size: 48px;
+            margin-bottom: 12px;
+        }
+        
+        .bonus-title {
+            font-size: 18px;
+            color: #92400e;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .bonus-value {
+            font-size: 24px;
+            color: #b45309;
+            font-weight: 700;
+        }
+        
+        .detail-box {
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 6px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #fcd34d;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        
+        .detail-label {
+            font-size: 13px;
+            color: #92400e;
+            font-weight: 600;
+        }
+        
+        .detail-value {
+            font-size: 13px;
+            color: #b45309;
+            font-weight: 500;
+        }
+        
+        .highlight {
+            background-color: #fef9e7;
+            padding: 16px;
+            border-radius: 6px;
+            margin: 20px 0;
+            border-left: 4px solid #f59e0b;
+        }
+        
+        .highlight-text {
+            font-size: 14px;
+            color: #92400e;
+            line-height: 1.6;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            width: 100%;
+            padding: 14px 24px;
+            margin: 24px 0;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 6px rgba(245, 158, 11, 0.3);
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(245, 158, 11, 0.4);
+        }
+        
+        .terms {
+            font-size: 12px;
+            color: #92400e;
+            background-color: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        
+        .support-section {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .support-text {
+            font-size: 13px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+        
+        .support-link {
+            color: #f59e0b;
+            text-decoration: none;
+        }
+        
+        .footer {
+            background-color: #f1f5f9;
+            padding: 24px 30px;
+            text-align: center;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .footer-text {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+        }
+        
+        .footer-links {
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .footer-links a {
+            color: #f59e0b;
+            text-decoration: none;
+            margin: 0 8px;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            
+            .header {
+                padding: 30px 20px;
+            }
+            
+            .content {
+                padding: 24px 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎉 Great News!</h1>
+            <p>A free installation has been added to your account</p>
+        </div>
+        
+        <!-- Content -->
+        <div class="content">
+            <div class="greeting">
+                <p>Hi {{CUSTOMER_NAME}},</p>
+                <p style="margin-top: 12px;">Excellent news! We've added a free installation credit to your account. You can now use this towards your next sign installation project.</p>
+            </div>
+            
+            <!-- Bonus Box -->
+            <div class="bonus-box">
+                <div class="bonus-icon">🎁</div>
+                <div class="bonus-title">Free Installation Credit</div>
+                <div class="bonus-value">{{CREDIT_VALUE}}</div>
+            </div>
+            
+            <!-- Credit Details -->
+            <div class="detail-box">
+                <div class="detail-row">
+                    <span class="detail-label">Credit Amount</span>
+                    <span class="detail-value">{{CREDIT_VALUE}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Expires</span>
+                    <span class="detail-value">{{EXPIRATION_DATE}}</span>
+                </div>
+                
+                <div class="detail-row">
+                    <span class="detail-label">Credit Code</span>
+                    <span class="detail-value">{{CREDIT_CODE}}</span>
+                </div>
+            </div>
+            
+            <!-- Highlight -->
+            <div class="highlight">
+                <div class="highlight-text">
+                    💡 This credit can be applied to any sign installation service. Simply mention this credit code when placing your next order, or apply it during checkout on our website.
+                </div>
+            </div>
+            
+            <!-- CTA Button -->
+            <a href="{{ORDER_LINK}}" class="cta-button">Browse Installation Services</a>
+            
+            <!-- Terms -->
+            <div class="terms">
+                <strong>Terms:</strong> This credit is valid for {{VALIDITY_PERIOD}}. It cannot be transferred, refunded, or combined with other promotional offers. Valid for installation services only.
+            </div>
+            
+            <!-- Support -->
+            <div class="support-section">
+                <div class="support-text">
+                    <p><strong>Questions?</strong> We're here to help! <a href="mailto:support@northshoresignco.com" class="support-link">Contact our team</a> to learn more about how to use your credit.</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="{{SUPPORT_URL}}">Help Center</a> | 
+                <a href="{{PRIVACY_URL}}">Privacy Policy</a> | 
+                <a href="{{TERMS_URL}}">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

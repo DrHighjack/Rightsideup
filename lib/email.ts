@@ -3261,6 +3261,22 @@ export function get811ManualTicketCreatedAlertEmail(
     }),
   };
 }
+
+export function getSignReportAlertEmail(
+    reportType: string,
+    signNumber: string,
+    description: string,
+    reportedBy: string,
+    newStatus: string,
+    signLink: string
+) {
+    return {
+        subject: `Sign Report: ${reportType} - ${signNumber}`,
+        html: buildAlertEmail({
+            title: "Sign Report Submitted",
+            subtitle: "A sign issue was reported",
+            intro: "A user reported an issue for a sign that may need immediate attention.",
+            fields: [
                 { label: "Sign Number", value: escapeHtml(signNumber) },
                 { label: "Report Type", value: escapeHtml(reportType) },
                 { label: "Reported By", value: escapeHtml(reportedBy) },

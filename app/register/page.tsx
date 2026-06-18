@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -15,7 +15,7 @@ interface InviteData {
   };
 }
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("inviteToken") || "";
 
@@ -273,5 +273,21 @@ export default function RegisterPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
+          <div className="w-full max-w-md rounded-md bg-white p-6 text-center text-sm text-gray-600 shadow-sm">
+            Loading registration form...
+          </div>
+        </div>
+      }
+    >
+      <RegisterPageContent />
+    </Suspense>
   );
 }

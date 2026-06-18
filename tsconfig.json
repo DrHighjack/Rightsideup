@@ -22,6 +22,7 @@
         "./*"
       ]
     },
+    "ignoreDeprecations": "6.0",
     "baseUrl": ".",
     "jsx": "preserve",
     "moduleResolution": "bundler",

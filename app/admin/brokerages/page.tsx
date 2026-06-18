@@ -154,32 +154,45 @@ export default function ManagementPage() {
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const [agentsRes, tcsRes, closersRes] = await Promise.all([
+      const [agentsResult, tcsResult, closersResult, brokeragesResult] =
+        await Promise.allSettled([
           fetch("/api/admin/users"),
           fetch("/api/admin/tcs"),
           fetch("/api/admin/users?role=ADMIN,SALESMEN&limit=200"),
+          fetch("/api/admin/brokerages"),
         ]);
 
-        if (!agentsRes.ok) throw new Error("Failed to fetch agents");
-        if (!tcsRes.ok) throw new Error("Failed to fetch TCs");
-        if (!closersRes.ok) throw new Error("Failed to fetch closers");
-
-        const [agentsData, tcsData, closersData] = await Promise.all([
-          agentsRes.json(),
-          tcsRes.json(),
-          closersRes.json(),
-        ]);
-
-        await fetchBrokerages();
-        setAgents(agentsData.users);
-        setTcs(tcsData.tcs || []);
-        setClosers(closersData.users || []);
-      } catch (err) {
-        setError("Failed to load data");
-      } finally {
-        setLoading(false);
+      // Clients are the core data for this page; keep other failures non-fatal.
+      if (agentsResult.status === "fulfilled" && agentsResult.value.ok) {
+        const agentsData = await agentsResult.value.json();
+        setAgents(agentsData.users || []);
+      } else {
+        setAgents([]);
+        setError("Failed to load clients");
       }
+
+      if (tcsResult.status === "fulfilled" && tcsResult.value.ok) {
+        const tcsData = await tcsResult.value.json();
+        setTcs(tcsData.tcs || []);
+      } else {
+        setTcs([]);
+      }
+
+      if (closersResult.status === "fulfilled" && closersResult.value.ok) {
+        const closersData = await closersResult.value.json();
+        setClosers(closersData.users || []);
+      } else {
+        setClosers([]);
+      }
+
+      if (brokeragesResult.status === "fulfilled" && brokeragesResult.value.ok) {
+        const brokeragesData = await brokeragesResult.value.json();
+        setBrokerages(brokeragesData.brokerages || []);
+      } else {
+        setBrokerages([]);
+      }
+
+      setLoading(false);
     };
 
     if (status === "authenticated") {

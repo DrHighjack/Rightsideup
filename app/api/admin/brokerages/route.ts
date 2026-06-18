@@ -5,8 +5,10 @@ import { z } from "zod";
 
 const brokerageSchema = z.object({
   name: z.string().min(1),
+  address: z.string().optional(),
   phone: z.string().optional(),
-  email: z.string().email().optional(),
+  billingType: z.enum(["AGENT", "BROKERAGE"]).default("AGENT"),
+  basePriceCents: z.number().int().positive().optional(),
 });
 
 export async function GET(_request: NextRequest) {
@@ -19,28 +21,31 @@ export async function GET(_request: NextRequest) {
 
     const brokerages = await prisma.brokerage.findMany({
       include: {
-        agents: {
+        _count: {
           select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-            phone: true,
-            paymentMethod: true,
-          },
-        },
-        admin: {
-          select: {
-            firstName: true,
-            lastName: true,
-            email: true,
+            agents: true,
           },
         },
       },
       orderBy: { name: "asc" },
     });
 
-    return NextResponse.json({ brokerages });
+    return NextResponse.json({
+      brokerages: brokerages.map((brokerage) => ({
+        id: brokerage.id,
+        name: brokerage.name,
+        address: brokerage.address,
+        phone: brokerage.phone,
+        email: brokerage.email,
+        billingType: brokerage.billingType,
+        basePriceCents: brokerage.basePriceCents,
+        isActive: brokerage.isActive,
+        createdAt: brokerage.createdAt,
+        updatedAt: brokerage.updatedAt,
+        adminId: brokerage.adminId,
+        agentCount: brokerage._count.agents,
+      })),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
@@ -58,28 +63,45 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, phone, email } = brokerageSchema.parse(body);
+    const { name, address, phone, billingType, basePriceCents } =
+      brokerageSchema.parse(body);
 
     const brokerage = await prisma.brokerage.create({
       data: {
         name,
+        address: address || null,
         phone: phone || null,
-        email: email || null,
+        billingType,
+        basePriceCents: basePriceCents ?? null,
+        isActive: true,
         adminId: session.user.id,
       },
       include: {
-        agents: true,
-        admin: {
+        _count: {
           select: {
-            firstName: true,
-            lastName: true,
-            email: true,
+            agents: true,
           },
         },
       },
     });
 
-    return NextResponse.json(brokerage, { status: 201 });
+    return NextResponse.json(
+      {
+        id: brokerage.id,
+        name: brokerage.name,
+        address: brokerage.address,
+        phone: brokerage.phone,
+        email: brokerage.email,
+        billingType: brokerage.billingType,
+        basePriceCents: brokerage.basePriceCents,
+        isActive: brokerage.isActive,
+        createdAt: brokerage.createdAt,
+        updatedAt: brokerage.updatedAt,
+        adminId: brokerage.adminId,
+        agentCount: brokerage._count.agents,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     if (error.name === "ZodError") {
       return NextResponse.json(

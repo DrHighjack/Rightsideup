@@ -259,8 +259,12 @@ model OrderItem {
 model Brokerage {
   id             String     @id @default(cuid())
   name           String
+  address        String?
   phone          String?
   email          String?
+  billingType    String     @default("AGENT") // AGENT | BROKERAGE
+  basePriceCents Int?       // null = use master pricing
+  isActive       Boolean    @default(true)
   adminId        String
   admin          User       @relation("BrokerageAdmin", fields: [adminId], references: [id], onDelete: Cascade)
   agents         User[]

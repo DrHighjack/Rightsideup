@@ -23,6 +23,8 @@ export async function GET(_request: Request) {
         firstName: true,
         lastName: true,
         email: true,
+        phone: true,
+        tags: true,
         createdAt: true,
         tcAgentLinks: {
           select: {
@@ -48,7 +50,10 @@ export async function GET(_request: Request) {
       firstName: tc.firstName,
       lastName: tc.lastName,
       email: tc.email,
+      phone: tc.phone,
       agentCount: tc.tcAgentLinks.length,
+      linkedAgentCount: tc.tcAgentLinks.length,
+      isActive: !tc.tags.includes("INACTIVE"),
       agents: tc.tcAgentLinks.map((link) => ({
         linkId: link.id,
         agentId: link.agentUserId,

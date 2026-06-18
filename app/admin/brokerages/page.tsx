@@ -26,21 +26,13 @@ interface Closer {
 interface Brokerage {
   id: string;
   name: string;
+  address?: string;
+  billingType: "AGENT" | "BROKERAGE";
+  basePriceCents?: number | null;
+  isActive: boolean;
+  agentCount: number;
   email?: string;
   phone?: string;
-  admin: {
-    firstName: string;
-    lastName: string;
-    email: string;
-  };
-  agents: Array<{
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
-    paymentMethod: string;
-  }>;
 }
 
 interface TC {
@@ -48,7 +40,10 @@ interface TC {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  phone?: string | null;
   agentCount: number;
+  linkedAgentCount?: number;
+  isActive?: boolean;
   agents: Array<{
     linkId: string;
     agentId: string;
@@ -107,7 +102,6 @@ export default function ManagementPage() {
   });
   
   // TC Management State
-  const [expandedTcId, setExpandedTcId] = useState<string | null>(null);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkForm, setLinkForm] = useState<LinkFormState>({
     selectedTcId: null,
@@ -119,7 +113,31 @@ export default function ManagementPage() {
   });
   const [linkSubmitting, setLinkSubmitting] = useState(false);
   const [linkError, setLinkError] = useState("");
-  const [unlinkingId, setUnlinkingId] = useState<string | null>(null);
+  const [showTcModal, setShowTcModal] = useState(false);
+  const [editingTcId, setEditingTcId] = useState<string | null>(null);
+  const [tcSubmitting, setTcSubmitting] = useState(false);
+  const [tcError, setTcError] = useState("");
+  const [showTcPasswordModal, setShowTcPasswordModal] = useState(false);
+  const [newTcPassword, setNewTcPassword] = useState("");
+  const [newTcName, setNewTcName] = useState("");
+  const [tcForm, setTcForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    password: "",
+  });
+  const [showBrokerageModal, setShowBrokerageModal] = useState(false);
+  const [editingBrokerageId, setEditingBrokerageId] = useState<string | null>(null);
+  const [brokerageSubmitting, setBrokerageSubmitting] = useState(false);
+  const [brokerageError, setBrokerageError] = useState("");
+  const [brokerageForm, setBrokerageForm] = useState({
+    name: "",
+    address: "",
+    phone: "",
+    billingType: "AGENT" as "AGENT" | "BROKERAGE",
+    basePrice: "",
+  });
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -127,27 +145,33 @@ export default function ManagementPage() {
     }
   }, [status, router]);
 
+  const fetchBrokerages = async () => {
+    const brokeragesRes = await fetch("/api/admin/brokerages");
+    if (!brokeragesRes.ok) throw new Error("Failed to fetch brokerages");
+    const brokeragesData = await brokeragesRes.json();
+    setBrokerages(brokeragesData.brokerages || []);
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [brokeragesRes, agentsRes, tcsRes, closersRes] = await Promise.all([
-          fetch("/api/admin/brokerages"),
+        const [agentsRes, tcsRes, closersRes] = await Promise.all([
           fetch("/api/admin/users"),
           fetch("/api/admin/tcs"),
           fetch("/api/admin/users?role=ADMIN,SALESMEN&limit=200"),
         ]);
 
-        if (!brokeragesRes.ok) throw new Error("Failed to fetch brokerages");
         if (!agentsRes.ok) throw new Error("Failed to fetch agents");
         if (!tcsRes.ok) throw new Error("Failed to fetch TCs");
         if (!closersRes.ok) throw new Error("Failed to fetch closers");
 
-        const brokeragesData = await brokeragesRes.json();
-        const agentsData = await agentsRes.json();
-        const tcsData = await tcsRes.json();
-        const closersData = await closersRes.json();
+        const [agentsData, tcsData, closersData] = await Promise.all([
+          agentsRes.json(),
+          tcsRes.json(),
+          closersRes.json(),
+        ]);
 
-        setBrokerages(brokeragesData.brokerages);
+        await fetchBrokerages();
         setAgents(agentsData.users);
         setTcs(tcsData.tcs || []);
         setClosers(closersData.users || []);
@@ -162,6 +186,115 @@ export default function ManagementPage() {
       fetchData();
     }
   }, [status]);
+
+  const resetBrokerageModal = () => {
+    setEditingBrokerageId(null);
+    setBrokerageError("");
+    setBrokerageForm({
+      name: "",
+      address: "",
+      phone: "",
+      billingType: "AGENT",
+      basePrice: "",
+    });
+  };
+
+  const openCreateBrokerageModal = () => {
+    resetBrokerageModal();
+    setShowBrokerageModal(true);
+  };
+
+  const openEditBrokerageModal = (brokerage: Brokerage) => {
+    setEditingBrokerageId(brokerage.id);
+    setBrokerageError("");
+    setBrokerageForm({
+      name: brokerage.name || "",
+      address: brokerage.address || "",
+      phone: brokerage.phone || "",
+      billingType: brokerage.billingType,
+      basePrice:
+        brokerage.basePriceCents !== null && brokerage.basePriceCents !== undefined
+          ? (brokerage.basePriceCents / 100).toString()
+          : "",
+    });
+    setShowBrokerageModal(true);
+  };
+
+  const handleSaveBrokerage = async () => {
+    setBrokerageError("");
+
+    if (!brokerageForm.name.trim()) {
+      setBrokerageError("Brokerage name is required");
+      return;
+    }
+
+    let basePriceCents: number | null = null;
+    if (brokerageForm.basePrice.trim()) {
+      const parsed = Number(brokerageForm.basePrice);
+      if (Number.isNaN(parsed) || parsed < 0) {
+        setBrokerageError("Base price must be a valid positive dollar amount");
+        return;
+      }
+      basePriceCents = Math.round(parsed * 100);
+    }
+
+    try {
+      setBrokerageSubmitting(true);
+
+      const payload = {
+        name: brokerageForm.name.trim(),
+        address: brokerageForm.address.trim() || undefined,
+        phone: brokerageForm.phone.trim() || undefined,
+        billingType: brokerageForm.billingType,
+        basePriceCents,
+      };
+
+      const endpoint = editingBrokerageId
+        ? `/api/admin/brokerages/${editingBrokerageId}`
+        : "/api/admin/brokerages";
+      const method = editingBrokerageId ? "PUT" : "POST";
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setBrokerageError(data.error || "Failed to save brokerage");
+        return;
+      }
+
+      await fetchBrokerages();
+      setShowBrokerageModal(false);
+      resetBrokerageModal();
+    } catch (err) {
+      setBrokerageError("Failed to save brokerage");
+    } finally {
+      setBrokerageSubmitting(false);
+    }
+  };
+
+  const handleDeactivateBrokerage = async (brokerage: Brokerage) => {
+    if (!confirm(`Deactivate ${brokerage.name}?`)) return;
+
+    try {
+      const res = await fetch(`/api/admin/brokerages/${brokerage.id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Failed to deactivate brokerage");
+        return;
+      }
+
+      await fetchBrokerages();
+    } catch (err) {
+      alert("Failed to deactivate brokerage");
+    }
+  };
 
   // Filter and sort agents based on search and sort settings
   const filteredAgents = agents
@@ -284,6 +417,129 @@ export default function ManagementPage() {
     }
   };
 
+  const resetTcForm = () => {
+    setEditingTcId(null);
+    setTcError("");
+    setTcForm({
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "",
+    });
+  };
+
+  const openCreateTcModal = () => {
+    resetTcForm();
+    setShowTcModal(true);
+  };
+
+  const openEditTcModal = (tc: TC) => {
+    setEditingTcId(tc.id);
+    setTcError("");
+    setTcForm({
+      firstName: tc.firstName || "",
+      lastName: tc.lastName || "",
+      email: tc.email,
+      phone: tc.phone || "",
+      password: "",
+    });
+    setShowTcModal(true);
+  };
+
+  const handleSaveTc = async () => {
+    setTcError("");
+
+    if (!tcForm.firstName.trim() || !tcForm.lastName.trim()) {
+      setTcError("First Name and Last Name are required");
+      return;
+    }
+
+    if (!editingTcId && !tcForm.email.trim()) {
+      setTcError("Email is required");
+      return;
+    }
+
+    try {
+      setTcSubmitting(true);
+
+      if (editingTcId) {
+        const res = await fetch(`/api/admin/tcs/${editingTcId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: tcForm.firstName.trim(),
+            lastName: tcForm.lastName.trim(),
+            phone: tcForm.phone.trim() || undefined,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          setTcError(data.error || "Failed to update TC");
+          return;
+        }
+
+        await fetchTCs();
+        setShowTcModal(false);
+        resetTcForm();
+      } else {
+        const res = await fetch("/api/admin/tcs/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: tcForm.firstName.trim(),
+            lastName: tcForm.lastName.trim(),
+            email: tcForm.email.trim(),
+            phone: tcForm.phone.trim() || undefined,
+            password: tcForm.password,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          setTcError(data.error || "Failed to create TC");
+          return;
+        }
+
+        await fetchTCs();
+        setShowTcModal(false);
+        setNewTcPassword(data.generatedPassword || "");
+        setNewTcName(`${tcForm.firstName.trim()} ${tcForm.lastName.trim()}`);
+        setShowTcPasswordModal(true);
+        resetTcForm();
+      }
+    } catch (err) {
+      setTcError(editingTcId ? "Failed to update TC" : "Failed to create TC");
+    } finally {
+      setTcSubmitting(false);
+    }
+  };
+
+  const handleDeactivateTc = async (tc: TC) => {
+    const fullName = `${tc.firstName || ""} ${tc.lastName || ""}`.trim();
+    const confirmed = confirm(
+      `Deactivate ${fullName}? They will no longer be able to log in.`
+    );
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/admin/tcs/${tc.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to deactivate TC");
+        return;
+      }
+
+      await fetchTCs();
+    } catch (err) {
+      alert("Failed to deactivate TC");
+    }
+  };
+
   const searchTCUsers = async (query: string) => {
     if (query.length < 2) {
       setLinkForm((prev) => ({ ...prev, tcSearchQuery: query, tcSearchResults: [] }));
@@ -369,25 +625,11 @@ export default function ManagementPage() {
     }
   };
 
-  const handleUnlink = async (linkId: string) => {
-    if (!confirm("Are you sure you want to unlink this agent?")) return;
-
+  const formatDate = (date: string) => {
     try {
-      setUnlinkingId(linkId);
-      const res = await fetch(`/api/admin/tcs/link/${linkId}`, {
-        method: "DELETE",
-      });
-
-      if (res.ok) {
-        await fetchTCs();
-      } else {
-        alert("Failed to unlink agent");
-      }
-    } catch (err) {
-      console.error("Error unlinking:", err);
-      alert("Failed to unlink agent");
-    } finally {
-      setUnlinkingId(null);
+      return new Date(date).toLocaleDateString();
+    } catch {
+      return "—";
     }
   };
 
@@ -445,67 +687,209 @@ export default function ManagementPage() {
 
         {/* Brokerages View */}
         {view === "brokerages" && (
-          <div className="grid gap-6">
-            {brokerages.map((brokerage) => (
-              <div
-                key={brokerage.id}
-                className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow cursor-pointer p-6"
-                onClick={() => router.push(`/admin/brokerages/${brokerage.id}`)}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div>
-                    <h2 className="text-xl font-semibold text-gray-900">{brokerage.name}</h2>
-                    <p className="text-sm text-gray-600">
-                      Admin: {brokerage.admin.firstName} {brokerage.admin.lastName}
-                    </p>
-                  </div>
-                  <span className="bg-green-100 text-green-800 text-xs px-3 py-1 rounded-full">
-                    {brokerage.agents.length} Agents
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  {brokerage.phone && (
-                    <div>
-                      <p className="text-gray-600">Phone</p>
-                      <p className="text-gray-900 font-medium">{brokerage.phone}</p>
-                    </div>
-                  )}
-                  {brokerage.email && (
-                    <div>
-                      <p className="text-gray-600">Email</p>
-                      <p className="text-gray-900 font-medium">{brokerage.email}</p>
-                    </div>
-                  )}
-                </div>
-
-                {brokerage.agents.length > 0 && (
-                  <div className="mt-4 pt-4 border-t">
-                    <p className="text-sm font-medium text-gray-700 mb-2">Recent Agents:</p>
-                    <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                      {brokerage.agents.slice(0, 3).map((agent) => (
-                        <Link
-                          key={agent.id}
-                          href={`/admin/clients/${agent.id}`}
-                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-green-100 hover:text-green-700 transition-colors"
-                        >
-                          {agent.firstName} {agent.lastName}
-                        </Link>
-                      ))}
-                      {brokerage.agents.length > 3 && (
-                        <span className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                          +{brokerage.agents.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-gray-900">Brokerages</h2>
+                <p className="text-sm text-gray-600 mt-1">Create and manage brokerage billing rules</p>
               </div>
-            ))}
+              <button
+                onClick={openCreateBrokerageModal}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+              >
+                + Add Brokerage
+              </button>
+            </div>
 
-            {brokerages.length === 0 && (
-              <div className="text-center py-12">
-                <p className="text-gray-600">No brokerages found</p>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Name</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Address</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Phone</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Billing Type</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Base Price</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Agent Count</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {brokerages.map((brokerage) => (
+                    <tr key={brokerage.id} className={!brokerage.isActive ? "bg-gray-50" : "hover:bg-gray-50"}>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {brokerage.name}
+                        {!brokerage.isActive && (
+                          <span className="ml-2 inline-block text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">
+                            Inactive
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{brokerage.address || "—"}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">{brokerage.phone || "—"}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <span
+                          className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
+                            brokerage.billingType === "BROKERAGE"
+                              ? "bg-indigo-100 text-indigo-800"
+                              : "bg-slate-100 text-slate-800"
+                          }`}
+                        >
+                          {brokerage.billingType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">
+                        {brokerage.basePriceCents == null
+                          ? "Standard"
+                          : `$${(brokerage.basePriceCents / 100).toFixed(2)}`}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{brokerage.agentCount}</td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="flex items-center gap-4">
+                          <button
+                            onClick={() => openEditBrokerageModal(brokerage)}
+                            className="text-green-700 hover:text-green-800 font-medium"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeactivateBrokerage(brokerage)}
+                            disabled={!brokerage.isActive}
+                            className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed font-medium"
+                          >
+                            Deactivate
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {brokerages.length === 0 && (
+                <div className="text-center py-12">
+                  <p className="text-gray-600">No brokerages found</p>
+                </div>
+              )}
+            </div>
+
+            {showBrokerageModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-lg">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    {editingBrokerageId ? "Edit Brokerage" : "Add Brokerage"}
+                  </h3>
+
+                  <div className="space-y-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Brokerage Name</label>
+                      <input
+                        type="text"
+                        value={brokerageForm.name}
+                        onChange={(e) => setBrokerageForm((prev) => ({ ...prev, name: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Brokerage Name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Address</label>
+                      <input
+                        type="text"
+                        value={brokerageForm.address}
+                        onChange={(e) =>
+                          setBrokerageForm((prev) => ({ ...prev, address: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Address"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Phone</label>
+                      <input
+                        type="text"
+                        value={brokerageForm.phone}
+                        onChange={(e) =>
+                          setBrokerageForm((prev) => ({ ...prev, phone: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Phone"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-2">Who Pays?</label>
+                      <div className="space-y-2">
+                        <label className="flex items-start gap-2 text-sm text-gray-700">
+                          <input
+                            type="radio"
+                            name="billingType"
+                            checked={brokerageForm.billingType === "AGENT"}
+                            onChange={() =>
+                              setBrokerageForm((prev) => ({ ...prev, billingType: "AGENT" }))
+                            }
+                            className="mt-0.5"
+                          />
+                          Agent pays their own invoices
+                        </label>
+                        <label className="flex items-start gap-2 text-sm text-gray-700">
+                          <input
+                            type="radio"
+                            name="billingType"
+                            checked={brokerageForm.billingType === "BROKERAGE"}
+                            onChange={() =>
+                              setBrokerageForm((prev) => ({ ...prev, billingType: "BROKERAGE" }))
+                            }
+                            className="mt-0.5"
+                          />
+                          Brokerage is billed for all agents
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Base Price Override</label>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={brokerageForm.basePrice}
+                        onChange={(e) =>
+                          setBrokerageForm((prev) => ({ ...prev, basePrice: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="e.g. 45.00"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Leave blank to use standard pricing</p>
+                    </div>
+                  </div>
+
+                  {brokerageError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      {brokerageError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowBrokerageModal(false);
+                        resetBrokerageModal();
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveBrokerage}
+                      disabled={brokerageSubmitting}
+                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg"
+                    >
+                      {brokerageSubmitting ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -750,21 +1134,19 @@ export default function ManagementPage() {
         {/* TC Accounts View */}
         {view === "tcs" && (
           <div>
-            {/* Header with Link Button */}
             <div className="mb-6 flex justify-between items-start">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">TC Accounts</h2>
                 <p className="text-gray-600 text-sm mt-1">Manage third-party coordinators and their linked agents</p>
               </div>
               <button
-                onClick={() => setShowLinkModal(true)}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg"
+                onClick={openCreateTcModal}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
               >
-                + Link TC to Agent
+                + Add TC
               </button>
             </div>
 
-            {/* TCs Table */}
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               {loading ? (
                 <div className="p-8 text-center text-gray-500">Loading TCs...</div>
@@ -773,92 +1155,202 @@ export default function ManagementPage() {
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-gray-200 bg-gray-50">
-                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
-                          Name
-                        </th>
-                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
-                          Email
-                        </th>
-                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
-                          Linked Agents
-                        </th>
-                        <th className="text-center px-6 py-3 font-semibold text-gray-900 text-sm">
-                          Action
-                        </th>
+                    <thead className="bg-gray-50 border-b border-gray-200">
+                      <tr>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Full Name</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Email</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Phone</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Linked Agent Count</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Joined Date</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Status</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Actions</th>
                       </tr>
                     </thead>
-                    <tbody>
-                      {tcs.map((tc) => (
-                        <div key={tc.id}>
-                          <tr className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer">
-                            <td className="px-6 py-4 font-medium text-gray-900">
-                              {tc.firstName} {tc.lastName}
-                            </td>
-                            <td className="px-6 py-4 text-gray-700">{tc.email}</td>
-                            <td className="px-6 py-4">
-                              <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold">
-                                {tc.agentCount} {tc.agentCount === 1 ? "agent" : "agents"}
+                    <tbody className="divide-y divide-gray-200">
+                      {tcs.map((tc) => {
+                        const fullName = `${tc.firstName || ""} ${tc.lastName || ""}`.trim();
+                        const isActive = tc.isActive ?? true;
+
+                        return (
+                          <tr key={tc.id} className="hover:bg-gray-50">
+                            <td className="px-6 py-4 text-sm font-medium text-gray-900">{fullName || "—"}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{tc.email}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{tc.phone || "—"}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{tc.linkedAgentCount ?? tc.agentCount}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{formatDate(tc.createdAt)}</td>
+                            <td className="px-6 py-4 text-sm">
+                              <span
+                                className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                                  isActive ? "bg-green-100 text-green-800" : "bg-gray-200 text-gray-700"
+                                }`}
+                              >
+                                {isActive ? "Active" : "Inactive"}
                               </span>
                             </td>
-                            <td className="px-6 py-4 text-center">
-                              <button
-                                onClick={() =>
-                                  setExpandedTcId(expandedTcId === tc.id ? null : tc.id)
-                                }
-                                className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
-                              >
-                                {expandedTcId === tc.id ? "Hide" : "View"} Details
-                              </button>
+                            <td className="px-6 py-4 text-sm">
+                              <div className="flex items-center gap-4">
+                                <button
+                                  onClick={() => openEditTcModal(tc)}
+                                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeactivateTc(tc)}
+                                  disabled={!isActive}
+                                  className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed font-medium"
+                                >
+                                  Deactivate
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setShowLinkModal(true);
+                                    setLinkForm((prev) => ({
+                                      ...prev,
+                                      selectedTcId: tc.id,
+                                      tcSearchQuery: fullName,
+                                      tcSearchResults: [],
+                                    }));
+                                  }}
+                                  className="text-green-700 hover:text-green-800 font-medium"
+                                >
+                                  Link to Agent
+                                </button>
+                              </div>
                             </td>
                           </tr>
-
-                          {/* Expanded agents list */}
-                          {expandedTcId === tc.id && (
-                            <tr className="bg-gray-50 border-b border-gray-200">
-                              <td colSpan={4} className="px-6 py-4">
-                                <div className="space-y-3">
-                                  <h3 className="font-semibold text-gray-900">
-                                    Linked Agents ({tc.agents.length})
-                                  </h3>
-                                  {tc.agents.length === 0 ? (
-                                    <p className="text-gray-500 text-sm">No linked agents</p>
-                                  ) : (
-                                    <ul className="space-y-2">
-                                      {tc.agents.map((agent) => (
-                                        <li
-                                          key={agent.linkId}
-                                          className="flex items-center justify-between p-3 bg-white rounded border border-gray-200"
-                                        >
-                                          <div>
-                                            <p className="font-medium text-gray-900">
-                                              {agent.firstName} {agent.lastName}
-                                            </p>
-                                            <p className="text-sm text-gray-600">{agent.email}</p>
-                                          </div>
-                                          <button
-                                            onClick={() => handleUnlink(agent.linkId)}
-                                            disabled={unlinkingId === agent.linkId}
-                                            className="px-3 py-1 text-red-600 hover:text-red-900 text-sm font-medium disabled:opacity-50"
-                                          >
-                                            {unlinkingId === agent.linkId ? "Unlinking..." : "Unlink"}
-                                          </button>
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              </td>
-                            </tr>
-                          )}
-                        </div>
-                      ))}
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
+
+            {showTcModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-lg">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    {editingTcId ? "Edit TC" : "Add TC"}
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">First Name</label>
+                      <input
+                        type="text"
+                        value={tcForm.firstName}
+                        onChange={(e) => setTcForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="First Name"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Last Name</label>
+                      <input
+                        type="text"
+                        value={tcForm.lastName}
+                        onChange={(e) => setTcForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Last Name"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={tcForm.email}
+                        onChange={(e) => setTcForm((prev) => ({ ...prev, email: e.target.value }))}
+                        disabled={Boolean(editingTcId)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100 disabled:text-gray-500"
+                        placeholder="Email"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Phone</label>
+                      <input
+                        type="text"
+                        value={tcForm.phone}
+                        onChange={(e) => setTcForm((prev) => ({ ...prev, phone: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="Phone (optional)"
+                      />
+                    </div>
+
+                    {!editingTcId && (
+                      <div className="md:col-span-2">
+                        <label className="block text-sm font-medium text-gray-900 mb-1">Password</label>
+                        <input
+                          type="text"
+                          value={tcForm.password}
+                          onChange={(e) => setTcForm((prev) => ({ ...prev, password: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                          placeholder="Password (optional)"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Leave blank to auto-generate a secure password</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {tcError && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                      {tcError}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowTcModal(false);
+                        resetTcForm();
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveTc}
+                      disabled={tcSubmitting}
+                      className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg"
+                    >
+                      {tcSubmitting ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showTcPasswordModal && (
+              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-lg max-w-lg w-full p-6 shadow-lg">
+                  <h3 className="text-xl font-bold text-gray-900 mb-2">TC Created Successfully</h3>
+                  <p className="text-sm text-gray-700 mb-4">
+                    Share these credentials with the TC — this password will not be shown again
+                  </p>
+
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 mb-4">
+                    <p className="text-sm text-gray-600">TC</p>
+                    <p className="font-semibold text-gray-900">{newTcName}</p>
+                    <p className="text-sm text-gray-600 mt-2">Password</p>
+                    <p className="font-mono text-sm text-gray-900 break-all">{newTcPassword}</p>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      setShowTcPasswordModal(false);
+                      setNewTcPassword("");
+                      setNewTcName("");
+                    }}
+                    className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Link TC to Agent Modal */}
             {showLinkModal && (
@@ -867,11 +1359,8 @@ export default function ManagementPage() {
                   <h2 className="text-xl font-bold text-gray-900 mb-4">Link TC to Agent</h2>
 
                   <div className="space-y-4 mb-6">
-                    {/* TC Search */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        Select TC
-                      </label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Select TC</label>
                       <input
                         type="text"
                         placeholder="Search by name or email..."
@@ -899,16 +1388,11 @@ export default function ManagementPage() {
                           ))}
                         </ul>
                       )}
-                      {linkForm.selectedTcId && (
-                        <p className="text-sm text-green-600 mt-1">✓ TC selected</p>
-                      )}
+                      {linkForm.selectedTcId && <p className="text-sm text-green-600 mt-1">✓ TC selected</p>}
                     </div>
 
-                    {/* Agent Search */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1">
-                        Select Agent
-                      </label>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Select Agent</label>
                       <input
                         type="text"
                         placeholder="Search by name or email..."
@@ -936,9 +1420,7 @@ export default function ManagementPage() {
                           ))}
                         </ul>
                       )}
-                      {linkForm.selectedAgentId && (
-                        <p className="text-sm text-green-600 mt-1">✓ Agent selected</p>
-                      )}
+                      {linkForm.selectedAgentId && <p className="text-sm text-green-600 mt-1">✓ Agent selected</p>}
                     </div>
 
                     {linkError && (

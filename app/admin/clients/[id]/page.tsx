@@ -335,7 +335,7 @@ export default function RealtorDetailPage() {
     });
   };
 
-  const selectedCloser = closers.find((c) => c.id === realtor.freeInstallGivenBy);
+  const selectedCloser = closers.find((c) => c.id === realtor?.freeInstallGivenBy);
 
   const filteredOrders = orders.filter((order) => {
     if (filterStatus === "all") return true;

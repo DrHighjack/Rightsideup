@@ -216,6 +216,30 @@ export default function AdminLayout({
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           {children}
         </div>
+
+        {/* Compliance Footer */}
+        <footer className="bg-white border-t border-gray-200 px-4 py-6 text-center text-xs text-gray-500 space-y-2">
+          <div className="font-medium text-gray-700">North Shore Sign Co</div>
+          <div>6189 NE Radford Dr Apt 1911, Seattle WA 98115 · <a href="tel:2066596323" className="hover:underline">(206) 659-6323</a> · <a href="mailto:billing@northshoresignco.com" className="hover:underline">billing@northshoresignco.com</a></div>
+          <div className="text-gray-400">Hosted by Vercel Inc. · 340 Pine Street, San Francisco, CA 94104</div>
+          <div className="flex items-center justify-center gap-1 font-medium text-green-700">
+            <span>🔒</span>
+            <span>All transactions secured with 256-bit SSL encryption</span>
+          </div>
+          {/* Card brand badges */}
+          <div className="flex items-center justify-center gap-3 py-1">
+            <span className="inline-flex items-center px-2 py-1 rounded border border-gray-300 bg-gray-50 text-xs font-bold text-blue-800 tracking-wide">VISA</span>
+            <span className="inline-flex items-center px-2 py-1 rounded border border-gray-300 bg-gray-50 text-xs font-bold text-red-700 tracking-wide">MC</span>
+            <span className="inline-flex items-center px-2 py-1 rounded border border-gray-300 bg-gray-50 text-xs font-bold text-blue-600 tracking-wide">AMEX</span>
+          </div>
+          <div className="flex justify-center gap-4">
+            <Link href="/terms" className="hover:underline">Terms &amp; Conditions</Link>
+            <Link href="/privacy" className="hover:underline">Privacy Policy</Link>
+            <Link href="/refund" className="hover:underline">Refund Policy</Link>
+            <Link href="/contact" className="hover:underline">Contact</Link>
+          </div>
+          <div className="text-gray-400">&copy; {new Date().getFullYear()} North Shore Sign Co. All rights reserved.</div>
+        </footer>
       </div>
     </div>
   );

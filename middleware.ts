@@ -28,7 +28,7 @@ export async function middleware(request: NextRequest) {
     }
 
     // Register endpoint - 3 per hour per IP
-    if (pathname.includes("/api/auth/register")) {
+    if (pathname === "/api/auth/register") {
       try {
         const identifier = getIdentifier(ip);
         const { success } = await registerLimiter.limit(identifier);

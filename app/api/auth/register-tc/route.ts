@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
+import { Prisma } from "@prisma/client";
 
 export async function POST(request: Request) {
   try {
@@ -12,6 +13,8 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Validate invite
     const invite = await prisma.tCInvite.findUnique({
@@ -39,7 +42,7 @@ export async function POST(request: Request) {
     }
 
     // Verify email matches invite
-    if (email !== invite.email) {
+    if (normalizedEmail !== invite.email.toLowerCase()) {
       return Response.json(
         { error: "Email does not match invite" },
         { status: 400 }
@@ -48,7 +51,7 @@ export async function POST(request: Request) {
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -61,23 +64,33 @@ export async function POST(request: Request) {
     // Hash password
     const passwordHash = await hash(password, 10);
 
-    // Create TC user within transaction
-    const [newUser, _] = await Promise.all([
-      prisma.user.create({
+    const now = new Date();
+
+    // Claim invite and create user atomically to prevent double-submit races.
+    const newUser = await prisma.$transaction(async (tx) => {
+      const claimedInvite = await tx.tCInvite.updateMany({
+        where: {
+          id: invite.id,
+          usedAt: null,
+          expiresAt: { gt: now },
+        },
+        data: { usedAt: now },
+      });
+
+      if (claimedInvite.count !== 1) {
+        throw new Error("INVITE_UNAVAILABLE");
+      }
+
+      return tx.user.create({
         data: {
-          email,
-          firstName,
-          lastName,
+          email: normalizedEmail,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           passwordHash,
           role: "TC",
         },
-      }),
-      // Mark invite as used
-      prisma.tCInvite.update({
-        where: { id: invite.id },
-        data: { usedAt: new Date() },
-      }),
-    ]);
+      });
+    });
 
     return Response.json(
       {
@@ -93,6 +106,20 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return Response.json(
+        { error: "User already exists with this email" },
+        { status: 409 }
+      );
+    }
+
+    if (error instanceof Error && error.message === "INVITE_UNAVAILABLE") {
+      return Response.json(
+        { error: "Invite has expired or already been used" },
+        { status: 410 }
+      );
+    }
+
     console.error("TC registration error:", error);
     return Response.json(
       { error: "Registration failed" },

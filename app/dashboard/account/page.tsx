@@ -28,6 +28,13 @@ export default function AccountPage() {
   const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [tcsLoading, setTcsLoading] = useState(true);
   const [revokeLoading, setRevokeLoading] = useState<string>("");
+  const [passwordResetLoading, setPasswordResetLoading] = useState(false);
+  const [passwordResetMessage, setPasswordResetMessage] = useState("");
+  const [paymentInfo, setPaymentInfo] = useState({
+    cardholderName: "",
+    cardLast4: "",
+    billingZip: "",
+  });
 
   // Fetch linked TCs and pending invites
   useEffect(() => {
@@ -129,11 +136,49 @@ export default function AccountPage() {
     }
   };
 
+  const handleSendPasswordReset = async () => {
+    setPasswordResetMessage("");
+    if (!user?.email) {
+      setPasswordResetMessage("No email found for this account.");
+      return;
+    }
+
+    try {
+      setPasswordResetLoading(true);
+      const res = await fetch("/api/auth/password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setPasswordResetMessage(data.error || "Failed to send reset email.");
+        return;
+      }
+
+      setPasswordResetMessage("Password reset link sent to your email on file.");
+    } catch (_err) {
+      setPasswordResetMessage("Failed to send reset email.");
+    } finally {
+      setPasswordResetLoading(false);
+    }
+  };
+
   if (!session?.user) {
     return <div className="max-w-2xl mx-auto p-6">Loading...</div>;
   }
 
   const user = session.user as any;
+  const roleLabel =
+    user.role === "TC"
+      ? "Transaction Coordinator"
+      : user.role === "REALTOR"
+      ? "Realtor"
+      : user.role === "ADMIN"
+      ? "Admin"
+      : user.role || "Realtor";
+  const businessName = user.brokerageName || "Not set";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -159,21 +204,82 @@ export default function AccountPage() {
 
         <div>
           <p className="text-sm text-gray-600">Email</p>
-          <p className="text-gray-900 font-medium">{user.email}</p>
+          <p className="text-gray-900 font-medium">
+            {user.email} <span className="text-gray-500 font-normal">• {businessName}</span>
+          </p>
         </div>
 
         <div>
           <p className="text-sm text-gray-600">Role</p>
-          <p className="text-gray-900 font-medium">{user.role || "REALTOR"}</p>
+          <p className="text-gray-900 font-medium">{roleLabel}</p>
         </div>
+      </div>
+
+      {/* Payment information section */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
+        <h2 className="text-lg font-semibold text-gray-900">Payment Information</h2>
+        <p className="text-sm text-gray-600">
+          Per our policies, payment details are encrypted in transit and at rest. By saving payment
+          information, you authorize charges according to your service agreement and posted terms.
+        </p>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <input
+            type="text"
+            placeholder="Cardholder Name"
+            value={paymentInfo.cardholderName}
+            onChange={(e) =>
+              setPaymentInfo((prev) => ({ ...prev, cardholderName: e.target.value }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2"
+          />
+          <input
+            type="text"
+            placeholder="Card Last 4"
+            value={paymentInfo.cardLast4}
+            onChange={(e) =>
+              setPaymentInfo((prev) => ({ ...prev, cardLast4: e.target.value.replace(/\D/g, "").slice(0, 4) }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2"
+          />
+          <input
+            type="text"
+            placeholder="Billing ZIP"
+            value={paymentInfo.billingZip}
+            onChange={(e) =>
+              setPaymentInfo((prev) => ({ ...prev, billingZip: e.target.value }))
+            }
+            className="rounded-md border border-gray-300 px-3 py-2"
+          />
+        </div>
+
+        <button
+          type="button"
+          className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 cursor-not-allowed"
+          disabled
+          title="Payment save flow coming next"
+        >
+          Save Payment Info (Coming Soon)
+        </button>
       </div>
 
       {/* Change password section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Password</h2>
         <p className="text-sm text-gray-600">
-          Password management coming soon. For now, please contact support to reset your password.
+          Send a secure reset link to your email on file.
         </p>
+        <button
+          type="button"
+          onClick={handleSendPasswordReset}
+          disabled={passwordResetLoading}
+          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-400"
+        >
+          {passwordResetLoading ? "Sending..." : "Send Password Reset Link"}
+        </button>
+        {passwordResetMessage && (
+          <p className="text-sm text-indigo-700">{passwordResetMessage}</p>
+        )}
       </div>
 
       {/* Security note */}

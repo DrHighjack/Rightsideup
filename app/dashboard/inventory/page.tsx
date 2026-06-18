@@ -75,8 +75,8 @@ export default function InventoryPage() {
       <div className="max-w-7xl mx-auto">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Inventory</h1>
-          <p className="text-gray-600 mt-2">Order more inventory items for your projects</p>
+          <h1 className="text-3xl font-bold text-gray-900">Inventory & Signs</h1>
+          <p className="text-gray-600 mt-2">Manage sign-related inventory and place supply requests</p>
         </div>
 
         {/* Error State */}

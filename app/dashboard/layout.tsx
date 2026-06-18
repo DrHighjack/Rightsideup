@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,11 +12,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
     router.push("/login");
   };
+
+  useEffect(() => {
+    const onClickOutside = (event: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", onClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside);
+    };
+  }, []);
 
   return (
     <div className="flex min-h-screen flex-col md:flex-row bg-gray-50">
@@ -25,6 +41,12 @@ export default function DashboardLayout({
           <h1 className="text-lg font-bold text-primary">SignPost Field</h1>
         </div>
         <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
+          <Link
+            href="/dashboard/orders/new"
+            className="block rounded-md border-2 border-green-600 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+          >
+            + New Order
+          </Link>
           <Link
             href="/dashboard"
             className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
@@ -36,18 +58,6 @@ export default function DashboardLayout({
             className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
           >
             My Orders
-          </Link>
-          <Link
-            href="/dashboard/orders/new"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            New Order
-          </Link>
-          <Link
-            href="/dashboard/signs"
-            className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-          >
-            My Signs
           </Link>
           <Link
             href="/dashboard/inventory"
@@ -74,20 +84,40 @@ export default function DashboardLayout({
             Account
           </Link>
         </nav>
-        <div className="border-t border-gray-200 p-4">
-          <button
-            onClick={handleSignOut}
-            className="w-full rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-900 hover:bg-gray-300"
-          >
-            Sign Out
-          </button>
-        </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">
         {/* Top header with notification bell */}
-        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 flex justify-end">
+        <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 flex justify-end items-center gap-3">
+          <div className="relative" ref={accountMenuRef}>
+            <button
+              type="button"
+              onClick={() => setAccountMenuOpen((prev) => !prev)}
+              className="rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Account
+            </button>
+
+            {accountMenuOpen && (
+              <div className="absolute right-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
+                <Link
+                  href="/dashboard/account"
+                  onClick={() => setAccountMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Settings
+                </Link>
+                <button
+                  type="button"
+                  onClick={handleSignOut}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                >
+                  Sign Out
+                </button>
+              </div>
+            )}
+          </div>
           <NotificationBell />
         </div>
         <div className="flex-1 p-4 md:p-8">
@@ -113,12 +143,6 @@ export default function DashboardLayout({
             className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
           >
             📦 Inv
-          </Link>
-          <Link
-            href="/dashboard/signs"
-            className="flex-1 px-3 py-2 text-center text-xs font-medium text-gray-700 hover:text-primary whitespace-nowrap"
-          >
-            Signs
           </Link>
           <Link
             href="/dashboard/811"
@@ -163,6 +187,7 @@ export default function DashboardLayout({
           </div>
           <div className="text-gray-400">&copy; {new Date().getFullYear()} North Shore Sign Co. All rights reserved.</div>
         </footer>
+
       </div>
     </div>
   );

@@ -81,6 +81,9 @@ export async function GET() {
 
       return {
         ...ticket,
+        parsedAddress:
+          ticket.parsedAddress ||
+          (ticket.ticketNumber ? `Ticket #${ticket.ticketNumber}` : '811 Ticket'),
         utilityLines: safeUtilityLines,
       };
     });
@@ -90,6 +93,134 @@ export async function GET() {
     console.error('Error fetching 811 tickets:', error);
     return NextResponse.json(
       { error: 'Failed to fetch 811 tickets' },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/realtor/811 — Create a manual 811 ticket by ticket number
+ * Auth: REALTOR or TC
+ */
+export async function POST(request: Request) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const userRole = (session.user as any).role;
+    if (userRole !== 'REALTOR' && userRole !== 'TC') {
+      return NextResponse.json(
+        { error: 'Only realtors and TCs can create tickets from this page' },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const ticketNumber = typeof body?.ticketNumber === 'string' ? body.ticketNumber.trim() : '';
+    const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : '';
+
+    if (!ticketNumber) {
+      return NextResponse.json(
+        { error: 'Ticket number is required' },
+        { status: 400 }
+      );
+    }
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: 'Property selection is required' },
+        { status: 400 }
+      );
+    }
+
+    let orderWhere: any = { id: orderId };
+
+    if (userRole === 'REALTOR') {
+      orderWhere.realtorId = session.user.id;
+    } else {
+      const linkedAgents = await prisma.tCAgentLink.findMany({
+        where: { tcUserId: session.user.id },
+        select: { agentUserId: true },
+      });
+      const linkedAgentIds = linkedAgents.map((link) => link.agentUserId);
+      orderWhere.realtorId = { in: linkedAgentIds.length > 0 ? linkedAgentIds : [''] };
+    }
+
+    const order = await prisma.order.findFirst({
+      where: orderWhere,
+      select: {
+        id: true,
+        address: true,
+        realtorId: true,
+      },
+    });
+
+    if (!order) {
+      return NextResponse.json(
+        { error: 'Selected property was not found' },
+        { status: 404 }
+      );
+    }
+
+    const existing = await prisma.ticket811.findFirst({
+      where: {
+        OR: [
+          {
+            ticketNumber,
+            realtorId: order.realtorId,
+          },
+          {
+            orderId,
+          },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      return NextResponse.json(
+        { error: 'A ticket already exists for this property or ticket number' },
+        { status: 409 }
+      );
+    }
+
+    const ticket = await prisma.ticket811.create({
+      data: {
+        ticketNumber,
+        sourceEmail: 'manual-entry@rightsignup.local',
+        emailSubject: `Manual 811 Ticket Entry - ${ticketNumber}`,
+        emailBody: `Manually created by realtor ${session.user.id}`,
+        parsedAddress: order.address,
+        status: 'NEEDS_REVIEW',
+        stage: 'TICKET_SUBMITTED',
+        matchedOrderIds: [],
+        orderId,
+        realtorId: order.realtorId,
+        requestedDate: new Date(),
+        ticketSubmittedAt: new Date(),
+        utilityLines: [],
+      },
+      include: {
+        realtor: {
+          select: { id: true, firstName: true, lastName: true, email: true },
+        },
+        clearedByUser: {
+          select: { id: true, firstName: true, lastName: true },
+        },
+        order: {
+          select: { id: true, orderNumber: true, address: true, addressLat: true, addressLng: true },
+        },
+      },
+    });
+
+    return NextResponse.json({ ticket }, { status: 201 });
+  } catch (error) {
+    console.error('Error creating manual 811 ticket:', error);
+    return NextResponse.json(
+      { error: 'Failed to create ticket' },
       { status: 500 }
     );
   }

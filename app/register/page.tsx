@@ -1,10 +1,24 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
+interface InviteData {
+  id: string;
+  email: string;
+  invitedByUser: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
+}
+
 export default function RegisterPage() {
+  const searchParams = useSearchParams();
+  const inviteToken = searchParams.get("inviteToken") || "";
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -16,7 +30,41 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteData, setInviteData] = useState<InviteData | null>(null);
   const router = useRouter();
+
+  useEffect(() => {
+    async function validateInvite() {
+      if (!inviteToken) {
+        return;
+      }
+
+      try {
+        setInviteLoading(true);
+        setError("");
+        const res = await fetch(`/api/tc/invite/${inviteToken}`);
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.error || "Invalid invite token");
+          return;
+        }
+
+        setInviteData(data);
+        setFormData((prev) => ({
+          ...prev,
+          email: data.email || prev.email,
+        }));
+      } catch (_err) {
+        setError("Failed to validate invite");
+      } finally {
+        setInviteLoading(false);
+      }
+    }
+
+    validateInvite();
+  }, [inviteToken]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -57,6 +105,7 @@ export default function RegisterPage() {
           brokerageName: formData.brokerageName || undefined,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
+          inviteToken: inviteToken || undefined,
         }),
       });
 
@@ -80,6 +129,19 @@ export default function RegisterPage() {
           <h1 className="text-3xl font-bold text-primary mb-2">SignPost Field</h1>
           <p className="text-gray-600">Create your realtor account</p>
         </div>
+
+        {inviteLoading && (
+          <div className="rounded-md bg-blue-50 p-4 text-sm text-blue-800">Validating invitation...</div>
+        )}
+
+        {inviteData && (
+          <div className="rounded-md border border-indigo-200 bg-indigo-50 p-4 text-sm text-indigo-900">
+            <p>
+              Invited by {inviteData.invitedByUser.firstName} {inviteData.invitedByUser.lastName}
+            </p>
+            <p className="mt-1">You will be automatically linked after registration.</p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
@@ -130,6 +192,7 @@ export default function RegisterPage() {
               value={formData.email}
               onChange={handleChange}
               required
+                readOnly={Boolean(inviteToken)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             />
           </div>

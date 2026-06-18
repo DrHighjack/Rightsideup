@@ -907,14 +907,14 @@ export function getTCInvitationEmail(
         <!-- Header -->
         <div class="header">
             <h1>📋 You're Invited!</h1>
-            <p>Join your Transaction Coordinator team on RightSignUP</p>
+            <p>Your Transaction Coordinator invited you to RightSignUP</p>
         </div>
         
         <!-- Content -->
         <div class="content">
             <div class="greeting">
                 <p>Hi ${agentName},</p>
-                <p style="margin-top: 12px;">You've been invited to join ${tcName}'s team on RightSignUP. Create your account below to get started.</p>
+                <p style="margin-top: 12px;">${tcName} invited you to the RightSignUP platform. Please complete your registration so your sign can be placed.</p>
             </div>
             
             <!-- TC Info -->
@@ -929,7 +929,7 @@ export function getTCInvitationEmail(
             <!-- Highlight -->
             <div class="highlight">
                 <div class="highlight-text">
-                    🎯 Once you create your account, you'll be automatically connected with your Transaction Coordinator. They'll be able to manage listings and tasks for you.
+                    Once you complete registration, your account is automatically linked with your Transaction Coordinator so order requests can move quickly.
                 </div>
             </div>
             
@@ -940,10 +940,10 @@ export function getTCInvitationEmail(
             <div class="instructions">
                 <h3>Getting Started</h3>
                 <ol>
-                    <li>Click the "Create Your Account" button above</li>
-                    <li>Enter your information (you'll be linked to ${tcName})</li>
-                    <li>Set your password</li>
-                    <li>Start collaborating on your listings</li>
+                    <li>Click "Create Your Account" above</li>
+                    <li>Complete your registration details</li>
+                    <li>Set your password and sign in</li>
+                    <li>Submit your order so your sign can be placed</li>
                 </ol>
             </div>
             
@@ -969,7 +969,7 @@ export function getTCInvitationEmail(
 </html>`;
 
   return {
-    subject: `You're invited to join ${tcName}'s team on RightSignUP! 📋`,
+        subject: `${tcName} invited you to RightSignUP - complete registration`,
     html,
   };
 }

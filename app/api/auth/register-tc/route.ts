@@ -19,10 +19,22 @@ export async function POST(request: Request) {
     // Validate invite
     const invite = await prisma.tCInvite.findUnique({
       where: { token: inviteToken },
+      include: {
+        invitedByUser: {
+          select: { role: true },
+        },
+      },
     });
 
     if (!invite) {
       return Response.json({ error: "Invalid invite token" }, { status: 404 });
+    }
+
+    if (!["REALTOR", "ADMIN"].includes(invite.invitedByUser.role)) {
+      return Response.json(
+        { error: "This invite token is not valid for TC registration" },
+        { status: 400 }
+      );
     }
 
     // Check if expired

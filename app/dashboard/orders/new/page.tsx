@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import { SignSelector } from './components/SignSelector';
 import { AddOnSelector } from './components/AddOnSelector';
 import { Self811PolicyModal } from './components/Self811PolicyModal';
@@ -12,7 +13,25 @@ declare global {
   }
 }
 
+interface TCRealtor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  brokerageName?: string | null;
+}
+
+interface TCPendingInvite {
+  id: string;
+  email: string;
+  expiresAt: string;
+}
+
 export default function NewOrderPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role as string | undefined;
+  const isTC = userRole === 'TC';
+
   const [formData, setFormData] = useState({
     type: 'INSTALL',
     address: '',
@@ -34,11 +53,64 @@ export default function NewOrderPage() {
   const [loading, setLoading] = useState(false);
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [mapsUnavailable, setMapsUnavailable] = useState(false);
+  const [isAsap, setIsAsap] = useState(false);
+  const [selectedRealtorId, setSelectedRealtorId] = useState('');
+  const [tcRealtors, setTcRealtors] = useState<TCRealtor[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<TCPendingInvite[]>([]);
+  const [loadingRealtors, setLoadingRealtors] = useState(false);
+  const [showAddRealtor, setShowAddRealtor] = useState(false);
+  const [addingRealtor, setAddingRealtor] = useState(false);
+  const [addRealtorData, setAddRealtorData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+  });
+  const [addRealtorMessage, setAddRealtorMessage] = useState('');
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
 
   useEffect(() => {
+    async function fetchTCRealtors() {
+      if (!isTC) {
+        return;
+      }
+
+      try {
+        setLoadingRealtors(true);
+        const response = await fetch('/api/tc/realtors', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        const realtors = Array.isArray(data.realtors) ? data.realtors : [];
+        setTcRealtors(realtors);
+        setPendingInvites(Array.isArray(data.pendingInvites) ? data.pendingInvites : []);
+        if (!selectedRealtorId && realtors.length > 0) {
+          setSelectedRealtorId(realtors[0].id);
+        }
+      } catch {
+        setTcRealtors([]);
+      } finally {
+        setLoadingRealtors(false);
+      }
+    }
+
+    fetchTCRealtors();
+  }, [isTC]);
+
+  useEffect(() => {
     async function fetchInventoryItems() {
+      if (isTC && !selectedRealtorId) {
+        setInventoryItems([]);
+        return;
+      }
+
       try {
         const response = await fetch('/api/inventory/items', {
           method: 'GET',
@@ -58,7 +130,7 @@ export default function NewOrderPage() {
     }
 
     fetchInventoryItems();
-  }, []);
+  }, [isTC, selectedRealtorId]);
 
   // Load Google Maps script (prevent duplicates)
   useEffect(() => {
@@ -142,6 +214,60 @@ export default function NewOrderPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    if (name === 'scheduledDate') {
+      setIsAsap(false);
+    }
+  };
+
+  const handleAsapClick = () => {
+    const today = new Date().toISOString().split('T')[0];
+    setFormData((prev) => ({ ...prev, scheduledDate: today }));
+    setIsAsap(true);
+  };
+
+  const handleAddRealtor = async () => {
+    setAddRealtorMessage('');
+
+    if (!addRealtorData.firstName || !addRealtorData.lastName || !addRealtorData.email) {
+      setAddRealtorMessage('Please fill first name, last name, and email.');
+      return;
+    }
+
+    try {
+      setAddingRealtor(true);
+      const response = await fetch('/api/tc/realtors', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(addRealtorData),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setAddRealtorMessage(data.error || 'Failed to add realtor');
+        return;
+      }
+
+      if (data?.linked && data?.realtor?.id) {
+        setTcRealtors((prev) => {
+          const already = prev.some((r) => r.id === data.realtor.id);
+          if (already) return prev;
+          return [data.realtor, ...prev];
+        });
+        setSelectedRealtorId(data.realtor.id);
+        setAddRealtorMessage('Realtor added and linked successfully.');
+      } else if (data?.invited && data?.pendingInvite) {
+        setPendingInvites((prev) => [data.pendingInvite, ...prev]);
+        setAddRealtorMessage('Invitation sent. Realtor must complete registration.');
+      }
+
+      setAddRealtorData({ firstName: '', lastName: '', email: '' });
+      setShowAddRealtor(false);
+    } catch (_error) {
+      setAddRealtorMessage('Failed to add realtor');
+    } finally {
+      setAddingRealtor(false);
+    }
   };
 
   const handle811Toggle = () => {
@@ -191,6 +317,11 @@ export default function NewOrderPage() {
       return;
     }
 
+    if (isTC && !selectedRealtorId) {
+      setError('Please select a realtor for this order.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -212,6 +343,7 @@ export default function NewOrderPage() {
         selectedSignId: selectedSignId || undefined,
         addons: addons,
         self811Accepted: !use811Service ? self811Accepted : false,
+        realtorId: isTC ? selectedRealtorId : undefined,
       };
 
       console.log('🔵 Submitting order with data:', {
@@ -330,6 +462,104 @@ export default function NewOrderPage() {
           </div>
         )}
 
+        {isTC && (
+          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-indigo-900">Assign To Realtor</h3>
+                <p className="text-xs text-indigo-700 mt-1">
+                  Choose one of your linked realtors or add a new realtor invite.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddRealtor((prev) => !prev)}
+                className="rounded-md border border-indigo-300 bg-white px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+              >
+                {showAddRealtor ? 'Close' : 'Add Realtor'}
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Realtor *</label>
+              <select
+                value={selectedRealtorId}
+                onChange={(e) => setSelectedRealtorId(e.target.value)}
+                disabled={loadingRealtors}
+                className="w-full rounded-md border border-gray-300 px-4 py-2 bg-white"
+              >
+                <option value="">{loadingRealtors ? 'Loading realtors...' : 'Select a realtor'}</option>
+                {tcRealtors.map((realtor) => (
+                  <option key={realtor.id} value={realtor.id}>
+                    {realtor.firstName} {realtor.lastName} - {realtor.email}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {showAddRealtor && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  value={addRealtorData.firstName}
+                  onChange={(e) => setAddRealtorData((prev) => ({ ...prev, firstName: e.target.value }))}
+                  placeholder="First Name"
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  disabled={addingRealtor}
+                />
+                <input
+                  type="text"
+                  value={addRealtorData.lastName}
+                  onChange={(e) => setAddRealtorData((prev) => ({ ...prev, lastName: e.target.value }))}
+                  placeholder="Last Name"
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  disabled={addingRealtor}
+                />
+                <input
+                  type="email"
+                  value={addRealtorData.email}
+                  onChange={(e) => setAddRealtorData((prev) => ({ ...prev, email: e.target.value }))}
+                  placeholder="Email"
+                  className="rounded-md border border-gray-300 px-3 py-2"
+                  disabled={addingRealtor}
+                />
+                <div className="md:col-span-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-gray-600">
+                    They will receive invitation and welcome emails to complete registration.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleAddRealtor}
+                    disabled={addingRealtor}
+                    className="rounded-md bg-indigo-600 px-4 py-2 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                  >
+                    {addingRealtor ? 'Sending...' : 'Invite Realtor'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {addRealtorMessage && (
+              <div className="rounded-md border border-indigo-200 bg-white px-3 py-2 text-xs text-indigo-700">
+                {addRealtorMessage}
+              </div>
+            )}
+
+            {pendingInvites.length > 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+                <p className="text-xs font-medium text-amber-800 mb-2">Pending Invites</p>
+                <div className="space-y-1">
+                  {pendingInvites.slice(0, 4).map((invite) => (
+                    <p key={invite.id} className="text-xs text-amber-700">
+                      {invite.email} - expires {new Date(invite.expiresAt).toLocaleDateString()}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Order type */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -377,20 +607,33 @@ export default function NewOrderPage() {
           </p>
         </div>
 
-        {/* Scheduled date */}
+        {/* Requested date */}
         <div>
           <label htmlFor="scheduledDate" className="block text-sm font-medium text-gray-700 mb-1">
             Requested Date
           </label>
-          <input
-            type="date"
-            id="scheduledDate"
-            name="scheduledDate"
-            value={formData.scheduledDate}
-            onChange={handleChange}
-            min={new Date().toISOString().split("T")[0]}
-            className="w-full rounded-md border border-gray-300 px-4 py-2"
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <input
+              type="date"
+              id="scheduledDate"
+              name="scheduledDate"
+              value={formData.scheduledDate}
+              onChange={handleChange}
+              min={new Date().toISOString().split("T")[0]}
+              className="w-full rounded-md border border-gray-300 px-4 py-2"
+            />
+            <button
+              type="button"
+              onClick={handleAsapClick}
+              className={`rounded-md border px-4 py-2 font-medium transition ${
+                isAsap
+                  ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
+                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              ASAP
+            </button>
+          </div>
         </div>
 
         {/* Notes */}
@@ -411,19 +654,25 @@ export default function NewOrderPage() {
 
         {/* Sign Selection */}
         <div className="border-t border-gray-200 pt-6">
-          <SignSelector selectedSignId={selectedSignId} onSelectSign={setSelectedSignId} />
-        </div>
-
-        {/* Add-Ons Selection */}
-        <div className="border-t border-gray-200 pt-6">
-          <AddOnSelector selectedAddOns={selectedAddOns} onAddOnChange={handleAddOnChange} />
+          {isTC && !selectedRealtorId ? (
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+              Select a realtor first to load sign inventory.
+            </div>
+          ) : (
+            <>
+              <SignSelector selectedSignId={selectedSignId} onSelectSign={setSelectedSignId} />
+              <div className="mt-6">
+                <AddOnSelector selectedAddOns={selectedAddOns} onAddOnChange={handleAddOnChange} />
+              </div>
+            </>
+          )}
         </div>
 
         {/* 811 Service Toggle */}
         <div className="border-t border-gray-200 pt-6">
           <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
             <div>
-              <h3 className="font-semibold text-gray-900">811 Call Service</h3>
+              <h3 className="font-semibold text-gray-900">811 Concierge Service</h3>
               <p className="text-sm text-gray-600 mt-1">
                 We will contact 811 to mark utilities before installation
               </p>
@@ -431,13 +680,16 @@ export default function NewOrderPage() {
             <button
               type="button"
               onClick={handle811Toggle}
-              className={`ml-4 flex-shrink-0 rounded-full px-4 py-2 font-medium transition ${
-                use811Service
-                  ? 'bg-green-500 text-white hover:bg-green-600'
-                  : 'bg-gray-300 text-gray-700 hover:bg-gray-400'
+              className={`ml-4 relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition ${
+                use811Service ? 'bg-emerald-500' : 'bg-gray-300'
               }`}
+              aria-label="Toggle 811 concierge service"
             >
-              {use811Service ? 'ON' : 'OFF'}
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                  use811Service ? 'translate-x-9' : 'translate-x-1'
+                }`}
+              />
             </button>
           </div>
           {!use811Service && (
@@ -460,8 +712,16 @@ export default function NewOrderPage() {
                 <span className="font-medium">Order type:</span> {orderTypeLabel}
               </p>
               <p>
+                <span className="font-medium">Assigned realtor:</span>{' '}
+                {isTC
+                  ? tcRealtors.find((r) => r.id === selectedRealtorId)
+                    ? `${tcRealtors.find((r) => r.id === selectedRealtorId)?.firstName} ${tcRealtors.find((r) => r.id === selectedRealtorId)?.lastName}`
+                    : 'Not selected'
+                  : 'My account'}
+              </p>
+              <p>
                 <span className="font-medium">Scheduled date:</span>{' '}
-                {formData.scheduledDate || 'Not specified'}
+                {isAsap ? 'ASAP (Today)' : formData.scheduledDate || 'Not specified'}
               </p>
               <p>
                 <span className="font-medium">Selected sign:</span>{' '}

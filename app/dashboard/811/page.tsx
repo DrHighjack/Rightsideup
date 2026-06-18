@@ -30,28 +30,112 @@ interface ActivityEvent {
   message: string;
 }
 
+interface PropertyOption {
+  id: string;
+  address: string;
+  orderNumber?: string;
+  agentId?: string;
+  agentName?: string;
+  needs811: boolean;
+}
+
 export default function ElevenPage() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  const userRole = (session?.user as any)?.role;
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
+  const [properties, setProperties] = useState<PropertyOption[]>([]);
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('');
+  const [newTicketNumber, setNewTicketNumber] = useState<string>('');
+  const [submitting, setSubmitting] = useState(false);
+  const [addError, setAddError] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Fetch all 811 tickets for this realtor
   useEffect(() => {
-    if (status !== 'authenticated') {
+    if (status === 'loading') {
+      return;
+    }
+
+    if (status === 'unauthenticated') {
       router.push('/login');
       return;
     }
 
     async function fetchTickets() {
       try {
-        const res = await fetch('/api/realtor/811');
-        if (res.ok) {
-          const data = await res.json();
-          setTickets(data);
-          if (data.length > 0) {
-            setSelectedTicketId(data[0].id);
+        const [ticketsRes, ordersRes] = await Promise.all([
+          fetch('/api/realtor/811'),
+          fetch('/api/orders?limit=200'),
+        ]);
+
+        if (ticketsRes.ok) {
+          const data = await ticketsRes.json();
+          const ticketsData = Array.isArray(data)
+            ? data
+            : Array.isArray(data?.tickets)
+              ? data.tickets
+              : [];
+
+          setTickets(ticketsData);
+          if (ticketsData.length > 0) {
+            setSelectedTicketId(ticketsData[0].id);
+          }
+        }
+
+        if (ordersRes.ok) {
+          const orderData = await ordersRes.json();
+          const orderList = Array.isArray(orderData?.orders) ? orderData.orders : [];
+          const isTC = userRole === 'TC';
+          const uniqueMap = new Map<string, PropertyOption>();
+
+          orderList.forEach((order: any) => {
+            const address = typeof order?.address === 'string' ? order.address.trim() : '';
+            if (!address) return;
+
+            const firstName = typeof order?.realtor?.firstName === 'string' ? order.realtor.firstName.trim() : '';
+            const lastName = typeof order?.realtor?.lastName === 'string' ? order.realtor.lastName.trim() : '';
+            const agentName = `${firstName} ${lastName}`.trim() || 'Unknown Agent';
+            const agentId = typeof order?.realtor?.id === 'string' ? order.realtor.id : '';
+            const needs811 = !order?.self811Accepted && !order?.ticket811;
+
+            const dedupeKey = isTC
+              ? `${agentId || 'unknown'}::${address.toLowerCase()}`
+              : address.toLowerCase();
+
+            const candidate: PropertyOption = {
+              id: order.id,
+              address,
+              orderNumber: order.orderNumber,
+              agentId,
+              agentName,
+              needs811,
+            };
+
+            const existing = uniqueMap.get(dedupeKey);
+            if (!existing || (!existing.needs811 && candidate.needs811)) {
+              uniqueMap.set(dedupeKey, candidate);
+            }
+          });
+
+          const propertyOptions: PropertyOption[] = Array.from(uniqueMap.values()).sort((a, b) => {
+            if (isTC) {
+              const agentCompare = (a.agentName || '').localeCompare(b.agentName || '');
+              if (agentCompare !== 0) return agentCompare;
+            }
+
+            if (a.needs811 !== b.needs811) {
+              return a.needs811 ? -1 : 1;
+            }
+
+            return a.address.localeCompare(b.address);
+          });
+
+          setProperties(propertyOptions);
+
+          if (propertyOptions.length > 0) {
+            setSelectedOrderId(propertyOptions[0].id);
           }
         }
       } catch (error) {
@@ -62,7 +146,52 @@ export default function ElevenPage() {
     }
 
     fetchTickets();
-  }, [status, router]);
+  }, [status, router, userRole]);
+
+  const handleAddTicket = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddError('');
+
+    if (!selectedOrderId) {
+      setAddError('Please select a property');
+      return;
+    }
+
+    if (!newTicketNumber.trim()) {
+      setAddError('Ticket number is required');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      const res = await fetch('/api/realtor/811', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: selectedOrderId,
+          ticketNumber: newTicketNumber.trim(),
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setAddError(data.error || 'Failed to add ticket');
+        return;
+      }
+
+      if (data?.ticket) {
+        setTickets((prev) => [data.ticket, ...prev]);
+        setSelectedTicketId(data.ticket.id);
+      }
+
+      setNewTicketNumber('');
+    } catch (error) {
+      console.error('Failed to add ticket:', error);
+      setAddError('Failed to add ticket');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (status === 'loading' || loading) {
     return (
@@ -73,15 +202,104 @@ export default function ElevenPage() {
   }
 
   const currentTicket = tickets.find((t) => t.id === selectedTicketId);
+  const isTC = userRole === 'TC';
+
+  const groupedProperties = properties.reduce((acc, property) => {
+    const groupName = isTC ? (property.agentName || 'Unknown Agent') : 'My Listings';
+    if (!acc[groupName]) {
+      acc[groupName] = [];
+    }
+    acc[groupName].push(property);
+    return acc;
+  }, {} as Record<string, PropertyOption[]>);
+
+  Object.keys(groupedProperties).forEach((groupName) => {
+    groupedProperties[groupName].sort((a, b) => {
+      if (a.needs811 !== b.needs811) {
+        return a.needs811 ? -1 : 1;
+      }
+      return a.address.localeCompare(b.address);
+    });
+  });
+
+  const addTicketCard = (
+    <div className="bg-white rounded-lg shadow p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Manaully Add 811 Ticket Number</h2>
+      <p className="text-sm text-gray-600 mb-4">
+        Select the property and enter the 811 ticket number. It will stay pending until admin review.
+      </p>
+
+      <form onSubmit={handleAddTicket} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <select
+          value={selectedOrderId}
+          onChange={(e) => setSelectedOrderId(e.target.value)}
+          className="md:col-span-2 px-3 py-2 border border-gray-300 rounded-lg"
+          disabled={submitting || properties.length === 0}
+        >
+          {properties.length === 0 && <option value="">No properties available</option>}
+          {isTC
+            ? Object.entries(groupedProperties).map(([agentName, agentProperties]) => (
+                <optgroup key={agentName} label={agentName}>
+                  {agentProperties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.needs811 ? '[811 # Needed] ' : ''}
+                      {property.address} {property.orderNumber ? `(${property.orderNumber})` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              ))
+            : properties.map((property) => (
+                <option key={property.id} value={property.id}>
+                  {property.needs811 ? '[811 # Needed] ' : ''}
+                  {property.address} {property.orderNumber ? `(${property.orderNumber})` : ''}
+                </option>
+              ))}
+        </select>
+
+        <input
+          type="text"
+          value={newTicketNumber}
+          onChange={(e) => setNewTicketNumber(e.target.value)}
+          placeholder="Ticket Number"
+          className="px-3 py-2 border border-gray-300 rounded-lg"
+          disabled={submitting}
+        />
+
+        <div className="md:col-span-3 flex items-center justify-between gap-3">
+          {addError ? (
+            <p className="text-sm text-red-700">{addError}</p>
+          ) : (
+            <span className="text-xs text-gray-500">Pending tickets can be reviewed by admin.</span>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting || properties.length === 0}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-blue-300"
+          >
+            {submitting ? 'Adding...' : 'Add Ticket'}
+          </button>
+        </div>
+
+        <div className="md:col-span-3 pt-1">
+          <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 border border-red-200 rounded">
+            811 # Needed
+          </span>
+          <span className="ml-2 text-xs text-gray-500">These listings are sorted to the top.</span>
+        </div>
+      </form>
+    </div>
+  );
 
   if (!currentTicket) {
     return (
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
           <h1 className="text-2xl font-bold text-blue-900 mb-2">811 Ticket Tracker</h1>
           <p className="text-blue-700 mb-4">No 811 tickets yet. When you request a utility locating, you'll track progress here.</p>
           <p className="text-sm text-blue-600">Contact support if you need to create a ticket.</p>
         </div>
+        {addTicketCard}
       </div>
     );
   }
@@ -405,6 +623,8 @@ export default function ElevenPage() {
           <p className="text-gray-600">No activity yet</p>
         </div>
       )}
+
+      {addTicketCard}
     </div>
   );
 }

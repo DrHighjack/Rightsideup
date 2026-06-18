@@ -60,6 +60,13 @@ interface AdminNote {
   adminId: string;
 }
 
+interface Closer {
+  id: string;
+  firstName: string;
+  lastName: string;
+  role: "ADMIN" | "SALESMEN";
+}
+
 export default function RealtorDetailPage() {
   const { status, data: sessionData } = useSession();
   const router = useRouter();
@@ -96,6 +103,7 @@ export default function RealtorDetailPage() {
   
   // Free install state
   const [allocatingFreeInstall, setAllocatingFreeInstall] = useState(false);
+  const [closers, setClosers] = useState<Closer[]>([]);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -112,6 +120,12 @@ export default function RealtorDetailPage() {
         const userData = await userRes.json();
         setRealtor(userData.user);
         setEditData(userData.user);
+
+        const closersRes = await fetch("/api/admin/users?role=ADMIN,SALESMEN&limit=200");
+        if (closersRes.ok) {
+          const closersData = await closersRes.json();
+          setClosers(closersData.users || []);
+        }
 
         // Parse admin notes
         if (userData.user.adminNotes) {
@@ -179,7 +193,9 @@ export default function RealtorDetailPage() {
           lastName: editData.lastName,
           email: editData.email,
           phone: editData.phone,
+          paymentMethod: editData.paymentMethod,
           brokerageName: editData.brokerageName,
+          closedByUserId: editData.freeInstallGivenBy || null,
           tags: editData.tags,
           adminNotes: JSON.stringify(notes),
         }),
@@ -318,6 +334,8 @@ export default function RealtorDetailPage() {
       minute: "2-digit"
     });
   };
+
+  const selectedCloser = closers.find((c) => c.id === realtor.freeInstallGivenBy);
 
   const filteredOrders = orders.filter((order) => {
     if (filterStatus === "all") return true;
@@ -461,9 +479,48 @@ export default function RealtorDetailPage() {
               </div>
               <div>
                 <p className="text-gray-600 text-sm">Payment Method</p>
-                <p className="text-gray-900 font-medium">
-                  {realtor.paymentMethod === "OFFICE" ? "Office Pays" : "Agent Pays"}
-                </p>
+                {isEditing ? (
+                  <select
+                    value={editData.paymentMethod || "OFFICE"}
+                    onChange={(e) => setEditData({ ...editData, paymentMethod: e.target.value })}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="OFFICE">Office Pays</option>
+                    <option value="SELF">Agent Pays</option>
+                  </select>
+                ) : (
+                  <p className="text-gray-900 font-medium">
+                    {realtor.paymentMethod === "OFFICE" ? "Office Pays" : "Agent Pays"}
+                  </p>
+                )}
+              </div>
+              <div>
+                <p className="text-gray-600 text-sm">Closed By</p>
+                {isEditing ? (
+                  <select
+                    value={editData.freeInstallGivenBy || ""}
+                    onChange={(e) =>
+                      setEditData({
+                        ...editData,
+                        freeInstallGivenBy: e.target.value || undefined,
+                      })
+                    }
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="">Not Assigned</option>
+                    {closers.map((closer) => (
+                      <option key={closer.id} value={closer.id}>
+                        {closer.firstName} {closer.lastName} ({closer.role})
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-gray-900 font-medium">
+                    {selectedCloser
+                      ? `${selectedCloser.firstName} ${selectedCloser.lastName} (${selectedCloser.role})`
+                      : "—"}
+                  </p>
+                )}
               </div>
               <div>
                 <p className="text-gray-600 text-sm">Brokerage</p>

@@ -18,7 +18,8 @@ const updateBrokerageSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   billingType: z.enum(["AGENT", "BROKERAGE"]).optional(),
-  basePriceCents: z.number().int().positive().nullable().optional(),
+  basePriceDollars: z.number().nonnegative().nullable().optional(),
+  basePriceCents: z.number().int().nonnegative().nullable().optional(),
   isActive: z.boolean().optional(),
 });
 
@@ -172,6 +173,13 @@ export async function PUT(
     const body = await request.json();
     const parsed = updateBrokerageSchema.parse(body);
 
+    const normalizedBasePriceCents =
+      parsed.basePriceDollars !== undefined
+        ? parsed.basePriceDollars === null
+          ? null
+          : Math.round(parsed.basePriceDollars * 100)
+        : parsed.basePriceCents;
+
     const existing = await prisma.brokerage.findUnique({
       where: { id: params.id },
       select: { id: true },
@@ -193,8 +201,8 @@ export async function PUT(
         ...(parsed.billingType !== undefined
           ? { billingType: parsed.billingType }
           : {}),
-        ...(parsed.basePriceCents !== undefined
-          ? { basePriceCents: parsed.basePriceCents }
+        ...(normalizedBasePriceCents !== undefined
+          ? { basePriceCents: normalizedBasePriceCents }
           : {}),
         ...(parsed.isActive !== undefined ? { isActive: parsed.isActive } : {}),
       },

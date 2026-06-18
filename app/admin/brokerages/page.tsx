@@ -90,6 +90,7 @@ export default function ManagementPage() {
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
   const [addClientError, setAddClientError] = useState("");
+  const [agentUpdatingId, setAgentUpdatingId] = useState<string | null>(null);
   const [newClient, setNewClient] = useState({
     firstName: "",
     lastName: "",
@@ -241,14 +242,14 @@ export default function ManagementPage() {
       return;
     }
 
-    let basePriceCents: number | null = null;
+    let basePriceDollars: number | null = null;
     if (brokerageForm.basePrice.trim()) {
       const parsed = Number(brokerageForm.basePrice);
       if (Number.isNaN(parsed) || parsed < 0) {
         setBrokerageError("Base price must be a valid positive dollar amount");
         return;
       }
-      basePriceCents = Math.round(parsed * 100);
+      basePriceDollars = parsed;
     }
 
     try {
@@ -259,7 +260,7 @@ export default function ManagementPage() {
         address: brokerageForm.address.trim() || undefined,
         phone: brokerageForm.phone.trim() || undefined,
         billingType: brokerageForm.billingType,
-        basePriceCents,
+        basePriceDollars,
       };
 
       const endpoint = editingBrokerageId
@@ -306,6 +307,44 @@ export default function ManagementPage() {
       await fetchBrokerages();
     } catch (err) {
       alert("Failed to deactivate brokerage");
+    }
+  };
+
+  const handleQuickUpdateAgent = async (
+    agentId: string,
+    updates: { paymentMethod?: "OFFICE" | "SELF"; closedByUserId?: string | null }
+  ) => {
+    try {
+      setAgentUpdatingId(agentId);
+      setError("");
+
+      const res = await fetch(`/api/admin/users/${agentId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updates),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to update client");
+        return;
+      }
+
+      setAgents((prev) =>
+        prev.map((agent) =>
+          agent.id === agentId
+            ? {
+                ...agent,
+                paymentMethod: data.user.paymentMethod,
+                freeInstallGivenBy: data.user.freeInstallGivenBy || undefined,
+              }
+            : agent
+        )
+      );
+    } catch (_err) {
+      setError("Failed to update client");
+    } finally {
+      setAgentUpdatingId(null);
     }
   };
 
@@ -986,25 +1025,38 @@ export default function ManagementPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{agent.phone || "—"}</td>
                       <td className="px-6 py-4 text-sm">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                            agent.paymentMethod === "OFFICE"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
+                        <select
+                          value={agent.paymentMethod || "OFFICE"}
+                          onChange={(e) =>
+                            handleQuickUpdateAgent(agent.id, {
+                              paymentMethod: e.target.value as "OFFICE" | "SELF",
+                            })
+                          }
+                          disabled={agentUpdatingId === agent.id}
+                          className="px-2 py-1 border border-gray-300 rounded-md bg-white text-sm"
                         >
-                          {agent.paymentMethod === "OFFICE" ? "Office Pays" : "Agent Pays"}
-                        </span>
+                          <option value="OFFICE">Office Pays</option>
+                          <option value="SELF">Agent Pays</option>
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {agent.freeInstallGivenBy
-                          ? (() => {
-                              const closer = closers.find((c) => c.id === agent.freeInstallGivenBy);
-                              return closer
-                                ? `${closer.firstName} ${closer.lastName} (${closer.role})`
-                                : "Assigned";
-                            })()
-                          : "—"}
+                        <select
+                          value={agent.freeInstallGivenBy || ""}
+                          onChange={(e) =>
+                            handleQuickUpdateAgent(agent.id, {
+                              closedByUserId: e.target.value || null,
+                            })
+                          }
+                          disabled={agentUpdatingId === agent.id}
+                          className="px-2 py-1 border border-gray-300 rounded-md bg-white text-sm min-w-[220px]"
+                        >
+                          <option value="">Not Assigned</option>
+                          {closers.map((closer) => (
+                            <option key={closer.id} value={closer.id}>
+                              {closer.firstName} {closer.lastName} ({closer.role})
+                            </option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <Link
@@ -1208,6 +1260,12 @@ export default function ManagementPage() {
                                 >
                                   Edit
                                 </button>
+                                <Link
+                                  href={`/admin/tcs/${tc.id}`}
+                                  className="text-blue-600 hover:text-blue-800 font-medium"
+                                >
+                                  View Profile
+                                </Link>
                                 <button
                                   onClick={() => handleDeactivateTc(tc)}
                                   disabled={!isActive}

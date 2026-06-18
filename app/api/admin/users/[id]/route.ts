@@ -23,6 +23,8 @@ export async function GET(
         phone: true,
         paymentMethod: true,
         brokerageName: true,
+        freeInstallGivenBy: true,
+        freeInstallDate: true,
         tags: true,
         adminNotes: true,
         createdAt: true,
@@ -73,12 +75,53 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { firstName, lastName, email, phone, brokerageName, tags, adminNotes } = body;
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      paymentMethod,
+      brokerageName,
+      closedByUserId,
+      tags,
+      adminNotes,
+    } = body;
 
-    // Validate inputs
-    if (!firstName?.trim() || !lastName?.trim()) {
+    const hasUpdatableField =
+      firstName !== undefined ||
+      lastName !== undefined ||
+      email !== undefined ||
+      phone !== undefined ||
+      paymentMethod !== undefined ||
+      brokerageName !== undefined ||
+      closedByUserId !== undefined ||
+      tags !== undefined ||
+      adminNotes !== undefined;
+
+    if (!hasUpdatableField) {
       return NextResponse.json(
-        { error: "First name and last name are required" },
+        { error: "No fields provided to update" },
+        { status: 400 }
+      );
+    }
+
+    // If either name is provided, ensure both are valid non-empty strings.
+    if (firstName !== undefined || lastName !== undefined) {
+      if (!firstName?.trim() || !lastName?.trim()) {
+        return NextResponse.json(
+          { error: "First name and last name are required" },
+          { status: 400 }
+        );
+      }
+    }
+
+    if (
+      paymentMethod !== undefined &&
+      paymentMethod !== "OFFICE" &&
+      paymentMethod !== "SELF"
+    ) {
+      return NextResponse.json(
+        { error: "Payment method must be OFFICE or SELF" },
         { status: 400 }
       );
     }
@@ -106,16 +149,47 @@ export async function PUT(
       }
     }
 
+    const shouldUpdateCloser = closedByUserId !== undefined;
+    const normalizedCloserId =
+      typeof closedByUserId === "string" ? closedByUserId.trim() : "";
+
+    if (shouldUpdateCloser && normalizedCloserId) {
+      const closer = await prisma.user.findUnique({
+        where: { id: normalizedCloserId },
+        select: { id: true, role: true },
+      });
+
+      if (!closer || !["ADMIN", "SALESMEN"].includes(closer.role)) {
+        return NextResponse.json(
+          { error: "Closed By user must be an Admin or Salesman" },
+          { status: 400 }
+        );
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: params.id },
       data: {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        email: email?.trim() || undefined,
-        phone: phone?.trim() || null,
-        brokerageName: brokerageName?.trim() || null,
-        tags: Array.isArray(tags) ? tags.filter(t => t?.trim()) : [],
-        adminNotes: adminNotes || null,
+        ...(firstName !== undefined ? { firstName: firstName.trim() } : {}),
+        ...(lastName !== undefined ? { lastName: lastName.trim() } : {}),
+        ...(email !== undefined ? { email: email?.trim() || undefined } : {}),
+        ...(phone !== undefined ? { phone: phone?.trim() || null } : {}),
+        paymentMethod: paymentMethod ?? undefined,
+        ...(brokerageName !== undefined
+          ? { brokerageName: brokerageName?.trim() || null }
+          : {}),
+        freeInstallGivenBy: shouldUpdateCloser
+          ? normalizedCloserId || null
+          : undefined,
+        freeInstallDate: shouldUpdateCloser
+          ? normalizedCloserId
+            ? new Date()
+            : null
+          : undefined,
+        ...(Array.isArray(tags)
+          ? { tags: tags.filter((t) => t?.trim()) }
+          : {}),
+        ...(adminNotes !== undefined ? { adminNotes: adminNotes || null } : {}),
       },
       select: {
         id: true,
@@ -125,6 +199,8 @@ export async function PUT(
         phone: true,
         paymentMethod: true,
         brokerageName: true,
+        freeInstallGivenBy: true,
+        freeInstallDate: true,
         tags: true,
         adminNotes: true,
         createdAt: true,

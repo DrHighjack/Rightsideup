@@ -8,7 +8,8 @@ const brokerageSchema = z.object({
   address: z.string().optional(),
   phone: z.string().optional(),
   billingType: z.enum(["AGENT", "BROKERAGE"]).default("AGENT"),
-  basePriceCents: z.number().int().positive().optional(),
+  basePriceDollars: z.number().nonnegative().nullable().optional(),
+  basePriceCents: z.number().int().nonnegative().nullable().optional(),
 });
 
 export async function GET(_request: NextRequest) {
@@ -63,8 +64,22 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, address, phone, billingType, basePriceCents } =
+    const {
+      name,
+      address,
+      phone,
+      billingType,
+      basePriceDollars,
+      basePriceCents,
+    } =
       brokerageSchema.parse(body);
+
+    const normalizedBasePriceCents =
+      basePriceDollars !== undefined
+        ? basePriceDollars === null
+          ? null
+          : Math.round(basePriceDollars * 100)
+        : (basePriceCents ?? null);
 
     const brokerage = await prisma.brokerage.create({
       data: {
@@ -72,7 +87,7 @@ export async function POST(request: NextRequest) {
         address: address || null,
         phone: phone || null,
         billingType,
-        basePriceCents: basePriceCents ?? null,
+        basePriceCents: normalizedBasePriceCents,
         isActive: true,
         adminId: session.user.id,
       },

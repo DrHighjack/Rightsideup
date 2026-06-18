@@ -64,19 +64,26 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    await sendWelcomeEmailWithMagicLink(
-      tc.id,
-      tc.firstName,
-      tc.email,
-      generatedPassword
-    );
+    let emailWarning: string | null = null;
+    try {
+      await sendWelcomeEmailWithMagicLink(
+        tc.id,
+        tc.firstName,
+        tc.email,
+        generatedPassword
+      );
+    } catch (emailError) {
+      console.error("TC created but welcome email failed:", emailError);
+      emailWarning = "TC created, but welcome email could not be sent.";
+    }
 
     return NextResponse.json(
       {
         success: true,
-        message: "TC account created successfully",
+        message: emailWarning || "TC account created successfully",
         tc,
         generatedPassword,
+        emailWarning,
       },
       { status: 201 }
     );

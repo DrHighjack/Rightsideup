@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 interface TC {
   id: string;
@@ -276,6 +277,12 @@ export default function AdminTCsPage() {
                             >
                               {expandedTcId === tc.id ? "Hide" : "View"} Details
                             </button>
+                            <Link
+                              href={`/admin/tcs/${tc.id}`}
+                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                            >
+                              View Profile
+                            </Link>
                             {tc.agentCount > 0 && (
                               <button
                                 onClick={() => handleSendInvitation(tc.id, tc.agents[0]?.agentId || "")}

@@ -18,7 +18,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex h-screen flex-col md:flex-row bg-gray-50">
+    <div className="flex min-h-screen flex-col md:flex-row bg-gray-50">
       {/* Sidebar */}
       <div className="hidden md:flex md:w-64 md:flex-col md:bg-white md:border-r md:border-gray-200">
         <div className="flex items-center justify-center h-16 border-b border-gray-200 px-4">
@@ -85,12 +85,12 @@ export default function DashboardLayout({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col">
         {/* Top header with notification bell */}
         <div className="bg-white border-b border-gray-200 px-4 md:px-8 py-3 flex justify-end">
           <NotificationBell />
         </div>
-        <div className="flex-1 overflow-y-auto p-4 md:p-8">
+        <div className="flex-1 p-4 md:p-8">
           {children}
         </div>
 

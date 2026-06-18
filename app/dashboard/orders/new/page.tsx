@@ -26,16 +26,48 @@ export default function NewOrderPage() {
   const [use811Service, setUse811Service] = useState(true);
   const [self811Accepted, setSelf811Accepted] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [hasAcceptedOrderPolicies, setHasAcceptedOrderPolicies] = useState(false);
+  const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [successOrderNumber, setSuccessOrderNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [mapsUnavailable, setMapsUnavailable] = useState(false);
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
 
+  useEffect(() => {
+    async function fetchInventoryItems() {
+      try {
+        const response = await fetch('/api/inventory/items', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+        });
+
+        if (!response.ok) {
+          return;
+        }
+
+        const data = await response.json();
+        setInventoryItems(Array.isArray(data.items) ? data.items : []);
+      } catch {
+        setInventoryItems([]);
+      }
+    }
+
+    fetchInventoryItems();
+  }, []);
+
   // Load Google Maps script (prevent duplicates)
   useEffect(() => {
+    const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    if (!mapsApiKey || mapsApiKey === 'undefined') {
+      setMapsUnavailable(true);
+      return;
+    }
+
     // Check if script is already loaded
     if (window.google?.maps?.places?.Autocomplete) {
       setMapsLoaded(true);
@@ -59,13 +91,13 @@ export default function NewOrderPage() {
 
     // Load new script
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.onload = () => setMapsLoaded(true);
     script.onerror = () => {
       console.warn("Google Maps API failed to load");
-      // DO NOT set mapsLoaded to true on error!
+      setMapsUnavailable(true);
     };
     document.head.appendChild(script);
 
@@ -148,6 +180,11 @@ export default function NewOrderPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    if (!hasAcceptedOrderPolicies) {
+      setError('You must agree to the Terms & Conditions and Refund Policy to place an order.');
+      return;
+    }
 
     if (!formData.address) {
       setError('Address is required');
@@ -241,6 +278,7 @@ export default function NewOrderPage() {
                 setSelectedAddOns({});
                 setUse811Service(true);
                 setSelf811Accepted(false);
+                setHasAcceptedOrderPolicies(false);
               }}
               className="rounded-md border border-green-600 px-6 py-2 text-green-600 font-medium hover:bg-green-50"
             >
@@ -251,6 +289,32 @@ export default function NewOrderPage() {
       </div>
     );
   }
+
+  const selectedSign = inventoryItems.find((item) => item.id === selectedSignId);
+  const selectedAddOnRows = Object.entries(selectedAddOns)
+    .filter(([_, qty]) => qty > 0)
+    .map(([id, qty]) => {
+      const item = inventoryItems.find((inventoryItem) => inventoryItem.id === id);
+      const unitPriceCents = typeof item?.pricePerUnit === 'number' ? item.pricePerUnit : 0;
+      const lineTotalCents = unitPriceCents * qty;
+      return {
+        id,
+        name: item?.name || 'Unknown add-on',
+        quantity: qty,
+        unitPriceCents,
+        lineTotalCents,
+      };
+    });
+
+  const selectedSignPriceCents =
+    selectedSign && typeof selectedSign.pricePerUnit === 'number' ? selectedSign.pricePerUnit : 0;
+  const addOnsTotalCents = selectedAddOnRows.reduce((sum, row) => sum + row.lineTotalCents, 0);
+  const totalEstimatedPriceCents = selectedSignPriceCents + addOnsTotalCents;
+
+  const orderTypeLabel =
+    formData.type === 'INSTALL' ? 'Install' : formData.type === 'REMOVAL' ? 'Removal' : 'Change';
+
+  const formatMoneyFromCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -305,7 +369,11 @@ export default function NewOrderPage() {
             className="w-full rounded-md border border-gray-300 px-4 py-2"
           />
           <p className="mt-1 text-xs text-gray-500">
-            {mapsLoaded ? "Start typing to search for addresses" : "Loading address search..."}
+            {mapsUnavailable
+              ? "Address search unavailable. Enter address manually."
+              : mapsLoaded
+              ? "Start typing to search for addresses"
+              : "Loading address search..."}
           </p>
         </div>
 
@@ -379,15 +447,88 @@ export default function NewOrderPage() {
           )}
         </div>
 
+        {/* Review Summary */}
+        <div className="border-t border-gray-200 pt-6">
+          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+            <h3 className="text-lg font-semibold text-gray-900">Review Your Order</h3>
+            <div className="mt-3 space-y-2 text-sm text-gray-700">
+              <p>
+                <span className="font-medium">Property address:</span>{' '}
+                {formData.address || 'Not provided yet'}
+              </p>
+              <p>
+                <span className="font-medium">Order type:</span> {orderTypeLabel}
+              </p>
+              <p>
+                <span className="font-medium">Scheduled date:</span>{' '}
+                {formData.scheduledDate || 'Not specified'}
+              </p>
+              <p>
+                <span className="font-medium">Selected sign:</span>{' '}
+                {selectedSign ? selectedSign.name : 'None selected'}
+                {selectedSign ? ` (${formatMoneyFromCents(selectedSignPriceCents)})` : ''}
+              </p>
+              <div>
+                <p className="font-medium">Add-ons:</p>
+                {selectedAddOnRows.length > 0 ? (
+                  <ul className="mt-1 list-disc pl-6">
+                    {selectedAddOnRows.map((row) => (
+                      <li key={row.id}>
+                        {row.name} x {row.quantity} — {formatMoneyFromCents(row.lineTotalCents)}
+                        {row.unitPriceCents > 0 ? ` (${formatMoneyFromCents(row.unitPriceCents)} each)` : ' (Included)'}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-1">No add-ons selected</p>
+                )}
+              </div>
+              <p>
+                <span className="font-medium">811 service status:</span>{' '}
+                {use811Service ? 'Included' : 'Opted out'}
+              </p>
+              <p className="pt-1 text-base font-semibold text-gray-900">
+                Total estimated price: {formatMoneyFromCents(totalEstimatedPriceCents)}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Terms acceptance */}
+        <div className="border-t border-gray-200 pt-6">
+          <label className="flex items-start gap-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={hasAcceptedOrderPolicies}
+              onChange={(e) => setHasAcceptedOrderPolicies(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              I have read and agree to the{' '}
+              <Link href="/terms" className="text-blue-700 hover:underline">
+                Terms &amp; Conditions
+              </Link>{' '}
+              and{' '}
+              <Link href="/refund" className="text-blue-700 hover:underline">
+                Refund Policy
+              </Link>
+              .
+            </span>
+          </label>
+        </div>
+
         {/* Submit button */}
         <div className="flex gap-4 border-t border-gray-200 pt-6">
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex-1 rounded-md bg-primary px-4 py-2 text-white font-medium hover:bg-primary-dark disabled:opacity-50"
-          >
-            {loading ? "Creating Order..." : "Create Order"}
-          </button>
+          <div className="flex-1">
+            <p className="mb-2 text-xs text-gray-500">🔒 256-bit SSL Encrypted</p>
+            <button
+              type="submit"
+              disabled={loading || !hasAcceptedOrderPolicies}
+              className="w-full rounded-md bg-primary px-4 py-2 text-white font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading ? "Creating Order..." : "Create Order"}
+            </button>
+          </div>
           <Link
             href="/dashboard/orders"
             className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 inline-block text-center"

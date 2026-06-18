@@ -136,6 +136,12 @@ export default function AdminTCProfilePage() {
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 47.6, lng: -122.3 });
   const [mapKey, setMapKey] = useState("");
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    email: "",
+    phone: "",
+  });
 
   const mappedOrders = useMemo(
     () =>
@@ -167,6 +173,10 @@ export default function AdminTCProfilePage() {
         }
 
         setProfile(data);
+        setProfileForm({
+          email: data?.tc?.email || "",
+          phone: data?.tc?.phone || "",
+        });
 
         const firstMapped = (data.orders || []).find(
           (o: TCOrder) => o.addressLat !== null && o.addressLng !== null
@@ -225,6 +235,44 @@ export default function AdminTCProfilePage() {
     }
   };
 
+  const handleSaveProfile = async () => {
+    if (!profile) return;
+
+    try {
+      setProfileSubmitting(true);
+      setError("");
+
+      const res = await fetch(`/api/admin/tcs/${profile.tc.id}/profile`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: profileForm.email.trim(),
+          phone: profileForm.phone.trim() || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || "Failed to update TC profile");
+        return;
+      }
+
+      setProfile({
+        ...profile,
+        tc: {
+          ...profile.tc,
+          email: data.tc.email,
+          phone: data.tc.phone,
+        },
+      });
+      setIsEditingProfile(false);
+    } catch (_err) {
+      setError("Failed to update TC profile");
+    } finally {
+      setProfileSubmitting(false);
+    }
+  };
+
   const selectedOrder =
     selectedOrderId && profile
       ? profile.orders.find((o) => o.id === selectedOrderId) || null
@@ -262,18 +310,85 @@ export default function AdminTCProfilePage() {
                 <h1 className="text-3xl font-bold text-gray-900">
                   {profile.tc.firstName} {profile.tc.lastName}
                 </h1>
-                <p className="text-gray-600 mt-1">{profile.tc.email}</p>
-                <p className="text-gray-600">{profile.tc.phone || "No phone"}</p>
+                {!isEditingProfile ? (
+                  <>
+                    <p className="text-gray-600 mt-1">{profile.tc.email}</p>
+                    <p className="text-gray-600">{profile.tc.phone || "No phone"}</p>
+                  </>
+                ) : (
+                  <div className="mt-2 space-y-2 max-w-sm">
+                    <input
+                      type="email"
+                      value={profileForm.email}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({ ...prev, email: e.target.value }))
+                      }
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="Email"
+                    />
+                    <input
+                      type="tel"
+                      value={profileForm.phone}
+                      onChange={(e) =>
+                        setProfileForm((prev) => ({ ...prev, phone: e.target.value }))
+                      }
+                      className="block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="Phone"
+                    />
+                  </div>
+                )}
               </div>
-              <span
-                className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
-                  profile.tc.isActive
-                    ? "bg-green-100 text-green-800"
-                    : "bg-gray-200 text-gray-700"
-                }`}
-              >
-                {profile.tc.isActive ? "Active" : "Inactive"}
-              </span>
+              <div className="flex items-start gap-2">
+                {!isEditingProfile ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfileForm({
+                        email: profile.tc.email || "",
+                        phone: profile.tc.phone || "",
+                      });
+                      setIsEditingProfile(true);
+                    }}
+                    className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                  >
+                    Edit Contact
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleSaveProfile}
+                      disabled={profileSubmitting}
+                      className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:bg-indigo-400"
+                    >
+                      {profileSubmitting ? "Saving..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingProfile(false);
+                        setProfileForm({
+                          email: profile.tc.email || "",
+                          phone: profile.tc.phone || "",
+                        });
+                      }}
+                      disabled={profileSubmitting}
+                      className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                )}
+                <span
+                  className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
+                    profile.tc.isActive
+                      ? "bg-green-100 text-green-800"
+                      : "bg-gray-200 text-gray-700"
+                  }`}
+                >
+                  {profile.tc.isActive ? "Active" : "Inactive"}
+                </span>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">

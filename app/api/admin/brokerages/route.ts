@@ -15,8 +15,9 @@ const brokerageSchema = z.object({
 export async function GET(_request: NextRequest) {
   try {
     const session = await auth();
+    const role = (session?.user as any)?.role;
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -58,8 +59,9 @@ export async function GET(_request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
+    const role = (session?.user as any)?.role;
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

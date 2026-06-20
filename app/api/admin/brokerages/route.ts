@@ -93,6 +93,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const requesterUserId = session.user.id;
+
     const body = await request.json();
     const {
       name,
@@ -128,7 +130,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await prisma.$transaction(async (tx) => {
-      let ownerId = session.user.id;
+      let ownerId = requesterUserId;
       let ownerSummary: { id: string; email: string; firstName: string; lastName: string } | null = null;
 
       if (brokerageAccount) {

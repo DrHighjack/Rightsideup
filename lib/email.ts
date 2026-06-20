@@ -354,6 +354,101 @@ export function getPasswordResetEmail(
   };
 }
 
+export function getAccountVerificationEmail(
+  firstName: string,
+  verificationLink: string,
+  supportUrl?: string,
+  privacyUrl?: string,
+  termsUrl?: string
+) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Your Email</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; background-color: #f3f4f6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); color: white; padding: 40px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .header p { font-size: 16px; opacity: 0.95; }
+        .content { padding: 40px 30px; }
+        .greeting { font-size: 16px; margin-bottom: 24px; line-height: 1.6; }
+        .notice { background-color: #ecfeff; border: 2px solid #99f6e4; border-radius: 6px; padding: 16px; margin: 24px 0; }
+        .notice-title { font-size: 14px; color: #0f766e; font-weight: 600; margin-bottom: 8px; }
+        .notice-text { font-size: 13px; color: #0f766e; line-height: 1.6; }
+        .cta-button { display: inline-block; width: 100%; padding: 14px 24px; margin: 24px 0; background: linear-gradient(135deg, #0f766e 0%, #115e59 100%); color: white; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; text-align: center; box-shadow: 0 4px 6px rgba(15, 118, 110, 0.3); }
+        .link-section { background-color: #f0fdfa; border: 1px solid #99f6e4; border-radius: 6px; padding: 16px; margin: 20px 0; word-break: break-all; }
+        .link-label { font-size: 12px; color: #0f766e; font-weight: 600; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .link-text { font-size: 12px; color: #115e59; font-family: 'Courier New', monospace; line-height: 1.5; word-wrap: break-word; }
+        .instructions { background-color: #f8fafc; padding: 16px; border-radius: 6px; margin: 20px 0; }
+        .instructions h3 { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+        .instructions ol { margin-left: 20px; font-size: 13px; color: #475569; line-height: 1.8; }
+        .instructions li { margin-bottom: 8px; }
+        .support-section { margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0; }
+        .support-text { font-size: 13px; color: #64748b; line-height: 1.6; }
+        .support-link { color: #0f766e; text-decoration: none; }
+        .footer { background-color: #f1f5f9; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
+        .footer-text { font-size: 12px; color: #64748b; margin-bottom: 8px; }
+        .footer-links { font-size: 11px; color: #94a3b8; }
+        .footer-links a { color: #0f766e; text-decoration: none; margin: 0 8px; }
+        @media (max-width: 600px) { .container { margin: 0; border-radius: 0; } .header { padding: 30px 20px; } .header h1 { font-size: 24px; } .content { padding: 24px 20px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Verify Your Email</h1>
+            <p>Confirm your RightSignUP account before placing orders</p>
+        </div>
+        <div class="content">
+            <div class="greeting">
+                <p>Hi ${firstName},</p>
+                <p style="margin-top: 12px;">Your account was created successfully. Click the button below to verify your email address and activate ordering access.</p>
+            </div>
+            <div class="notice">
+                <div class="notice-title">Why this is required</div>
+                <div class="notice-text">For security, orders cannot be submitted until your email is verified. This keeps account ownership tied to the inbox you control.</div>
+            </div>
+            <a href="${verificationLink}" class="cta-button">Verify Email Address</a>
+            <div class="link-section">
+                <div class="link-label">Or copy this link:</div>
+                <div class="link-text">${verificationLink}</div>
+            </div>
+            <div class="instructions">
+                <h3>Next Steps</h3>
+                <ol>
+                    <li>Click the verification button above.</li>
+                    <li>Confirm your email in the browser.</li>
+                    <li>Sign in and start placing orders.</li>
+                </ol>
+            </div>
+            <div class="support-section">
+                <div class="support-text">
+                    <p>If the button does not work, paste the link into your browser or contact <a href="mailto:support@northshoresignco.com" class="support-link">support</a>.</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <div class="footer-links">
+                <a href="${supportUrl || '#'}">Help Center</a> |
+                <a href="${privacyUrl || '#'}">Privacy Policy</a> |
+                <a href="${termsUrl || '#'}">Terms of Service</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>`;
+
+  return {
+    subject: "Verify your RightSignUP email",
+    html,
+  };
+}
+
 // Welcome email with direct login link
 export function getWelcomeEmailWithMagicLink(
   firstName: string,
@@ -970,6 +1065,133 @@ export function getTCInvitationEmail(
 
   return {
         subject: `${tcName} invited you to RightSignUP - complete registration`,
+    html,
+  };
+}
+
+/**
+ * Email sent to a TC invitee when a Realtor (or Admin) invites them to join
+ * as a Transaction Coordinator via /api/tc/invite.
+ */
+export function getRealtorInvitesTCEmail(
+  tcInviteeName: string,
+  realtorName: string,
+  realtorBrokerage: string | null | undefined,
+  tcInviteeEmail: string,
+  signupLink: string,
+  supportUrl?: string,
+  privacyUrl?: string,
+  termsUrl?: string
+) {
+  const brokerageText = realtorBrokerage
+    ? ` of <strong>${realtorBrokerage}</strong>`
+    : "";
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You've Been Invited as a Transaction Coordinator</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background: #f3f4f6; color: #1f2937; padding: 24px 12px; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 10px; overflow: hidden; border: 1px solid #e5e7eb; }
+        .header { background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: #ffffff; padding: 36px 28px; text-align: center; }
+        .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+        .header p  { font-size: 14px; opacity: 0.92; }
+        .content { padding: 28px 24px; line-height: 1.6; }
+        .greeting { font-size: 15px; margin-bottom: 20px; }
+        .card { background: #f5f3ff; border: 1.5px solid #ddd6fe; border-radius: 8px; padding: 16px; margin: 20px 0; }
+        .card-row { margin-bottom: 10px; }
+        .card-row:last-child { margin-bottom: 0; }
+        .card-label { font-size: 11px; font-weight: 700; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 3px; }
+        .card-value { font-size: 15px; font-weight: 600; color: #2d1b4e; }
+        .highlight { background: #faf5ff; border-left: 4px solid #7c3aed; border-radius: 4px; padding: 12px 16px; margin: 16px 0; font-size: 13px; color: #5b21b6; line-height: 1.6; }
+        .cta { display: inline-block; width: 100%; text-align: center; background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%); color: #ffffff; text-decoration: none; font-weight: 700; font-size: 16px; border-radius: 8px; padding: 14px 24px; margin: 20px 0; box-shadow: 0 4px 8px rgba(124,58,237,0.3); }
+        .link-box { background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 12px 14px; margin: 12px 0; word-break: break-all; }
+        .link-label { font-size: 11px; font-weight: 700; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 5px; }
+        .link-text { font-size: 12px; color: #4f46e5; font-family: 'Courier New', monospace; }
+        .expiry { background: #fef9c3; border-left: 4px solid #facc15; border-radius: 4px; padding: 10px 14px; margin: 14px 0; font-size: 13px; color: #854d0e; }
+        .steps { background: #f8fafc; border-radius: 8px; padding: 14px 16px; margin: 14px 0; }
+        .steps-title { font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
+        .steps ol { margin-left: 18px; font-size: 13px; color: #475569; line-height: 1.8; }
+        .steps li { margin-bottom: 4px; }
+        .support { margin-top: 24px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280; }
+        .support a { color: #7c3aed; text-decoration: none; }
+        .footer { background: #f1f5f9; padding: 20px 24px; text-align: center; border-top: 1px solid #e5e7eb; }
+        .footer-text { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+        .footer a { font-size: 11px; color: #7c3aed; text-decoration: none; margin: 0 6px; }
+        @media (max-width: 600px) { .container { border-radius: 0; } .header, .content { padding: 22px 16px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤝 You're Invited!</h1>
+            <p>A realtor has invited you to be their Transaction Coordinator</p>
+        </div>
+        <div class="content">
+            <div class="greeting">
+                <p>Hi <strong>${tcInviteeName}</strong>,</p>
+                <p style="margin-top: 10px;">
+                    <strong>${realtorName}</strong>${brokerageText} has invited you to join RightSignUP as their
+                    Transaction Coordinator. Once you complete registration, you'll be automatically
+                    linked and can start managing their sign orders.
+                </p>
+            </div>
+            <div class="card">
+                <div class="card-row">
+                    <div class="card-label">Invited by</div>
+                    <div class="card-value">${realtorName}</div>
+                </div>
+                ${realtorBrokerage ? `
+                <div class="card-row">
+                    <div class="card-label">Brokerage</div>
+                    <div class="card-value">${realtorBrokerage}</div>
+                </div>` : ""}
+                <div class="card-row">
+                    <div class="card-label">Your invite email</div>
+                    <div class="card-value">${tcInviteeEmail}</div>
+                </div>
+            </div>
+            <div class="highlight">
+                After registration, your account is automatically linked to <strong>${realtorName}</strong>.
+                You'll be able to place and manage orders on their behalf immediately.
+            </div>
+            <a href="${signupLink}" class="cta">Create Your TC Account</a>
+            <div class="link-box">
+                <div class="link-label">Or copy this link into your browser</div>
+                <div class="link-text">${signupLink}</div>
+            </div>
+            <div class="expiry">
+                ⏱️ <strong>This invite expires in 48 hours.</strong> Ask ${realtorName} to resend if it expires.
+            </div>
+            <div class="steps">
+                <div class="steps-title">How it works</div>
+                <ol>
+                    <li>Click <strong>Create Your TC Account</strong> above.</li>
+                    <li>Fill in your name and set a password.</li>
+                    <li>Your account is automatically linked to the inviting realtor.</li>
+                    <li>Sign in and start managing their sign orders.</li>
+                </ol>
+            </div>
+            <div class="support">
+                Questions? Contact <a href="mailto:support@northshoresignco.com">support@northshoresignco.com</a>.
+            </div>
+        </div>
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <a href="${supportUrl || "#"}">Help Center</a>
+            <a href="${privacyUrl || "#"}">Privacy Policy</a>
+            <a href="${termsUrl || "#"}">Terms of Service</a>
+        </div>
+    </div>
+</body>
+</html>`;
+
+  return {
+    subject: `${realtorName} invited you to RightSignUP as a Transaction Coordinator`,
     html,
   };
 }

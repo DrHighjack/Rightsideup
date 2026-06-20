@@ -44,6 +44,10 @@ export default function LoginPage() {
         // Fetch the updated session and redirect based on role
         const response = await fetch("/api/auth/session");
         const newSession = await response.json();
+        if (!newSession?.user?.emailVerifiedAt) {
+          router.push(`/verify-email?email=${encodeURIComponent(newSession?.user?.email || email)}&pending=1`);
+          return;
+        }
         if (newSession?.user?.role === "ADMIN") {
           router.push("/admin");
         } else if (newSession?.user?.role === "SALESMEN") {

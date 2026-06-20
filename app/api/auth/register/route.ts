@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { registerSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
+import { sendEmail, getAccountVerificationEmail } from "@/lib/email";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,6 +28,8 @@ export async function POST(request: NextRequest) {
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
+    const emailVerificationToken = crypto.randomUUID();
+    const emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     let user;
 
@@ -88,6 +94,9 @@ export async function POST(request: NextRequest) {
             phone,
             brokerageName,
             role: "REALTOR",
+            emailVerifiedAt: null,
+            emailVerificationToken,
+            emailVerificationExpiresAt,
           },
           select: {
             id: true,
@@ -124,6 +133,9 @@ export async function POST(request: NextRequest) {
           phone,
           brokerageName,
           role: "REALTOR",
+          emailVerifiedAt: null,
+          emailVerificationToken,
+          emailVerificationExpiresAt,
         },
         select: {
           id: true,
@@ -134,7 +146,20 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(user, { status: 201 });
+    const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
+    const verificationEmail = getAccountVerificationEmail(firstName, verificationLink);
+
+    try {
+      await sendEmail({
+        to: normalizedEmail,
+        subject: verificationEmail.subject,
+        html: verificationEmail.html,
+      });
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+    }
+
+    return NextResponse.json({ ...user, verificationRequired: true }, { status: 201 });
   } catch (error: any) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json(

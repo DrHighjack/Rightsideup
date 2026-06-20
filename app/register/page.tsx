@@ -114,7 +114,7 @@ function RegisterPageContent() {
         throw new Error(data.error || "Registration failed");
       }
 
-      router.push("/login");
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&sent=1`);
     } catch (err: any) {
       setError(err.message || "An error occurred. Please try again.");
     } finally {

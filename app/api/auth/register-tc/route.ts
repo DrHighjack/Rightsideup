@@ -1,6 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import { hash } from "bcryptjs";
 import { Prisma } from "@prisma/client";
+import crypto from "crypto";
+import { sendEmail, getAccountVerificationEmail } from "@/lib/email";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
 
 export async function POST(request: Request) {
   try {
@@ -75,6 +79,8 @@ export async function POST(request: Request) {
 
     // Hash password
     const passwordHash = await hash(password, 10);
+    const emailVerificationToken = crypto.randomUUID();
+    const emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     const now = new Date();
 
@@ -100,9 +106,25 @@ export async function POST(request: Request) {
           lastName: lastName.trim(),
           passwordHash,
           role: "TC",
+          emailVerifiedAt: null,
+          emailVerificationToken,
+          emailVerificationExpiresAt,
         },
       });
     });
+
+    const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
+    const verificationEmail = getAccountVerificationEmail(firstName.trim(), verificationLink);
+
+    try {
+      await sendEmail({
+        to: normalizedEmail,
+        subject: verificationEmail.subject,
+        html: verificationEmail.html,
+      });
+    } catch (emailError) {
+      console.error("Failed to send verification email:", emailError);
+    }
 
     return Response.json(
       {
@@ -114,6 +136,7 @@ export async function POST(request: Request) {
           lastName: newUser.lastName,
           role: newUser.role,
         },
+        verificationRequired: true,
       },
       { status: 201 }
     );

@@ -49,6 +49,7 @@ export default function NewOrderPage() {
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [successOrderId, setSuccessOrderId] = useState('');
   const [successOrderNumber, setSuccessOrderNumber] = useState('');
   const [loading, setLoading] = useState(false);
   const [mapsLoaded, setMapsLoaded] = useState(false);
@@ -366,6 +367,7 @@ export default function NewOrderPage() {
 
       const order = await response.json();
       console.log('✅ Order created:', order);
+      setSuccessOrderId(order.id);
       setSuccessOrderNumber(order.orderNumber);
       setSuccess(true);
     } catch (err: any) {
@@ -390,7 +392,7 @@ export default function NewOrderPage() {
           </p>
           <div className="flex gap-4 justify-center">
             <Link
-              href={`/dashboard/orders/${successOrderNumber}`}
+              href={successOrderId ? `/dashboard/orders/${successOrderId}` : '/dashboard/orders'}
               className="rounded-md bg-green-600 px-6 py-2 text-white font-medium hover:bg-green-700"
             >
               View Order

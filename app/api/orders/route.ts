@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     const sessionUser = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, role: true },
+      select: { id: true, role: true, emailVerifiedAt: true },
     });
 
     if (!sessionUser) {
@@ -184,6 +184,18 @@ export async function POST(request: NextRequest) {
       }
 
       targetRealtorId = realtorId;
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id: targetRealtorId },
+      select: { id: true, emailVerifiedAt: true },
+    });
+
+    if (!targetUser?.emailVerifiedAt) {
+      return NextResponse.json(
+        { error: "Email verification is required before placing orders" },
+        { status: 403 }
+      );
     }
 
     console.log("📝 Order submission received:", {

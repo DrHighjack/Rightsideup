@@ -54,6 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: `${user.firstName} ${user.lastName}`,
             role: user.role,
             brokerageName: user.brokerageName,
+            emailVerifiedAt: user.emailVerifiedAt ? user.emailVerifiedAt.toISOString() : null,
           };
         } catch (error: any) {
           console.error("[AUTH] Authorization error:", error?.message || error);
@@ -71,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.role = (user as any).role;
         token.id = user.id;
         token.brokerageName = (user as any).brokerageName || null;
+        token.emailVerifiedAt = (user as any).emailVerifiedAt || null;
       }
       return token;
     },
@@ -79,6 +81,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         (session.user as any).role = token.role;
         (session.user as any).id = token.id;
         (session.user as any).brokerageName = (token as any).brokerageName || null;
+        (session.user as any).emailVerifiedAt = (token as any).emailVerifiedAt || null;
         
         // Set Sentry user context
         Sentry.setUser({

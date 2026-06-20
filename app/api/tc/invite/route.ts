@@ -1,6 +1,9 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
+import { sendEmail, getRealtorInvitesTCEmail } from "@/lib/email";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 // POST /api/tc/invite - Create a TC invite
 export async function POST(request: Request) {
@@ -46,6 +49,31 @@ export async function POST(request: Request) {
         invitedByUserId: session.user.id,
       },
     });
+
+    // Send invitation email to the TC invitee
+    const signupLink = `${appUrl}/register/tc?token=${token}`;
+    const inviterName = user.firstName
+      ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
+      : user.email;
+    const tcInviteeName = email.split("@")[0]; // best guess; they'll set their real name on signup
+
+    try {
+      const emailTemplate = getRealtorInvitesTCEmail(
+        tcInviteeName,
+        inviterName,
+        user.brokerageName ?? null,
+        email,
+        signupLink
+      );
+      await sendEmail({
+        to: email,
+        subject: emailTemplate.subject,
+        html: emailTemplate.html,
+      });
+    } catch (emailError) {
+      console.error("Failed to send TC invite email:", emailError);
+      // Non-fatal — the invite record exists; inviter can share the link manually
+    }
 
     return Response.json(
       {

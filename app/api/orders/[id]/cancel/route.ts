@@ -43,6 +43,23 @@ export async function PUT(
       );
     }
 
+    if ((session.user as any).role === "REALTOR" || (session.user as any).role === "TC") {
+      const existingTicket = await prisma.ticket811.findFirst({
+        where: { orderId: order.id },
+        select: { id: true, ticketNumber: true },
+      });
+
+      if (existingTicket) {
+        return NextResponse.json(
+          {
+            error:
+              "This order already has an 811 ticket. Please contact admin to manage ticket-related cancellations.",
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id: params.id },
       data: {

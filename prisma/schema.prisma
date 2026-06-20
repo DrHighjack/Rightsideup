@@ -102,6 +102,9 @@ model User {
   brokerageId    String?
   brokerage      Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: SetNull)
   role           Role       @default(REALTOR)
+  emailVerifiedAt DateTime?
+  emailVerificationToken String? @unique
+  emailVerificationExpiresAt DateTime?
   paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
   qboCustomerId  String?    // QuickBooks customer ID for this realtor
   createdAt      DateTime   @default(now())

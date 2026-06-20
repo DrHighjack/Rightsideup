@@ -32,6 +32,7 @@ export default function OrderDetailPage() {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
+  const [cancelError, setCancelError] = useState("");
 
   useEffect(() => {
     async function fetchOrder() {
@@ -54,6 +55,7 @@ export default function OrderDetailPage() {
 
   async function handleCancel() {
     setCancelling(true);
+    setCancelError("");
     try {
       const response = await fetch(`/api/orders/${id}/cancel`, {
         method: "PUT",
@@ -62,7 +64,14 @@ export default function OrderDetailPage() {
       });
 
       if (!response.ok) {
-        throw new Error("Failed to cancel order");
+        let message = "Failed to cancel order";
+        try {
+          const data = await response.json();
+          if (typeof data?.error === "string" && data.error.trim()) {
+            message = data.error;
+          }
+        } catch {}
+        throw new Error(message);
       }
 
       const updatedOrder = await response.json();
@@ -71,6 +80,7 @@ export default function OrderDetailPage() {
       setShowCancelModal(false);
     } catch (error) {
       console.error("Error cancelling order:", error);
+      setCancelError(error instanceof Error ? error.message : "Failed to cancel order");
     } finally {
       setCancelling(false);
     }
@@ -189,6 +199,10 @@ export default function OrderDetailPage() {
                 className="w-full rounded-md border border-gray-300 px-4 py-2"
               />
             </div>
+
+            {cancelError && (
+              <p className="text-sm text-red-700">{cancelError}</p>
+            )}
 
             <div className="flex gap-4">
               <button

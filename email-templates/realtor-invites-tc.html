@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You've Been Invited as a Transaction Coordinator — RightSignUP</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
+            background: #f3f4f6;
+            color: #1f2937;
+            padding: 24px 12px;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+            border-radius: 10px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+        }
+        .header {
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            color: #ffffff;
+            padding: 36px 28px;
+            text-align: center;
+        }
+        .header h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+        .header p  { font-size: 14px; opacity: 0.92; }
+        .content { padding: 28px 24px; line-height: 1.6; }
+        .greeting { font-size: 15px; margin-bottom: 20px; }
+        .card {
+            background: #f5f3ff;
+            border: 1.5px solid #ddd6fe;
+            border-radius: 8px;
+            padding: 16px;
+            margin: 20px 0;
+        }
+        .card-row { margin-bottom: 12px; }
+        .card-row:last-child { margin-bottom: 0; }
+        .card-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #7c3aed;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+        .card-value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #2d1b4e;
+        }
+        .highlight {
+            background: #faf5ff;
+            border-left: 4px solid #7c3aed;
+            border-radius: 4px;
+            padding: 12px 16px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #5b21b6;
+            line-height: 1.6;
+        }
+        .cta-wrap { margin: 24px 0; }
+        .cta {
+            display: inline-block;
+            width: 100%;
+            text-align: center;
+            background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
+            color: #ffffff !important;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 16px;
+            border-radius: 8px;
+            padding: 14px 24px;
+            box-shadow: 0 4px 8px rgba(124, 58, 237, 0.3);
+        }
+        .link-box {
+            background: #f5f3ff;
+            border: 1px solid #ddd6fe;
+            border-radius: 6px;
+            padding: 12px 14px;
+            margin: 16px 0;
+            word-break: break-all;
+        }
+        .link-label {
+            font-size: 11px;
+            font-weight: 700;
+            color: #7c3aed;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 5px;
+        }
+        .link-text {
+            font-size: 12px;
+            color: #4f46e5;
+            font-family: 'Courier New', monospace;
+        }
+        .expiry {
+            background: #fef9c3;
+            border-left: 4px solid #facc15;
+            border-radius: 4px;
+            padding: 10px 14px;
+            margin: 16px 0;
+            font-size: 13px;
+            color: #854d0e;
+        }
+        .steps {
+            background: #f8fafc;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin: 16px 0;
+        }
+        .steps-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        .steps ol {
+            margin-left: 18px;
+            font-size: 13px;
+            color: #475569;
+            line-height: 1.8;
+        }
+        .steps li { margin-bottom: 4px; }
+        .support {
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid #e5e7eb;
+            font-size: 13px;
+            color: #6b7280;
+        }
+        .support a { color: #7c3aed; text-decoration: none; }
+        .footer {
+            background: #f1f5f9;
+            padding: 20px 24px;
+            text-align: center;
+            border-top: 1px solid #e5e7eb;
+        }
+        .footer-text { font-size: 12px; color: #6b7280; margin-bottom: 6px; }
+        .footer a { font-size: 11px; color: #7c3aed; text-decoration: none; margin: 0 6px; }
+        @media (max-width: 600px) {
+            .container { border-radius: 0; }
+            .header, .content { padding: 22px 16px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+
+        <div class="header">
+            <h1>🤝 You're Invited!</h1>
+            <p>A realtor has invited you to be their Transaction Coordinator</p>
+        </div>
+
+        <div class="content">
+
+            <div class="greeting">
+                <p>Hi <strong>{{tcInviteeName}}</strong>,</p>
+                <p style="margin-top: 10px;">
+                    <strong>{{realtorName}}</strong>{{#if realtorBrokerage}} of <strong>{{realtorBrokerage}}</strong>{{/if}}
+                    has invited you to join RightSignUP as their Transaction Coordinator.
+                    Once you complete registration, you'll be automatically linked and can start
+                    managing their sign orders.
+                </p>
+            </div>
+
+            <div class="card">
+                <div class="card-row">
+                    <div class="card-label">Invited by</div>
+                    <div class="card-value">{{realtorName}}</div>
+                </div>
+                {{#if realtorBrokerage}}
+                <div class="card-row">
+                    <div class="card-label">Brokerage</div>
+                    <div class="card-value">{{realtorBrokerage}}</div>
+                </div>
+                {{/if}}
+                <div class="card-row">
+                    <div class="card-label">Your invite email</div>
+                    <div class="card-value">{{tcInviteeEmail}}</div>
+                </div>
+            </div>
+
+            <div class="highlight">
+                After registration, your account is automatically linked to <strong>{{realtorName}}</strong>.
+                You'll be able to place and manage orders on their behalf immediately.
+            </div>
+
+            <div class="cta-wrap">
+                <a href="{{signupLink}}" class="cta">Create Your TC Account</a>
+            </div>
+
+            <div class="link-box">
+                <div class="link-label">Or copy this link into your browser</div>
+                <div class="link-text">{{signupLink}}</div>
+            </div>
+
+            <div class="expiry">
+                ⏱️ <strong>This invite expires in 48 hours.</strong> Ask {{realtorName}} to send a new invite if it expires.
+            </div>
+
+            <div class="steps">
+                <div class="steps-title">How it works</div>
+                <ol>
+                    <li>Click <strong>Create Your TC Account</strong> above.</li>
+                    <li>Fill in your name and set a password.</li>
+                    <li>Your account is automatically linked to the inviting realtor.</li>
+                    <li>Sign in and start managing their sign orders.</li>
+                </ol>
+            </div>
+
+            <div class="support">
+                Questions? Contact the realtor directly or reach out to
+                <a href="mailto:support@northshoresignco.com">support@northshoresignco.com</a>.
+            </div>
+
+        </div>
+
+        <div class="footer">
+            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <a href="#">Help Center</a>
+            <a href="/privacy">Privacy Policy</a>
+            <a href="/terms">Terms of Service</a>
+        </div>
+
+    </div>
+</body>
+</html>

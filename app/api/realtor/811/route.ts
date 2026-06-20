@@ -119,12 +119,24 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const ticketNumber = typeof body?.ticketNumber === 'string' ? body.ticketNumber.trim() : '';
+    const rawTicketNumber = typeof body?.ticketNumber === 'string' ? body.ticketNumber.trim() : '';
+    const ticketNumber = rawTicketNumber.replace(/\s+/g, '');
     const orderId = typeof body?.orderId === 'string' ? body.orderId.trim() : '';
 
     if (!ticketNumber) {
       return NextResponse.json(
         { error: 'Ticket number is required' },
+        { status: 400 }
+      );
+    }
+
+    const invalidChars = /[^\d-]/.test(ticketNumber);
+    const digitCount = ticketNumber.replace(/-/g, '').length;
+    const malformedDashes = ticketNumber.startsWith('-') || ticketNumber.endsWith('-') || ticketNumber.includes('--');
+
+    if (invalidChars || malformedDashes || digitCount < 6) {
+      return NextResponse.json(
+        { error: 'Ticket number must contain at least 6 digits and may only include numbers and single dashes' },
         { status: 400 }
       );
     }

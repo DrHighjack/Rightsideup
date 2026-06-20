@@ -25,6 +25,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           const user = await prisma.user.findUnique({
             where: { email },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+              role: true,
+              brokerageName: true,
+              passwordHash: true,
+            },
           });
 
           if (!user) {
@@ -42,11 +51,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             return null;
           }
 
-          // Update lastLoginAt timestamp
-          await prisma.user.update({
-            where: { id: user.id },
-            data: { lastLoginAt: new Date() },
-          });
+          // Best-effort write so auth still succeeds if runtime DB lags schema.
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastLoginAt: new Date() },
+            });
+          } catch (loginUpdateError: any) {
+            console.warn(
+              "[AUTH] Failed to update lastLoginAt:",
+              loginUpdateError?.message || loginUpdateError
+            );
+          }
 
           return {
             id: user.id,
@@ -54,7 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: `${user.firstName} ${user.lastName}`,
             role: user.role,
             brokerageName: user.brokerageName,
-            emailVerifiedAt: user.emailVerifiedAt ? user.emailVerifiedAt.toISOString() : null,
+            emailVerifiedAt: null,
           };
         } catch (error: any) {
           console.error("[AUTH] Authorization error:", error?.message || error);

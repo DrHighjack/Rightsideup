@@ -70,7 +70,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: `${user.firstName} ${user.lastName}`,
             role: user.role,
             brokerageName: user.brokerageName,
-            emailVerifiedAt: null,
+            // Legacy production DB may not have emailVerifiedAt yet.
+            emailVerifiedAt: new Date().toISOString(),
           };
         } catch (error: any) {
           console.error("[AUTH] Authorization error:", error?.message || error);

@@ -33,6 +33,12 @@ interface Brokerage {
   agentCount: number;
   email?: string;
   phone?: string;
+  brokerageOwner?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  } | null;
 }
 
 interface TC {
@@ -136,8 +142,14 @@ export default function ManagementPage() {
     name: "",
     address: "",
     phone: "",
+    email: "",
     billingType: "AGENT" as "AGENT" | "BROKERAGE",
     basePrice: "",
+    createOwnerAccount: true,
+    ownerFirstName: "",
+    ownerLastName: "",
+    ownerEmail: "",
+    ownerPassword: "",
   });
 
   useEffect(() => {
@@ -208,8 +220,14 @@ export default function ManagementPage() {
       name: "",
       address: "",
       phone: "",
+      email: "",
       billingType: "AGENT",
       basePrice: "",
+      createOwnerAccount: true,
+      ownerFirstName: "",
+      ownerLastName: "",
+      ownerEmail: "",
+      ownerPassword: "",
     });
   };
 
@@ -225,11 +243,17 @@ export default function ManagementPage() {
       name: brokerage.name || "",
       address: brokerage.address || "",
       phone: brokerage.phone || "",
+      email: brokerage.email || "",
       billingType: brokerage.billingType,
       basePrice:
         brokerage.basePriceCents !== null && brokerage.basePriceCents !== undefined
           ? (brokerage.basePriceCents / 100).toString()
           : "",
+      createOwnerAccount: false,
+      ownerFirstName: "",
+      ownerLastName: "",
+      ownerEmail: "",
+      ownerPassword: "",
     });
     setShowBrokerageModal(true);
   };
@@ -252,6 +276,23 @@ export default function ManagementPage() {
       basePriceDollars = parsed;
     }
 
+    if (!editingBrokerageId && brokerageForm.createOwnerAccount) {
+      if (
+        !brokerageForm.ownerFirstName.trim() ||
+        !brokerageForm.ownerLastName.trim() ||
+        !brokerageForm.ownerEmail.trim() ||
+        !brokerageForm.ownerPassword.trim()
+      ) {
+        setBrokerageError("Brokerage owner first name, last name, email, and password are required");
+        return;
+      }
+
+      if (brokerageForm.ownerPassword.trim().length < 8) {
+        setBrokerageError("Brokerage owner password must be at least 8 characters");
+        return;
+      }
+    }
+
     try {
       setBrokerageSubmitting(true);
 
@@ -259,8 +300,18 @@ export default function ManagementPage() {
         name: brokerageForm.name.trim(),
         address: brokerageForm.address.trim() || undefined,
         phone: brokerageForm.phone.trim() || undefined,
+        email: brokerageForm.email.trim() || undefined,
         billingType: brokerageForm.billingType,
         basePriceDollars,
+        brokerageAccount:
+          !editingBrokerageId && brokerageForm.createOwnerAccount
+            ? {
+                firstName: brokerageForm.ownerFirstName.trim(),
+                lastName: brokerageForm.ownerLastName.trim(),
+                email: brokerageForm.ownerEmail.trim().toLowerCase(),
+                password: brokerageForm.ownerPassword,
+              }
+            : undefined,
       };
 
       const endpoint = editingBrokerageId
@@ -760,6 +811,7 @@ export default function ManagementPage() {
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Name</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Address</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Phone</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Brokerage Login</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Billing Type</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Base Price</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Agent Count</th>
@@ -779,6 +831,9 @@ export default function ManagementPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{brokerage.address || "—"}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">{brokerage.phone || "—"}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {brokerage.brokerageOwner?.email || "—"}
+                      </td>
                       <td className="px-6 py-4 text-sm">
                         <span
                           className={`inline-block px-2.5 py-1 rounded-full text-xs font-semibold ${
@@ -871,6 +926,19 @@ export default function ManagementPage() {
                     </div>
 
                     <div>
+                      <label className="block text-sm font-medium text-gray-900 mb-1">Brokerage Contact Email</label>
+                      <input
+                        type="email"
+                        value={brokerageForm.email}
+                        onChange={(e) =>
+                          setBrokerageForm((prev) => ({ ...prev, email: e.target.value }))
+                        }
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                        placeholder="billing@brokerage.com"
+                      />
+                    </div>
+
+                    <div>
                       <label className="block text-sm font-medium text-gray-900 mb-2">Who Pays?</label>
                       <div className="space-y-2">
                         <label className="flex items-start gap-2 text-sm text-gray-700">
@@ -915,6 +983,78 @@ export default function ManagementPage() {
                       />
                       <p className="text-xs text-gray-500 mt-1">Leave blank to use standard pricing</p>
                     </div>
+
+                    {!editingBrokerageId && (
+                      <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+                        <label className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                          <input
+                            type="checkbox"
+                            checked={brokerageForm.createOwnerAccount}
+                            onChange={(e) =>
+                              setBrokerageForm((prev) => ({
+                                ...prev,
+                                createOwnerAccount: e.target.checked,
+                              }))
+                            }
+                          />
+                          Create brokerage login account
+                        </label>
+
+                        {brokerageForm.createOwnerAccount && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <input
+                              type="text"
+                              value={brokerageForm.ownerFirstName}
+                              onChange={(e) =>
+                                setBrokerageForm((prev) => ({
+                                  ...prev,
+                                  ownerFirstName: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              placeholder="Owner first name"
+                            />
+                            <input
+                              type="text"
+                              value={brokerageForm.ownerLastName}
+                              onChange={(e) =>
+                                setBrokerageForm((prev) => ({
+                                  ...prev,
+                                  ownerLastName: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              placeholder="Owner last name"
+                            />
+                            <input
+                              type="email"
+                              value={brokerageForm.ownerEmail}
+                              onChange={(e) =>
+                                setBrokerageForm((prev) => ({
+                                  ...prev,
+                                  ownerEmail: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              placeholder="owner@brokerage.com"
+                            />
+                            <input
+                              type="password"
+                              minLength={8}
+                              value={brokerageForm.ownerPassword}
+                              onChange={(e) =>
+                                setBrokerageForm((prev) => ({
+                                  ...prev,
+                                  ownerPassword: e.target.value,
+                                }))
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                              placeholder="Owner password"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {brokerageError && (

@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const roleParam = searchParams.get("role");
 
-    const validRoles = ["REALTOR", "ADMIN", "SALESMEN", "TC", "FIELD_TECH"];
+    const validRoles = ["REALTOR", "BROKERAGE", "ADMIN", "SALESMEN", "TC", "FIELD_TECH"];
     const requestedRoles = roleParam
       ? roleParam
           .split(",")

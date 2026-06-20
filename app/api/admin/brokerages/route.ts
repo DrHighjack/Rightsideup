@@ -2,14 +2,24 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const brokerageSchema = z.object({
   name: z.string().min(1),
   address: z.string().optional(),
   phone: z.string().optional(),
+  email: z.string().email().optional(),
   billingType: z.enum(["AGENT", "BROKERAGE"]).default("AGENT"),
   basePriceDollars: z.number().nonnegative().nullable().optional(),
   basePriceCents: z.number().int().nonnegative().nullable().optional(),
+  brokerageAccount: z
+    .object({
+      email: z.string().email(),
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      password: z.string().min(8),
+    })
+    .optional(),
 });
 
 export async function GET(_request: NextRequest) {
@@ -23,6 +33,15 @@ export async function GET(_request: NextRequest) {
 
     const brokerages = await prisma.brokerage.findMany({
       include: {
+        admin: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            email: true,
+            role: true,
+          },
+        },
         _count: {
           select: {
             agents: true,
@@ -46,6 +65,15 @@ export async function GET(_request: NextRequest) {
         updatedAt: brokerage.updatedAt,
         adminId: brokerage.adminId,
         agentCount: brokerage._count.agents,
+        brokerageOwner:
+          brokerage.admin.role === "BROKERAGE"
+            ? {
+                id: brokerage.admin.id,
+                firstName: brokerage.admin.firstName,
+                lastName: brokerage.admin.lastName,
+                email: brokerage.admin.email,
+              }
+            : null,
       })),
     });
   } catch (error) {
@@ -70,9 +98,11 @@ export async function POST(request: NextRequest) {
       name,
       address,
       phone,
+      email,
       billingType,
       basePriceDollars,
       basePriceCents,
+      brokerageAccount,
     } =
       brokerageSchema.parse(body);
 
@@ -83,39 +113,94 @@ export async function POST(request: NextRequest) {
           : Math.round(basePriceDollars * 100)
         : (basePriceCents ?? null);
 
-    const brokerage = await prisma.brokerage.create({
-      data: {
-        name,
-        address: address || null,
-        phone: phone || null,
-        billingType,
-        basePriceCents: normalizedBasePriceCents,
-        isActive: true,
-        adminId: session.user.id,
-      },
-      include: {
-        _count: {
+    if (brokerageAccount) {
+      const existingOwner = await prisma.user.findUnique({
+        where: { email: brokerageAccount.email.trim().toLowerCase() },
+        select: { id: true },
+      });
+
+      if (existingOwner) {
+        return NextResponse.json(
+          { error: "Brokerage owner email is already in use" },
+          { status: 400 }
+        );
+      }
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      let ownerId = session.user.id;
+      let ownerSummary: { id: string; email: string; firstName: string; lastName: string } | null = null;
+
+      if (brokerageAccount) {
+        const ownerPasswordHash = await bcrypt.hash(brokerageAccount.password, 12);
+        const owner = await tx.user.create({
+          data: {
+            email: brokerageAccount.email.trim().toLowerCase(),
+            firstName: brokerageAccount.firstName.trim(),
+            lastName: brokerageAccount.lastName.trim(),
+            passwordHash: ownerPasswordHash,
+            role: "BROKERAGE",
+            brokerageName: name.trim(),
+            paymentMethod: "OFFICE",
+            emailVerifiedAt: new Date(),
+          },
           select: {
-            agents: true,
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        });
+
+        ownerId = owner.id;
+        ownerSummary = owner;
+      }
+
+      const brokerage = await tx.brokerage.create({
+        data: {
+          name,
+          address: address || null,
+          phone: phone || null,
+          email: email || brokerageAccount?.email || null,
+          billingType,
+          basePriceCents: normalizedBasePriceCents,
+          isActive: true,
+          adminId: ownerId,
+        },
+        include: {
+          _count: {
+            select: {
+              agents: true,
+            },
           },
         },
-      },
+      });
+
+      if (ownerSummary) {
+        await tx.user.update({
+          where: { id: ownerSummary.id },
+          data: { brokerageId: brokerage.id },
+        });
+      }
+
+      return { brokerage, ownerSummary };
     });
 
     return NextResponse.json(
       {
-        id: brokerage.id,
-        name: brokerage.name,
-        address: brokerage.address,
-        phone: brokerage.phone,
-        email: brokerage.email,
-        billingType: brokerage.billingType,
-        basePriceCents: brokerage.basePriceCents,
-        isActive: brokerage.isActive,
-        createdAt: brokerage.createdAt,
-        updatedAt: brokerage.updatedAt,
-        adminId: brokerage.adminId,
-        agentCount: brokerage._count.agents,
+        id: result.brokerage.id,
+        name: result.brokerage.name,
+        address: result.brokerage.address,
+        phone: result.brokerage.phone,
+        email: result.brokerage.email,
+        billingType: result.brokerage.billingType,
+        basePriceCents: result.brokerage.basePriceCents,
+        isActive: result.brokerage.isActive,
+        createdAt: result.brokerage.createdAt,
+        updatedAt: result.brokerage.updatedAt,
+        adminId: result.brokerage.adminId,
+        agentCount: result.brokerage._count.agents,
+        brokerageOwner: result.ownerSummary,
       },
       { status: 201 }
     );

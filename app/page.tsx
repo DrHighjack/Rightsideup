@@ -17,6 +17,10 @@ export default function Home() {
       router.push("/login");
     } else if ((session.user as any).role === "ADMIN") {
       router.push("/admin");
+    } else if ((session.user as any).role === "SALESMEN") {
+      router.push("/admin");
+    } else if ((session.user as any).role === "BROKERAGE") {
+      router.push("/brokerage");
     } else {
       router.push("/dashboard");
     }

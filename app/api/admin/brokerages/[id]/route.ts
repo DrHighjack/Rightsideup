@@ -23,6 +23,27 @@ const updateBrokerageSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+async function canAccessBrokerage(
+  userId: string,
+  role: string | undefined,
+  brokerageId: string
+) {
+  if (role === "ADMIN" || role === "SALESMEN") {
+    return true;
+  }
+
+  if (role !== "BROKERAGE") {
+    return false;
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { brokerageId: true },
+  });
+
+  return !!user?.brokerageId && user.brokerageId === brokerageId;
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
@@ -31,7 +52,12 @@ export async function GET(
     const session = await auth();
     const role = (session?.user as any)?.role;
 
-    if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const authorized = await canAccessBrokerage(session.user.id, role, params.id);
+    if (!authorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -83,7 +109,12 @@ export async function POST(
     const session = await auth();
     const role = (session?.user as any)?.role;
 
-    if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const authorized = await canAccessBrokerage(session.user.id, role, params.id);
+    if (!authorized) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

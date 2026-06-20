@@ -81,12 +81,16 @@ export async function middleware(request: NextRequest) {
   // Page route protection (original logic)
   const adminRoutes = ["/admin"];
   const dashboardRoutes = ["/dashboard"];
+  const brokerageRoutes = ["/brokerage"];
   const fieldRoutes = ["/field"];
   
   const isAdminRoute = adminRoutes.some((route) =>
     pathname.startsWith(route)
   );
   const isDashboardRoute = dashboardRoutes.some((route) =>
+    pathname.startsWith(route)
+  );
+  const isBrokerageRoute = brokerageRoutes.some((route) =>
     pathname.startsWith(route)
   );
   const isFieldRoute = fieldRoutes.some((route) =>
@@ -96,13 +100,29 @@ export async function middleware(request: NextRequest) {
   const userRole = (session?.user as any)?.role;
 
   // Redirect to login if not authenticated for protected routes
-  if ((isAdminRoute || isDashboardRoute || isFieldRoute) && !session?.user?.id) {
+  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute) && !session?.user?.id) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
   // Block FIELD_TECH from /admin and /dashboard
-  if ((isAdminRoute || isDashboardRoute) && userRole === "FIELD_TECH") {
+  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute) && userRole === "FIELD_TECH") {
     return NextResponse.redirect(new URL("/field/dashboard", request.url));
+  }
+
+  // Brokerage accounts can only access /brokerage and API routes.
+  if ((isAdminRoute || isDashboardRoute || isFieldRoute) && userRole === "BROKERAGE") {
+    return NextResponse.redirect(new URL("/brokerage", request.url));
+  }
+
+  // Protect /brokerage/* - BROKERAGE only.
+  if (isBrokerageRoute && userRole && userRole !== "BROKERAGE") {
+    if (userRole === "ADMIN" || userRole === "SALESMEN") {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    if (userRole === "FIELD_TECH") {
+      return NextResponse.redirect(new URL("/field/dashboard", request.url));
+    }
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Protect /field/* - allow FIELD_TECH and ADMIN (for preview), block REALTOR and TC
@@ -122,5 +142,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/field/:path*", "/api/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/brokerage/:path*", "/field/:path*", "/api/:path*"],
 };

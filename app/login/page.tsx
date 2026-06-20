@@ -20,6 +20,8 @@ export default function LoginPage() {
     if (session?.user) {
       if (["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
         router.push("/admin");
+      } else if ((session.user as any).role === "BROKERAGE") {
+        router.push("/brokerage");
       } else {
         router.push("/dashboard");
       }
@@ -52,6 +54,8 @@ export default function LoginPage() {
           router.push("/admin");
         } else if (newSession?.user?.role === "SALESMEN") {
           router.push("/admin");
+        } else if (newSession?.user?.role === "BROKERAGE") {
+          router.push("/brokerage");
         } else {
           router.push("/dashboard");
         }

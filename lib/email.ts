@@ -1,6 +1,13 @@
 import sgMail from "@sendgrid/mail";
 
-sgMail.setApiKey(process.env.SENDGRID_API_KEY || "");
+const sendGridApiKey = process.env.SENDGRID_API_KEY || "";
+const isSendGridConfigured = sendGridApiKey.startsWith("SG.");
+
+if (isSendGridConfigured) {
+    sgMail.setApiKey(sendGridApiKey);
+} else {
+    console.warn("[EMAIL] SENDGRID_API_KEY missing/invalid; email sending disabled.");
+}
 
 export interface EmailOptions {
   to: string | string[];
@@ -12,6 +19,11 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions) {
   try {
+        if (!isSendGridConfigured) {
+            console.warn("[EMAIL] Skipping send; SendGrid not configured.");
+            return { success: false, skipped: true };
+        }
+
     const {
       to,
       subject,

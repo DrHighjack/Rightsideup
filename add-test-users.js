@@ -1,3 +1,5 @@
+require('dotenv').config({ path: '.env.local' });
+
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 
@@ -9,11 +11,12 @@ async function addTestUsers() {
 
     // Hash password
     const hashedPassword = await bcrypt.hash('12345', 10);
+    const demoPasswordHash = await bcrypt.hash('123456', 10);
 
     // Delete existing test users if they exist
     await prisma.user.deleteMany({
       where: {
-        email: { in: ['brennan@chaoscap.org', 'billing@northshoresignco.com'] },
+        email: { in: ['brennan@chaoscap.org', 'billing@northshoresignco.com', 'hello@northshoresignco.com'] },
       },
     });
 
@@ -55,6 +58,25 @@ async function addTestUsers() {
     console.log(`   Password: 12345`);
     console.log(`   ID: ${realtorUser.id}`);
     console.log(`   Role: ${realtorUser.role}`);
+
+    // Create underwriter demo user as a realtor
+    const demoUser = await prisma.user.create({
+      data: {
+        email: 'hello@northshoresignco.com',
+        passwordHash: demoPasswordHash,
+        firstName: 'Demo',
+        lastName: 'Test',
+        phone: null,
+        brokerageName: 'North Shore Sign Co',
+        role: 'REALTOR',
+      },
+    });
+
+    console.log('✅ Demo realtor user created successfully:');
+    console.log(`   Email: ${demoUser.email}`);
+    console.log(`   Password: 123456`);
+    console.log(`   ID: ${demoUser.id}`);
+    console.log(`   Role: ${demoUser.role}`);
   } catch (error) {
     console.error('❌ Error creating test users:', error);
     process.exit(1);

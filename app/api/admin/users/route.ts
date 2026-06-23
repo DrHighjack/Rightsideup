@@ -14,7 +14,7 @@ const createRealtorSchema = z.object({
   paymentMethod: z.enum(["OFFICE", "SELF"]).default("OFFICE"),
   closedByUserId: z.string().min(1),
   password: z
-    .union([z.string().min(8), z.literal("")])
+    .union([z.string().min(6), z.literal("")])
     .optional()
     .transform((v) => (v && v.trim().length > 0 ? v : undefined)),
 });

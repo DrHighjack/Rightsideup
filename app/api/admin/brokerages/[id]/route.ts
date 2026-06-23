@@ -10,7 +10,7 @@ const addAgentSchema = z.object({
   lastName: z.string().min(1),
   phone: z.string().optional(),
   paymentMethod: z.enum(["OFFICE", "SELF"]).default("OFFICE"),
-  password: z.string().min(8),
+  password: z.string().min(6),
 });
 
 const updateBrokerageSchema = z.object({

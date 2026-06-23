@@ -287,8 +287,8 @@ export default function ManagementPage() {
         return;
       }
 
-      if (brokerageForm.ownerPassword.trim().length < 8) {
-        setBrokerageError("Brokerage owner password must be at least 8 characters");
+      if (brokerageForm.ownerPassword.trim().length < 6) {
+        setBrokerageError("Brokerage owner password must be at least 6 characters");
         return;
       }
     }

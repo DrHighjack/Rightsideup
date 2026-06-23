@@ -81,8 +81,8 @@ function RegisterPageContent() {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -238,7 +238,7 @@ function RegisterPageContent() {
               required
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
             />
-            <p className="mt-1 text-xs text-gray-500">At least 8 characters</p>
+            <p className="mt-1 text-xs text-gray-500">At least 6 characters</p>
           </div>
 
           <div>

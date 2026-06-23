@@ -88,8 +88,8 @@ function RegisterTCContent() {
       return;
     }
 
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters");
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
       return;
     }
 
@@ -234,9 +234,9 @@ function RegisterTCContent() {
               placeholder="••••••••"
               disabled={formLoading}
               required
-              minLength={8}
+              minLength={6}
             />
-            <p className="text-xs text-gray-500 mt-1">At least 8 characters</p>
+            <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
           </div>
 
           <div>

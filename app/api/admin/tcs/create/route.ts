@@ -12,7 +12,7 @@ const createTCSchema = z.object({
   email: z.string().trim().email(),
   phone: z.string().trim().optional(),
   password: z
-    .union([z.string().min(8), z.literal("")])
+    .union([z.string().min(6), z.literal("")])
     .optional()
     .transform((value) => (value && value.trim().length > 0 ? value : undefined)),
 });

@@ -5,6 +5,15 @@ import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { notifyOrderUpdate } from "@/lib/notifications";
 
+function isMissingEmailVerifiedColumn(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as any).code === "P2022" &&
+    String((error as any)?.meta?.column || "").includes("emailVerifiedAt")
+  );
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -134,10 +143,25 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const sessionUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { id: true, role: true, emailVerifiedAt: true },
-    });
+    let sessionUser: { id: string; role: string; emailVerifiedAt: Date | null } | null = null;
+    try {
+      sessionUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, role: true, emailVerifiedAt: true },
+      });
+    } catch (error) {
+      if (!isMissingEmailVerifiedColumn(error)) {
+        throw error;
+      }
+
+      const legacySessionUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { id: true, role: true },
+      });
+      sessionUser = legacySessionUser
+        ? { ...legacySessionUser, emailVerifiedAt: new Date() }
+        : null;
+    }
 
     if (!sessionUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -186,10 +210,25 @@ export async function POST(request: NextRequest) {
       targetRealtorId = realtorId;
     }
 
-    const targetUser = await prisma.user.findUnique({
-      where: { id: targetRealtorId },
-      select: { id: true, emailVerifiedAt: true },
-    });
+    let targetUser: { id: string; emailVerifiedAt: Date | null } | null = null;
+    try {
+      targetUser = await prisma.user.findUnique({
+        where: { id: targetRealtorId },
+        select: { id: true, emailVerifiedAt: true },
+      });
+    } catch (error) {
+      if (!isMissingEmailVerifiedColumn(error)) {
+        throw error;
+      }
+
+      const legacyTargetUser = await prisma.user.findUnique({
+        where: { id: targetRealtorId },
+        select: { id: true },
+      });
+      targetUser = legacyTargetUser
+        ? { ...legacyTargetUser, emailVerifiedAt: new Date() }
+        : null;
+    }
 
     if (!targetUser?.emailVerifiedAt) {
       return NextResponse.json(

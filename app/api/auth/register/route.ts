@@ -32,6 +32,29 @@ export async function POST(request: NextRequest) {
     const emailVerificationToken = crypto.randomUUID();
     const emailVerificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
+    const hasMissingVerificationColumn = (error: unknown) =>
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2022" &&
+      ["emailVerificationToken", "emailVerificationExpiresAt", "emailVerifiedAt"].some((column) =>
+        String((error.meta as any)?.column || "").includes(column)
+      );
+
+    const buildCreateData = (includeVerificationFields: boolean) => ({
+      email: normalizedEmail,
+      passwordHash,
+      firstName,
+      lastName,
+      phone,
+      brokerageName,
+      role: "REALTOR" as const,
+      ...(includeVerificationFields
+        ? {
+            emailVerificationToken,
+            emailVerificationExpiresAt,
+          }
+        : {}),
+    });
+
     let user;
 
     if (inviteToken) {
@@ -86,25 +109,32 @@ export async function POST(request: NextRequest) {
           throw new Error("INVITE_UNAVAILABLE");
         }
 
-        const createdUser = await tx.user.create({
-          data: {
-            email: normalizedEmail,
-            passwordHash,
-            firstName,
-            lastName,
-            phone,
-            brokerageName,
-            role: "REALTOR",
-            emailVerificationToken,
-            emailVerificationExpiresAt,
-          },
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        });
+        let createdUser;
+        try {
+          createdUser = await tx.user.create({
+            data: buildCreateData(true),
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          });
+        } catch (createError) {
+          if (!hasMissingVerificationColumn(createError)) {
+            throw createError;
+          }
+
+          createdUser = await tx.user.create({
+            data: buildCreateData(false),
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          });
+        }
 
         await tx.tCAgentLink.upsert({
           where: {
@@ -124,25 +154,31 @@ export async function POST(request: NextRequest) {
         return createdUser;
       });
     } else {
-      user = await prisma.user.create({
-        data: {
-          email: normalizedEmail,
-          passwordHash,
-          firstName,
-          lastName,
-          phone,
-          brokerageName,
-          role: "REALTOR",
-          emailVerificationToken,
-          emailVerificationExpiresAt,
-        },
-        select: {
-          id: true,
-          email: true,
-          firstName: true,
-          lastName: true,
-        },
-      });
+      try {
+        user = await prisma.user.create({
+          data: buildCreateData(true),
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        });
+      } catch (createError) {
+        if (!hasMissingVerificationColumn(createError)) {
+          throw createError;
+        }
+
+        user = await prisma.user.create({
+          data: buildCreateData(false),
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true,
+          },
+        });
+      }
     }
 
     const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;

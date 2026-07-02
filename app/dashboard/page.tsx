@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import GoogleMapReact from "google-map-react";
+import RealtorOnboardingBanner, { OnboardingStatus } from "./components/RealtorOnboardingBanner";
 
 interface OrderData {
   id: string;
@@ -112,7 +113,7 @@ const resolvePhotoSrc = (raw?: string | null): string | null => {
 };
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const [stats, setStats] = useState<DashboardStats>({
     active: 0,
     completedThisMonth: 0,
@@ -129,6 +130,9 @@ export default function DashboardPage() {
     () => new Set(STATUS_FILTER_ORDER)
   );
   const [selectedRealtorId, setSelectedRealtorId] = useState<string>("ALL");
+  const [onboardingStatus, setOnboardingStatus] = useState<OnboardingStatus | null>(null);
+  const [onboardingBannerHidden, setOnboardingBannerHidden] = useState(false);
+  const [completingOnboarding, setCompletingOnboarding] = useState(false);
 
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
@@ -199,6 +203,79 @@ export default function DashboardPage() {
 
     fetchStats();
   }, []);
+
+  useEffect(() => {
+    const userRole = (session?.user as any)?.role;
+    const isRealtor = userRole === "REALTOR";
+
+    if (sessionStatus !== "authenticated" || !isRealtor) {
+      setOnboardingStatus(null);
+      setOnboardingBannerHidden(false);
+      return;
+    }
+
+    async function fetchOnboardingStatus() {
+      try {
+        const response = await fetch("/api/auth/onboarding-status", {
+          method: "GET",
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch onboarding status");
+        }
+
+        const data = await response.json();
+        setOnboardingStatus(data);
+      } catch (error) {
+        console.error("Failed to fetch onboarding status:", error);
+      }
+    }
+
+    fetchOnboardingStatus();
+  }, [sessionStatus, session]);
+
+  const markOnboardingComplete = async () => {
+    if (completingOnboarding) {
+      return;
+    }
+
+    setCompletingOnboarding(true);
+    try {
+      const response = await fetch("/api/auth/onboarding-complete", {
+        method: "PUT",
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to complete onboarding");
+      }
+
+      setOnboardingStatus((prev) =>
+        prev
+          ? {
+              ...prev,
+              isOnboarded: true,
+            }
+          : prev
+      );
+      setOnboardingBannerHidden(true);
+    } catch (error) {
+      console.error("Failed to mark onboarding complete:", error);
+    } finally {
+      setCompletingOnboarding(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!onboardingStatus || onboardingStatus.isOnboarded) {
+      return;
+    }
+
+    if (onboardingStatus.hasProfile && onboardingStatus.hasFirstOrder) {
+      markOnboardingComplete();
+    }
+  }, [onboardingStatus]);
 
   const realtorName = session?.user?.name || "Realtor";
 
@@ -291,35 +368,50 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return <div className="text-center text-gray-500">Loading...</div>;
+    return <div className="text-center text-slate-500">Loading...</div>;
   }
+
+  const userRole = (session?.user as any)?.role;
+  const shouldShowOnboardingBanner =
+    userRole === "REALTOR" &&
+    Boolean(onboardingStatus) &&
+    onboardingStatus?.isOnboarded === false &&
+    !onboardingBannerHidden;
 
   return (
     <div className="space-y-8">
+      {shouldShowOnboardingBanner && onboardingStatus ? (
+        <RealtorOnboardingBanner
+          status={onboardingStatus}
+          completing={completingOnboarding}
+          onSkip={markOnboardingComplete}
+        />
+      ) : null}
+
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">
           Welcome back, {realtorName.split(" ")[0]}
         </h1>
-        <p className="text-gray-600">Here's what's happening with your orders.</p>
+        <p className="text-slate-600">Here's what's happening with your orders.</p>
       </div>
 
       {/* Ready to order CTA */}
       {!readyCardHidden && (
-        <div className="relative bg-primary-light rounded-lg border border-primary p-6 text-center">
+        <div className="relative bg-white rounded-xl border border-slate-200 p-6 text-center shadow-sm">
           <button
             type="button"
             onClick={dismissReadyCard}
-            className="absolute right-3 top-3 h-7 w-7 rounded-full border border-primary/40 text-primary hover:bg-white"
+            className="absolute right-3 top-3 h-7 w-7 rounded-full border border-slate-300 text-slate-500 hover:bg-slate-50"
             aria-label="Hide ready to place order card"
             title="Hide for this session"
           >
             x
           </button>
 
-          <h3 className="text-lg font-semibold text-primary mb-2">Ready to place an order?</h3>
+          <h3 className="font-display text-lg font-semibold tracking-tight text-navy-900 mb-3">Ready to place an order?</h3>
           <Link
             href="/dashboard/orders/new"
-            className="inline-block rounded-md bg-primary px-6 py-2 text-white font-medium hover:bg-primary-dark"
+            className="inline-flex h-12 items-center justify-center rounded-lg bg-navy-900 px-6 font-medium text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900/40 focus-visible:ring-offset-2"
           >
             Place New Order
           </Link>
@@ -327,10 +419,10 @@ export default function DashboardPage() {
       )}
 
       {/* Orders map */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Post Maps</h2>
-          <span className="text-sm text-gray-600">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Post Maps</h2>
+          <span className="text-sm text-slate-600">
             {filteredMappedOrders.length} shown / {mappedOrders.length} mapped
           </span>
         </div>
@@ -340,15 +432,15 @@ export default function DashboardPage() {
             NEXT_PUBLIC_GOOGLE_MAPS_KEY is not configured.
           </div>
         ) : mappedOrders.length === 0 ? (
-          <div className="h-[420px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600">
+          <div className="h-[420px] rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">
             No orders with map coordinates yet.
           </div>
         ) : filteredMappedOrders.length === 0 ? (
-          <div className="h-[420px] rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-600">
+          <div className="h-[420px] rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">
             No map posts match the selected filters.
           </div>
         ) : (
-          <div className="h-[420px] rounded-lg overflow-hidden border border-gray-200 relative">
+          <div className="h-[420px] rounded-lg overflow-hidden border border-slate-200 relative">
             <GoogleMapReact
               bootstrapURLKeys={{ key: mapKey }}
               defaultCenter={mapCenter}
@@ -368,19 +460,19 @@ export default function DashboardPage() {
             </GoogleMapReact>
 
             {selectedOrder && (
-              <div className="absolute bottom-4 left-4 w-80 max-w-[calc(100%-2rem)] rounded-lg bg-white shadow-lg border border-gray-200 p-4">
-                <p className="font-semibold text-gray-900">{selectedOrder.orderNumber}</p>
-                <p className="text-sm text-gray-600 mt-1">{selectedOrder.address}</p>
-                <p className="text-sm text-gray-600 mt-1">
+              <div className="absolute bottom-4 left-4 w-80 max-w-[calc(100%-2rem)] rounded-lg bg-white shadow-lg border border-slate-200 p-4">
+                <p className="font-semibold text-slate-900">{selectedOrder.orderNumber}</p>
+                <p className="text-sm text-slate-600 mt-1">{selectedOrder.address}</p>
+                <p className="text-sm text-slate-600 mt-1">
                   {selectedOrder.type} · {formatStatusLabel(selectedOrder.status)}
                 </p>
                 {selectedOrder.scheduledDate && (
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-slate-600 mt-1">
                     Scheduled: {new Date(selectedOrder.scheduledDate).toLocaleDateString()}
                   </p>
                 )}
                 {resolvePhotoSrc(selectedOrder.mapPhotoData) && (
-                  <div className="mt-3 overflow-hidden rounded-md border border-gray-200">
+                  <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
                     <img
                       src={resolvePhotoSrc(selectedOrder.mapPhotoData) || ""}
                       alt={selectedOrder.mapPhotoName || `Photo for ${selectedOrder.orderNumber}`}
@@ -392,7 +484,7 @@ export default function DashboardPage() {
                 <div className="mt-3">
                   <Link
                     href={`/dashboard/orders/${selectedOrder.id}`}
-                    className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+                    className="inline-flex h-10 items-center rounded-lg bg-navy-900 px-3 text-sm font-semibold text-white hover:bg-navy-700"
                   >
                     View order
                   </Link>
@@ -403,7 +495,7 @@ export default function DashboardPage() {
         )}
 
         {mappedOrders.length > 0 && (
-          <div className="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-3">
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-3">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div className="flex flex-wrap items-center gap-2">
                 {statusOptions.map((status) => (
@@ -413,8 +505,8 @@ export default function DashboardPage() {
                     onClick={() => toggleStatus(status)}
                     className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
                       selectedStatuses.has(status)
-                        ? "border-blue-600 bg-blue-600 text-white"
-                        : "border-gray-300 bg-white text-gray-700 hover:border-blue-300"
+                        ? "border-navy-900 bg-navy-900 text-white"
+                        : "border-slate-300 bg-white text-slate-700 hover:border-slate-400"
                     }`}
                   >
                     {formatStatusLabel(status)}
@@ -423,14 +515,14 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex items-center gap-2 md:ml-4 md:justify-end">
-                <label htmlFor="map-realtor-filter" className="text-xs font-medium text-gray-700">
+                <label htmlFor="map-realtor-filter" className="text-xs font-medium text-slate-700">
                   Realtor
                 </label>
                 <select
                   id="map-realtor-filter"
                   value={selectedRealtorId}
                   onChange={(e) => setSelectedRealtorId(e.target.value)}
-                  className="rounded-md border border-gray-300 bg-white px-3 py-1.5 text-xs text-gray-700"
+                  className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs text-slate-700"
                 >
                   <option value="ALL">All Realtors</option>
                   {realtorOptions.map((realtor) => (
@@ -447,85 +539,85 @@ export default function DashboardPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Active Orders</p>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.active}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Active Orders</p>
+          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.active}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Completed This Month</p>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.completedThisMonth}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Completed This Month</p>
+          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.completedThisMonth}</p>
         </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Pending</p>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.pending}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</p>
+          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.pending}</p>
         </div>
       </div>
 
       {/* Recent orders */}
-      <div className="bg-white rounded-lg border border-gray-200">
-        <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Orders</h2>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="border-b border-slate-200 px-6 py-4 flex items-center justify-between gap-3">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Recent Orders</h2>
           <Link
             href="/dashboard/orders"
-            className="inline-flex items-center rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            className="inline-flex items-center rounded-lg bg-navy-900 px-3 py-2 text-sm font-semibold text-white hover:bg-navy-700"
           >
             Jump to My Orders
           </Link>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   Order #
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   Address
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   Type
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
+                <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                   Date
                 </th>
               </tr>
             </thead>
             <tbody>
               {stats.recentOrders.map((order) => (
-                <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm text-gray-900">
+                <tr key={order.id} className="border-b border-slate-100 hover:bg-navy-50/50">
+                  <td className="px-6 py-4 text-sm text-slate-900">
                     <Link
                       href={`/dashboard/orders/${order.id}`}
-                      className="text-primary hover:underline"
+                      className="font-medium text-navy-900 underline-offset-4 hover:underline"
                     >
                       {order.orderNumber}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600 truncate">
+                  <td className="px-6 py-4 text-sm text-slate-600 truncate">
                     {order.address}
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
+                  <td className="px-6 py-4 text-sm text-slate-600">{order.type}</td>
                   <td className="px-6 py-4 text-sm">
                     <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
+                      className={`inline-flex rounded-full px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-widest ${
                         order.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : order.status === "IN_GROUND"
+                          ? "bg-amber-100 text-amber-800"
+                          : order.status === "SCHEDULED" || order.status === "IN_PROGRESS"
                           ? "bg-blue-100 text-blue-800"
-                          : order.status === "COMPLETED"
+                          : order.status === "IN_GROUND" || order.status === "COMPLETED"
                           ? "bg-green-100 text-green-800"
                           : order.status === "CANCELLED"
                           ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
+                          : "bg-slate-100 text-slate-600"
                       }`}
                     >
                       {order.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-sm text-gray-600">
+                  <td className="px-6 py-4 text-sm text-slate-600 tabular-nums">
                     {new Date(order.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
@@ -533,10 +625,10 @@ export default function DashboardPage() {
             </tbody>
           </table>
         </div>
-        <div className="border-t border-gray-200 px-6 py-4">
+        <div className="border-t border-slate-200 px-6 py-4">
           <Link
             href="/dashboard/orders"
-            className="text-sm font-medium text-primary hover:text-primary-dark"
+            className="text-sm font-medium text-navy-900 underline-offset-4 hover:underline"
           >
             View all orders →
           </Link>

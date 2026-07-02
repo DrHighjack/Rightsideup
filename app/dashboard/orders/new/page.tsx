@@ -381,19 +381,19 @@ export default function NewOrderPage() {
   if (success) {
     return (
       <div className="max-w-2xl mx-auto space-y-8">
-        <div className="bg-green-50 border border-green-200 rounded-lg p-8 text-center">
+        <div className="bg-green-50 border border-green-200 rounded-xl p-8 text-center shadow-sm">
           <div className="text-green-600 text-4xl mb-4">✓</div>
-          <h1 className="text-3xl font-bold text-green-900 mb-2">Order Placed Successfully</h1>
+          <h1 className="font-display text-3xl font-semibold tracking-tight text-green-900 mb-2">Order Placed Successfully</h1>
           <p className="text-green-700 mb-4">
             Your order has been submitted and a confirmation email has been sent.
           </p>
-          <p className="text-2xl font-bold text-green-900 mb-6">
+          <p className="text-2xl font-semibold text-green-900 tabular-nums mb-6">
             Order Number: {successOrderNumber}
           </p>
           <div className="flex gap-4 justify-center">
             <Link
               href={successOrderId ? `/dashboard/orders/${successOrderId}` : '/dashboard/orders'}
-              className="rounded-md bg-green-600 px-6 py-2 text-white font-medium hover:bg-green-700"
+              className="inline-flex h-12 items-center rounded-lg bg-green-600 px-6 font-medium text-white transition-colors hover:bg-green-700"
             >
               View Order
             </Link>
@@ -414,7 +414,7 @@ export default function NewOrderPage() {
                 setSelf811Accepted(false);
                 setHasAcceptedOrderPolicies(false);
               }}
-              className="rounded-md border border-green-600 px-6 py-2 text-green-600 font-medium hover:bg-green-50"
+              className="inline-flex h-12 items-center rounded-lg border border-green-600 px-6 font-medium text-green-700 transition-colors hover:bg-green-50"
             >
               Place Another
             </button>
@@ -446,29 +446,29 @@ export default function NewOrderPage() {
   const totalEstimatedPriceCents = selectedSignPriceCents + addOnsTotalCents;
 
   const orderTypeLabel =
-    formData.type === 'INSTALL' ? 'Install' : formData.type === 'REMOVAL' ? 'Removal' : 'Change';
+    formData.type === "INSTALL" ? "Install" : formData.type === "REMOVAL" ? "Removal" : "Change";
 
   const formatMoneyFromCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Place New Order</h1>
-        <p className="text-gray-600 mt-1">Fill out the details below to create a new order</p>
+        <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">Place New Order</h1>
+        <p className="text-slate-600 mt-1">Fill out the details below to create a new order</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-lg border border-gray-200 p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
-          <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-800">
             {error}
           </div>
         )}
 
         {isTC && (
-          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-4 space-y-4">
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50 p-4 space-y-4">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-indigo-900">Assign To Realtor</h3>
+                <h3 className="font-display text-sm font-semibold tracking-tight text-indigo-900">Assign To Realtor</h3>
                 <p className="text-xs text-indigo-700 mt-1">
                   Choose one of your linked realtors or add a new realtor invite.
                 </p>
@@ -476,19 +476,19 @@ export default function NewOrderPage() {
               <button
                 type="button"
                 onClick={() => setShowAddRealtor((prev) => !prev)}
-                className="rounded-md border border-indigo-300 bg-white px-3 py-2 text-xs font-medium text-indigo-700 hover:bg-indigo-100"
+                className="inline-flex h-10 items-center rounded-lg border border-indigo-300 bg-white px-3 text-xs font-medium text-indigo-700 transition-colors hover:bg-indigo-100"
               >
                 {showAddRealtor ? 'Close' : 'Add Realtor'}
               </button>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Realtor *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Realtor *</label>
               <select
                 value={selectedRealtorId}
                 onChange={(e) => setSelectedRealtorId(e.target.value)}
                 disabled={loadingRealtors}
-                className="w-full rounded-md border border-gray-300 px-4 py-2 bg-white"
+                className="block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 bg-white focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
               >
                 <option value="">{loadingRealtors ? 'Loading realtors...' : 'Select a realtor'}</option>
                 {tcRealtors.map((realtor) => (
@@ -506,7 +506,7 @@ export default function NewOrderPage() {
                   value={addRealtorData.firstName}
                   onChange={(e) => setAddRealtorData((prev) => ({ ...prev, firstName: e.target.value }))}
                   placeholder="First Name"
-                  className="rounded-md border border-gray-300 px-3 py-2"
+                  className="h-12 rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
                   disabled={addingRealtor}
                 />
                 <input
@@ -514,7 +514,7 @@ export default function NewOrderPage() {
                   value={addRealtorData.lastName}
                   onChange={(e) => setAddRealtorData((prev) => ({ ...prev, lastName: e.target.value }))}
                   placeholder="Last Name"
-                  className="rounded-md border border-gray-300 px-3 py-2"
+                  className="h-12 rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
                   disabled={addingRealtor}
                 />
                 <input
@@ -522,7 +522,7 @@ export default function NewOrderPage() {
                   value={addRealtorData.email}
                   onChange={(e) => setAddRealtorData((prev) => ({ ...prev, email: e.target.value }))}
                   placeholder="Email"
-                  className="rounded-md border border-gray-300 px-3 py-2"
+                  className="h-12 rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
                   disabled={addingRealtor}
                 />
                 <div className="md:col-span-3 flex items-center justify-between gap-3">
@@ -533,7 +533,7 @@ export default function NewOrderPage() {
                     type="button"
                     onClick={handleAddRealtor}
                     disabled={addingRealtor}
-                    className="rounded-md bg-indigo-600 px-4 py-2 text-white text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                    className="inline-flex h-12 items-center justify-center rounded-lg bg-navy-900 px-4 text-sm font-medium text-white transition-colors hover:bg-navy-700 disabled:opacity-50"
                   >
                     {addingRealtor ? 'Sending...' : 'Invite Realtor'}
                   </button>
@@ -542,13 +542,13 @@ export default function NewOrderPage() {
             )}
 
             {addRealtorMessage && (
-              <div className="rounded-md border border-indigo-200 bg-white px-3 py-2 text-xs text-indigo-700">
+              <div className="rounded-lg border border-indigo-200 bg-white px-3 py-2 text-xs text-indigo-800">
                 {addRealtorMessage}
               </div>
             )}
 
             {pendingInvites.length > 0 && (
-              <div className="rounded-md border border-amber-200 bg-amber-50 p-3">
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
                 <p className="text-xs font-medium text-amber-800 mb-2">Pending Invites</p>
                 <div className="space-y-1">
                   {pendingInvites.slice(0, 4).map((invite) => (
@@ -563,22 +563,24 @@ export default function NewOrderPage() {
         )}
 
         {/* Order type */}
-        <div>
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           <label className="block text-sm font-medium text-gray-700 mb-3">
             Order Type *
           </label>
           <div className="space-y-2">
             {["INSTALL", "REMOVAL", "CHANGE"].map((type) => (
-              <label key={type} className="flex items-center">
+              <label key={type} className={`flex h-12 cursor-pointer items-center rounded-lg border px-4 transition-colors ${
+                formData.type === type ? 'border-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'
+              }`}>
                 <input
                   type="radio"
                   name="type"
                   value={type}
                   checked={formData.type === type}
                   onChange={handleChange}
-                  className="rounded-full"
+                  className="h-5 w-5 accent-navy-900"
                 />
-                <span className="ml-3 text-gray-700">{type}</span>
+                <span className={`ml-3 text-sm font-medium ${formData.type === type ? 'text-navy-900' : 'text-slate-700'}`}>{type}</span>
               </label>
             ))}
           </div>
@@ -586,7 +588,7 @@ export default function NewOrderPage() {
 
         {/* Address */}
         <div>
-          <label htmlFor="address" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="address" className="block text-sm font-medium text-slate-700 mb-1">
             Address *
           </label>
           <input
@@ -598,9 +600,9 @@ export default function NewOrderPage() {
             onChange={handleChange}
             required
             placeholder="Enter property address"
-            className="w-full rounded-md border border-gray-300 px-4 py-2"
+            className="block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
           />
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-slate-500">
             {mapsUnavailable
               ? "Address search unavailable. Enter address manually."
               : mapsLoaded
@@ -611,7 +613,7 @@ export default function NewOrderPage() {
 
         {/* Requested date */}
         <div>
-          <label htmlFor="scheduledDate" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="scheduledDate" className="block text-sm font-medium text-slate-700 mb-1">
             Requested Date
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -622,15 +624,15 @@ export default function NewOrderPage() {
               value={formData.scheduledDate}
               onChange={handleChange}
               min={new Date().toISOString().split("T")[0]}
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             />
             <button
               type="button"
               onClick={handleAsapClick}
-              className={`rounded-md border px-4 py-2 font-medium transition ${
+              className={`h-12 rounded-lg border px-4 font-medium transition-colors ${
                 isAsap
                   ? 'border-emerald-500 bg-emerald-100 text-emerald-800'
-                  : 'border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
               }`}
             >
               ASAP
@@ -640,7 +642,7 @@ export default function NewOrderPage() {
 
         {/* Notes */}
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">
             Notes
           </label>
           <textarea
@@ -650,14 +652,14 @@ export default function NewOrderPage() {
             onChange={handleChange}
             rows={4}
             placeholder="Any additional notes or instructions"
-            className="w-full rounded-md border border-gray-300 px-4 py-2"
+            className="block w-full rounded-lg border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
           />
         </div>
 
         {/* Sign Selection */}
-        <div className="border-t border-gray-200 pt-6">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
           {isTC && !selectedRealtorId ? (
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+            <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
               Select a realtor first to load sign inventory.
             </div>
           ) : (
@@ -671,19 +673,19 @@ export default function NewOrderPage() {
         </div>
 
         {/* 811 Service Toggle */}
-        <div className="border-t border-gray-200 pt-6">
-          <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-semibold text-gray-900">811 Concierge Service</h3>
-              <p className="text-sm text-gray-600 mt-1">
+              <h3 className="font-display font-semibold tracking-tight text-slate-900">811 Concierge Service</h3>
+              <p className="text-sm text-slate-600 mt-1">
                 We will contact 811 to mark utilities before installation
               </p>
             </div>
             <button
               type="button"
               onClick={handle811Toggle}
-              className={`ml-4 relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition ${
-                use811Service ? 'bg-emerald-500' : 'bg-gray-300'
+              className={`ml-4 relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition-colors ${
+                use811Service ? 'bg-navy-900' : 'bg-slate-300'
               }`}
               aria-label="Toggle 811 concierge service"
             >
@@ -695,17 +697,17 @@ export default function NewOrderPage() {
             </button>
           </div>
           {!use811Service && (
-            <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
               ⚠️ You have opted out of 811 service and accepted the Self 811 Policy
             </div>
           )}
         </div>
 
         {/* Review Summary */}
-        <div className="border-t border-gray-200 pt-6">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <h3 className="text-lg font-semibold text-gray-900">Review Your Order</h3>
-            <div className="mt-3 space-y-2 text-sm text-gray-700">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <h3 className="font-display text-lg font-semibold tracking-tight text-slate-900">Review Your Order</h3>
+            <div className="mt-3 space-y-2 text-sm text-slate-700">
               <p>
                 <span className="font-medium">Property address:</span>{' '}
                 {formData.address || 'Not provided yet'}
@@ -749,7 +751,7 @@ export default function NewOrderPage() {
                 <span className="font-medium">811 service status:</span>{' '}
                 {use811Service ? 'Included' : 'Opted out'}
               </p>
-              <p className="pt-1 text-base font-semibold text-gray-900">
+              <p className="pt-1 text-base font-semibold text-slate-900">
                 Total estimated price: {formatMoneyFromCents(totalEstimatedPriceCents)}
               </p>
             </div>
@@ -757,21 +759,21 @@ export default function NewOrderPage() {
         </div>
 
         {/* Terms acceptance */}
-        <div className="border-t border-gray-200 pt-6">
-          <label className="flex items-start gap-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-700">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          <label className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white p-3 text-sm text-slate-700">
             <input
               type="checkbox"
               checked={hasAcceptedOrderPolicies}
               onChange={(e) => setHasAcceptedOrderPolicies(e.target.checked)}
-              className="mt-0.5"
+              className="mt-0.5 h-4 w-4 accent-navy-900"
             />
             <span>
               I have read and agree to the{' '}
-              <Link href="/terms" className="text-blue-700 hover:underline">
+              <Link href="/terms" className="text-navy-900 underline-offset-4 hover:underline">
                 Terms &amp; Conditions
               </Link>{' '}
               and{' '}
-              <Link href="/refund" className="text-blue-700 hover:underline">
+              <Link href="/refund" className="text-navy-900 underline-offset-4 hover:underline">
                 Refund Policy
               </Link>
               .
@@ -780,20 +782,20 @@ export default function NewOrderPage() {
         </div>
 
         {/* Submit button */}
-        <div className="flex gap-4 border-t border-gray-200 pt-6">
+        <div className="flex gap-3 pt-2">
           <div className="flex-1">
-            <p className="mb-2 text-xs text-gray-500">🔒 256-bit SSL Encrypted</p>
+            <p className="mb-2 text-xs text-slate-500">🔒 256-bit SSL Encrypted</p>
             <button
               type="submit"
               disabled={loading || !hasAcceptedOrderPolicies}
-              className="w-full rounded-md bg-primary px-4 py-2 text-white font-medium hover:bg-primary-dark disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-12 w-full rounded-lg bg-navy-900 px-4 font-medium text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? "Creating Order..." : "Create Order"}
             </button>
           </div>
           <Link
             href="/dashboard/orders"
-            className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 inline-block text-center"
+            className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 font-medium text-slate-700 transition-colors hover:bg-slate-50"
           >
             Cancel
           </Link>

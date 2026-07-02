@@ -1,6 +1,20 @@
 import type { Metadata } from "next";
+import { Barlow, Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const barlow = Barlow({
+  subsets: ["latin"],
+  weight: ["500", "600"],
+  variable: "--font-barlow",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "SignPost Field",
@@ -42,7 +56,7 @@ export default function RootLayout({
           content="SignPost"
         />
       </head>
-      <body>
+      <body className={`${inter.variable} ${barlow.variable} font-sans`}>
         <Providers>
           {children}
         </Providers>

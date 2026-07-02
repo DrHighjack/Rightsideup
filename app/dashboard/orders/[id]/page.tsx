@@ -87,41 +87,43 @@ export default function OrderDetailPage() {
   }
 
   if (loading) {
-    return <div className="text-center text-gray-500">Loading...</div>;
+    return <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">Loading...</div>;
   }
 
   if (!order) {
-    return <div className="text-center text-gray-500">Order not found</div>;
+    return <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">Order not found</div>;
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">{order.orderNumber}</h1>
-          <p className="text-gray-600 mt-1">Order details and history</p>
+          <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-slate-900 tabular-nums">{order.orderNumber}</h1>
+          <p className="text-slate-600 mt-1">Order details and history</p>
         </div>
         <Link
           href="/dashboard/orders"
-          className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+          className="inline-flex h-12 items-center rounded-lg border border-slate-300 bg-white px-5 font-medium text-slate-700 transition-colors hover:bg-slate-50"
         >
           Back to Orders
         </Link>
       </div>
 
       {/* Status badge */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Status</h2>
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Status</h2>
           <span
-            className={`inline-flex rounded-full px-3 py-1 text-sm font-semibold ${
-              order.status === "PENDING"
-                ? "bg-yellow-100 text-yellow-800"
+            className={`inline-flex rounded-full px-4 py-2 font-display text-sm font-semibold uppercase tracking-widest ${
+              order.status === "PENDING" || order.status === "ON_HOLD"
+                ? "bg-amber-100 text-amber-800"
+                : order.status === "SCHEDULED" || order.status === "IN_PROGRESS"
+                ? "bg-blue-100 text-blue-800"
                 : order.status === "COMPLETED" || order.status === "IN_GROUND"
                 ? "bg-green-100 text-green-800"
                 : order.status === "CANCELLED"
                 ? "bg-red-100 text-red-800"
-                : "bg-blue-100 text-blue-800"
+                : "bg-slate-100 text-slate-600"
             }`}
           >
             {order.status}
@@ -130,31 +132,38 @@ export default function OrderDetailPage() {
       </div>
 
       {/* Order details */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Details</h2>
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Details</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-600">Order Type</p>
-            <p className="text-gray-900 font-medium">{order.type}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Order Type</p>
+            <p className="mt-1 text-base font-medium text-slate-900">{order.type}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Created</p>
-            <p className="text-gray-900 font-medium">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Created</p>
+            <p className="mt-1 text-base font-medium text-slate-900 tabular-nums">
               {new Date(order.createdAt).toLocaleDateString()}
             </p>
           </div>
         </div>
 
         <div>
-          <p className="text-sm text-gray-600">Address</p>
-          <p className="text-gray-900 font-medium">{order.address}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Address</p>
+          <a
+            href={`https://maps.apple.com/?q=${encodeURIComponent(order.address)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-flex min-h-12 items-center text-base font-medium text-navy-900 underline-offset-4 hover:underline"
+          >
+            {order.address}
+          </a>
         </div>
 
         {order.scheduledDate && (
           <div>
-            <p className="text-sm text-gray-600">Scheduled Date</p>
-            <p className="text-gray-900 font-medium">
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Scheduled Date</p>
+            <p className="mt-1 text-base font-medium text-slate-900 tabular-nums">
               {new Date(order.scheduledDate).toLocaleDateString()}
             </p>
           </div>
@@ -162,8 +171,8 @@ export default function OrderDetailPage() {
 
         {order.notes && (
           <div>
-            <p className="text-sm text-gray-600">Notes</p>
-            <p className="text-gray-900">{order.notes}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</p>
+            <p className="mt-1 text-base text-slate-900">{order.notes}</p>
           </div>
         )}
       </div>
@@ -172,7 +181,7 @@ export default function OrderDetailPage() {
       {order.status === "PENDING" && !cancelled && (
         <button
           onClick={() => setShowCancelModal(true)}
-          className="w-full rounded-md bg-red-600 px-4 py-2 text-white font-medium hover:bg-red-700"
+          className="flex h-12 w-full items-center justify-center rounded-lg border border-red-300 bg-white px-4 font-medium text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
         >
           Cancel Order
         </button>
@@ -181,13 +190,13 @@ export default function OrderDetailPage() {
       {/* Cancel modal */}
       {showCancelModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4 shadow-lg">
+            <h3 className="font-display text-lg font-semibold tracking-tight text-slate-900">
               Are you sure you want to cancel this order?
             </h3>
 
             <div>
-              <label htmlFor="cancelReason" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="cancelReason" className="block text-sm font-medium text-slate-700 mb-1">
                 Reason (optional)
               </label>
               <textarea
@@ -196,7 +205,7 @@ export default function OrderDetailPage() {
                 onChange={(e) => setCancelReason(e.target.value)}
                 placeholder="Why are you cancelling this order?"
                 rows={3}
-                className="w-full rounded-md border border-gray-300 px-4 py-2"
+                className="block w-full rounded-lg border border-slate-300 px-4 py-3 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
               />
             </div>
 
@@ -204,18 +213,18 @@ export default function OrderDetailPage() {
               <p className="text-sm text-red-700">{cancelError}</p>
             )}
 
-            <div className="flex gap-4">
+            <div className="flex flex-col-reverse gap-3 sm:flex-row">
               <button
                 onClick={() => setShowCancelModal(false)}
                 disabled={cancelling}
-                className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-gray-700 font-medium hover:bg-gray-50"
+                className="inline-flex h-12 flex-1 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 font-medium text-slate-700 transition-colors hover:bg-slate-50"
               >
                 Keep Order
               </button>
               <button
                 onClick={handleCancel}
                 disabled={cancelling}
-                className="flex-1 rounded-md bg-red-600 px-4 py-2 text-white font-medium hover:bg-red-700 disabled:opacity-50"
+                className="inline-flex h-12 flex-1 items-center justify-center rounded-lg bg-red-600 px-4 font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2 disabled:opacity-50"
               >
                 {cancelling ? "Cancelling..." : "Confirm Cancel"}
               </button>
@@ -226,7 +235,7 @@ export default function OrderDetailPage() {
 
       {/* Success message */}
       {cancelled && (
-        <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
+        <div className="rounded-lg border border-green-200 bg-green-50 p-4 text-sm text-green-800">
           Order has been cancelled successfully.
         </div>
       )}

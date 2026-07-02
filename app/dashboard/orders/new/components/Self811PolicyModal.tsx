@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Self811PolicyModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ export function Self811PolicyModal({ isOpen, onAccept, onCancel }: Self811Policy
       }
       
       const data = await res.json();
-      setPolicy(data.content || 'No policy available');
+      setPolicy(data.policy?.content || 'No policy available');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong');
     } finally {
@@ -42,11 +43,11 @@ export function Self811PolicyModal({ isOpen, onAccept, onCancel }: Self811Policy
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[80vh] flex flex-col">
+      <div className="bg-white rounded-xl max-w-2xl w-full max-h-[80vh] flex flex-col shadow-lg">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-xl font-bold text-gray-900">Are you sure you want to skip 811?</h2>
-          <p className="text-sm text-gray-600 mt-1">
+        <div className="px-6 py-4 border-b border-slate-200">
+          <h2 className="font-display text-xl font-semibold tracking-tight text-slate-900">Are you sure you want to skip 811?</h2>
+          <p className="text-sm text-slate-600 mt-1">
             Please review the Self 811 Policy before proceeding
           </p>
         </div>
@@ -56,38 +57,36 @@ export function Self811PolicyModal({ isOpen, onAccept, onCancel }: Self811Policy
           {loading && (
             <div className="text-center py-8">
               <div className="inline-block">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-navy-900"></div>
               </div>
-              <p className="text-gray-600 mt-2">Loading policy...</p>
+              <p className="text-slate-600 mt-2">Loading policy...</p>
             </div>
           )}
 
           {error && (
-            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
               ⚠️ {error}
             </div>
           )}
 
           {!loading && !error && (
-            <div className="prose prose-sm max-w-none">
-              <div className="text-gray-700 text-sm whitespace-pre-wrap">
-                {policy}
-              </div>
+            <div className="prose prose-sm max-w-none text-slate-700 text-sm">
+              <ReactMarkdown>{policy}</ReactMarkdown>
             </div>
           )}
         </div>
 
         {/* Buttons */}
-        <div className="px-6 py-4 border-t border-gray-200 flex gap-3 justify-end">
+        <div className="px-6 py-4 border-t border-slate-200 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             onClick={onCancel}
-            className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
+            className="inline-flex h-12 items-center justify-center rounded-lg border border-slate-300 bg-white px-5 font-medium text-slate-700 transition-colors hover:bg-slate-50"
           >
             Cancel — Keep 811 Service
           </button>
           <button
             onClick={onAccept}
-            className="px-4 py-2 rounded-md bg-red-600 text-white font-medium hover:bg-red-700"
+            className="inline-flex h-12 items-center justify-center rounded-lg bg-red-600 px-5 font-medium text-white transition-colors hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
           >
             I Accept — Skip 811
           </button>

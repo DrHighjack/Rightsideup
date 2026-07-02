@@ -166,7 +166,7 @@ export default function AccountPage() {
   };
 
   if (!session?.user) {
-    return <div className="max-w-2xl mx-auto p-6">Loading...</div>;
+    return <div className="max-w-2xl mx-auto rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">Loading...</div>;
   }
 
   const user = session.user as any;
@@ -183,42 +183,42 @@ export default function AccountPage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-        <p className="text-gray-600 mt-1">Manage your account information</p>
+        <h1 className="font-display text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">Account Settings</h1>
+        <p className="text-slate-600 mt-1">Manage your account information</p>
       </div>
 
       {/* Account info card */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Profile Information</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-600">First Name</p>
-            <p className="text-gray-900 font-medium">{user.name?.split(" ")[0] || "N/A"}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">First Name</p>
+            <p className="mt-1 text-base font-medium text-slate-900">{user.name?.split(" ")[0] || "N/A"}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-600">Last Name</p>
-            <p className="text-gray-900 font-medium">{user.name?.split(" ")[1] || "N/A"}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Last Name</p>
+            <p className="mt-1 text-base font-medium text-slate-900">{user.name?.split(" ")[1] || "N/A"}</p>
           </div>
         </div>
 
         <div>
-          <p className="text-sm text-gray-600">Email</p>
-          <p className="text-gray-900 font-medium">
-            {user.email} <span className="text-gray-500 font-normal">• {businessName}</span>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</p>
+          <p className="mt-1 text-base font-medium text-slate-900">
+            {user.email} <span className="text-slate-500 font-normal">• {businessName}</span>
           </p>
         </div>
 
         <div>
-          <p className="text-sm text-gray-600">Role</p>
-          <p className="text-gray-900 font-medium">{roleLabel}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Role</p>
+          <p className="mt-1 text-base font-medium text-slate-900">{roleLabel}</p>
         </div>
       </div>
 
       {/* Payment information section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Payment Information</h2>
-        <p className="text-sm text-gray-600">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Payment Information</h2>
+        <p className="text-sm text-slate-600">
           Per our policies, payment details are encrypted in transit and at rest. By saving payment
           information, you authorize charges according to your service agreement and posted terms.
         </p>
@@ -231,7 +231,7 @@ export default function AccountPage() {
             onChange={(e) =>
               setPaymentInfo((prev) => ({ ...prev, cardholderName: e.target.value }))
             }
-            className="rounded-md border border-gray-300 px-3 py-2"
+            className="h-12 rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
           />
           <input
             type="text"
@@ -240,7 +240,7 @@ export default function AccountPage() {
             onChange={(e) =>
               setPaymentInfo((prev) => ({ ...prev, cardLast4: e.target.value.replace(/\D/g, "").slice(0, 4) }))
             }
-            className="rounded-md border border-gray-300 px-3 py-2"
+            className="h-12 rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
           />
           <input
             type="text"
@@ -249,13 +249,13 @@ export default function AccountPage() {
             onChange={(e) =>
               setPaymentInfo((prev) => ({ ...prev, billingZip: e.target.value }))
             }
-            className="rounded-md border border-gray-300 px-3 py-2"
+            className="h-12 rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
           />
         </div>
 
         <button
           type="button"
-          className="rounded-md bg-gray-200 px-4 py-2 text-sm font-medium text-gray-700 cursor-not-allowed"
+          className="inline-flex h-12 items-center rounded-lg border border-slate-300 bg-white px-5 text-sm font-medium text-slate-500 cursor-not-allowed"
           disabled
           title="Payment save flow coming next"
         >
@@ -264,60 +264,60 @@ export default function AccountPage() {
       </div>
 
       {/* Change password section */}
-      <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Password</h2>
-        <p className="text-sm text-gray-600">
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Password</h2>
+        <p className="text-sm text-slate-600">
           Send a secure reset link to your email on file.
         </p>
         <button
           type="button"
           onClick={handleSendPasswordReset}
           disabled={passwordResetLoading}
-          className="rounded-md bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:bg-indigo-400"
+          className="inline-flex h-12 items-center rounded-lg bg-navy-900 px-5 text-sm font-medium text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-50"
         >
           {passwordResetLoading ? "Sending..." : "Send Password Reset Link"}
         </button>
         {passwordResetMessage && (
-          <p className="text-sm text-indigo-700">{passwordResetMessage}</p>
+          <p className="text-sm text-navy-900">{passwordResetMessage}</p>
         )}
       </div>
 
       {/* Security note */}
-      <div className="bg-primary-light rounded-lg border border-primary p-4">
-        <p className="text-sm text-primary-dark">
+      <div className="rounded-xl border border-navy-100 bg-navy-100/50 p-4">
+        <p className="text-sm text-navy-900">
           Your account is secured with bcrypt password hashing. Your password is never stored in plain text.
         </p>
       </div>
 
       {/* TC Management Section (only for realtors/admins) */}
       {(user.role === "REALTOR" || user.role === "ADMIN") && (
-        <div className="bg-white rounded-lg border border-gray-200 p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-900">Transaction Coordinator Access</h2>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Transaction Coordinator Access</h2>
 
           {/* Invite TC Form */}
-          <div className="border-b border-gray-200 pb-6">
-            <h3 className="text-sm font-medium text-gray-900 mb-4">Invite a Transaction Coordinator</h3>
+          <div className="border-b border-slate-200 pb-6">
+            <h3 className="text-sm font-medium text-slate-900 mb-4">Invite a Transaction Coordinator</h3>
 
             {inviteError && (
               <div className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4">
-                <p className="text-sm text-red-700">{inviteError}</p>
+                <p className="text-sm text-red-800">{inviteError}</p>
               </div>
             )}
 
-            <form onSubmit={handleInviteTC} className="flex gap-3">
+            <form onSubmit={handleInviteTC} className="flex flex-col gap-3 sm:flex-row">
               <input
                 type="email"
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
                 placeholder="tc@example.com"
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="h-12 flex-1 rounded-lg border border-slate-300 px-4 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
                 disabled={inviteLoading}
                 required
               />
               <button
                 type="submit"
                 disabled={inviteLoading}
-                className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-medium rounded-lg transition-colors"
+                className="inline-flex h-12 items-center justify-center rounded-lg bg-navy-900 px-6 font-medium text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-50"
               >
                 {inviteLoading ? "Sending..." : "Send Invite"}
               </button>
@@ -326,22 +326,22 @@ export default function AccountPage() {
 
           {/* Pending Invites */}
           {pendingInvites.length > 0 && (
-            <div className="border-b border-gray-200 pb-6">
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Pending Invites</h3>
+            <div className="border-b border-slate-200 pb-6">
+              <h3 className="text-sm font-medium text-slate-900 mb-3">Pending Invites</h3>
               <div className="space-y-2">
                 {pendingInvites.map((invite) => (
                   <div
                     key={invite.id}
-                    className="flex items-center justify-between p-3 bg-amber-50 border border-amber-200 rounded-lg"
+                    className="flex min-h-12 items-center justify-between rounded-xl border border-slate-200 bg-white p-3"
                   >
                     <div>
-                      <p className="text-sm font-medium text-amber-900">{invite.email}</p>
-                      <p className="text-xs text-amber-700">
+                      <p className="text-sm font-medium text-slate-900">{invite.email}</p>
+                      <p className="text-xs text-slate-500 tabular-nums">
                         Expires:{" "}
                         {new Date(invite.expiresAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <span className="text-xs font-medium text-amber-700 bg-amber-100 px-3 py-1 rounded">
+                    <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-widest text-amber-800">
                       Pending
                     </span>
                   </div>
@@ -353,23 +353,23 @@ export default function AccountPage() {
           {/* Linked TCs */}
           {linkedTCs.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-gray-900 mb-3">Linked TCs</h3>
+              <h3 className="text-sm font-medium text-slate-900 mb-3">Linked TCs</h3>
               <div className="space-y-2">
                 {linkedTCs.map((tc) => (
                   <div
                     key={tc.linkId}
-                    className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg"
+                    className="flex min-h-12 items-center justify-between rounded-xl border border-slate-200 bg-white p-3"
                   >
                     <div>
-                      <p className="text-sm font-medium text-green-900">
+                      <p className="text-sm font-medium text-slate-900">
                         {tc.firstName} {tc.lastName}
                       </p>
-                      <p className="text-xs text-green-700">{tc.email}</p>
+                      <p className="text-xs text-slate-500">{tc.email}</p>
                     </div>
                     <button
                       onClick={() => handleRevoke(tc.linkId)}
                       disabled={revokeLoading === tc.linkId}
-                      className="text-xs font-medium text-red-600 hover:text-red-800 disabled:text-red-400 transition-colors"
+                      className="inline-flex h-12 items-center rounded-lg border border-red-300 bg-white px-4 text-sm font-medium text-red-700 transition-colors hover:bg-red-50 disabled:opacity-50"
                     >
                       {revokeLoading === tc.linkId ? "Revoking..." : "Revoke"}
                     </button>
@@ -380,7 +380,7 @@ export default function AccountPage() {
           )}
 
           {!tcsLoading && pendingInvites.length === 0 && linkedTCs.length === 0 && (
-            <p className="text-sm text-gray-500 text-center py-4">
+            <p className="text-sm text-slate-500 text-center py-4">
               No TCs invited yet. Send an invite to get started.
             </p>
           )}

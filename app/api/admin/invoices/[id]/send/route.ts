@@ -70,8 +70,15 @@ export async function POST(
       },
     });
 
-    // TODO: Send email notification to user
-    // TODO: Create notification record
+    await prisma.notification.create({
+      data: {
+        userId: updated.user.id,
+        title: "New Invoice Sent",
+        message: `Invoice INV-${updated.id.slice(0, 8).toUpperCase()} is now available.`,
+        type: "INVOICE_READY",
+        link: `/dashboard/invoices/${updated.id}`,
+      },
+    });
 
     const response = {
       success: true,

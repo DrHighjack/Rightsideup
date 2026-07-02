@@ -16,6 +16,7 @@ interface Agent {
   brokerageName?: string;
   paymentMethod: string;
   freeInstallGivenBy?: string;
+  tags?: string[];
 }
 
 interface Closer {
@@ -88,6 +89,7 @@ interface LinkFormState {
 
 type SortKey = "name" | "email" | "brokerage" | "phone";
 type SortOrder = "asc" | "desc";
+type ActivityFilter = "all" | "active" | "inactive";
 
 export default function ManagementPage() {
   const { status } = useSession();
@@ -101,6 +103,7 @@ export default function ManagementPage() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
   const [closers, setClosers] = useState<Closer[]>([]);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
@@ -434,6 +437,10 @@ export default function ManagementPage() {
   // Filter and sort agents based on search and sort settings
   const filteredAgents = agents
     .filter((agent) => {
+      const isInactive = Array.isArray(agent.tags) && agent.tags.includes("INACTIVE");
+      if (activityFilter === "active" && isInactive) return false;
+      if (activityFilter === "inactive" && !isInactive) return false;
+
       const searchLower = search.toLowerCase();
       return (
         agent.firstName.toLowerCase().includes(searchLower) ||
@@ -467,6 +474,19 @@ export default function ManagementPage() {
         return bVal.localeCompare(aVal);
       }
     });
+
+  const filteredBrokerages = brokerages.filter((brokerage) => {
+    if (activityFilter === "active") return brokerage.isActive;
+    if (activityFilter === "inactive") return !brokerage.isActive;
+    return true;
+  });
+
+  const filteredTcs = tcs.filter((tc) => {
+    const isActive = tc.isActive ?? true;
+    if (activityFilter === "active") return isActive;
+    if (activityFilter === "inactive") return !isActive;
+    return true;
+  });
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -867,7 +887,7 @@ export default function ManagementPage() {
                 : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
             }`}
           >
-            All Clients
+            Realtor Accounts
           </button>
           <button
             onClick={() => setView("brokerages")}
@@ -905,12 +925,23 @@ export default function ManagementPage() {
                 <h2 className="text-xl font-semibold text-gray-900">Brokerages</h2>
                 <p className="text-sm text-gray-600 mt-1">Create and manage brokerage billing rules</p>
               </div>
-              <button
-                onClick={openCreateBrokerageModal}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-              >
-                + Add Brokerage
-              </button>
+              <div className="flex items-center gap-3">
+                <select
+                  value={activityFilter}
+                  onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">!inactive (Active)</option>
+                  <option value="inactive">inactive</option>
+                </select>
+                <button
+                  onClick={openCreateBrokerageModal}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                >
+                  + Add Brokerage
+                </button>
+              </div>
             </div>
 
             <div className="overflow-x-auto">
@@ -928,7 +959,7 @@ export default function ManagementPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {brokerages.map((brokerage) => (
+                  {filteredBrokerages.map((brokerage) => (
                     <tr key={brokerage.id} className={!brokerage.isActive ? "bg-gray-50" : "hover:bg-gray-50"}>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900">
                         {brokerage.name}
@@ -998,7 +1029,7 @@ export default function ManagementPage() {
                 </tbody>
               </table>
 
-              {brokerages.length === 0 && (
+              {filteredBrokerages.length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-gray-600">No brokerages found</p>
                 </div>
@@ -1224,6 +1255,15 @@ export default function ManagementPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               />
+              <select
+                value={activityFilter}
+                onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+              >
+                <option value="all">All Statuses</option>
+                <option value="active">!inactive (Active)</option>
+                <option value="inactive">inactive</option>
+              </select>
               <button
                 onClick={() => setShowAddClientModal(true)}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg whitespace-nowrap"
@@ -1275,6 +1315,7 @@ export default function ManagementPage() {
                     </th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Payment</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Closed By</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Status</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Profile</th>
                   </tr>
                 </thead>
@@ -1322,6 +1363,17 @@ export default function ManagementPage() {
                             </option>
                           ))}
                         </select>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {Array.isArray(agent.tags) && agent.tags.includes("INACTIVE") ? (
+                          <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-200 text-gray-700">
+                            Inactive
+                          </span>
+                        ) : (
+                          <span className="inline-block px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                            Active
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <Link
@@ -1592,18 +1644,29 @@ export default function ManagementPage() {
                 <h2 className="text-xl font-semibold text-gray-900">TC Accounts</h2>
                 <p className="text-gray-600 text-sm mt-1">Manage third-party coordinators and their linked agents</p>
               </div>
-              <button
-                onClick={openCreateTcModal}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
-              >
-                + Add TC
-              </button>
+              <div className="flex items-center gap-3">
+                <select
+                  value={activityFilter}
+                  onChange={(e) => setActivityFilter(e.target.value as ActivityFilter)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="active">!inactive (Active)</option>
+                  <option value="inactive">inactive</option>
+                </select>
+                <button
+                  onClick={openCreateTcModal}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg"
+                >
+                  + Add TC
+                </button>
+              </div>
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
               {loading ? (
                 <div className="p-8 text-center text-gray-500">Loading TCs...</div>
-              ) : tcs.length === 0 ? (
+              ) : filteredTcs.length === 0 ? (
                 <div className="p-8 text-center text-gray-500">No TC accounts found</div>
               ) : (
                 <div className="overflow-x-auto">
@@ -1620,7 +1683,7 @@ export default function ManagementPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-200">
-                      {tcs.map((tc) => {
+                      {filteredTcs.map((tc) => {
                         const fullName = `${tc.firstName || ""} ${tc.lastName || ""}`.trim();
                         const isActive = tc.isActive ?? true;
 

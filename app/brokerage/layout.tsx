@@ -47,10 +47,16 @@ export default function BrokerageLayout({
           </div>
           <div className="flex items-center gap-3">
             <Link
-              href="/brokerage"
+              href="/brokerage?tab=members"
               className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
-              Dashboard
+              Members
+            </Link>
+            <Link
+              href="/brokerage?tab=billing"
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Billing
             </Link>
             <button
               type="button"

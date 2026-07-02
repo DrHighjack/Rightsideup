@@ -25,6 +25,7 @@ export default function AdminClientsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedTag, setSelectedTag] = useState<string>("");
   const [balanceFilter, setBalanceFilter] = useState<"all" | "has-balance" | "no-balance">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [allTags, setAllTags] = useState<string[]>([]);
   const [clientsWithInvoices, setClientsWithInvoices] = useState<Map<string, boolean>>(new Map());
   const [sendingSMSId, setSendingSMSId] = useState<string | null>(null);
@@ -80,6 +81,15 @@ export default function AdminClientsPage() {
   }, [page, search]);
 
   const filteredRealtors = realtors.filter((realtor) => {
+    const isInactive = Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE");
+
+    if (statusFilter === "active" && isInactive) {
+      return false;
+    }
+    if (statusFilter === "inactive" && !isInactive) {
+      return false;
+    }
+
     // Tag filter
     if (selectedTag && (!realtor.tags || !realtor.tags.includes(selectedTag))) {
       return false;
@@ -210,7 +220,26 @@ export default function AdminClientsPage() {
         </div>
 
         {/* Filters */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+              Account Status
+            </label>
+            <select
+              id="status-filter"
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value as "all" | "active" | "inactive");
+                setPage(1);
+              }}
+              className="w-full rounded-md border border-gray-300 px-4 py-2"
+            >
+              <option value="all">All Accounts</option>
+              <option value="active">!inactive (Active)</option>
+              <option value="inactive">inactive</option>
+            </select>
+          </div>
+
           {/* Tag Filter */}
           <div>
             <label htmlFor="tag-filter" className="block text-sm font-medium text-gray-700 mb-1">

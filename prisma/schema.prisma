@@ -116,6 +116,10 @@ model User {
   
   orders         Order[]
   invoices       Invoice[]
+  paymentCards   PaymentCard[]
+  invoicePayments InvoicePayment[]
+  paymentSchedules InvoicePaymentSchedule[]
+  assignedCredits Coupon[]     @relation("CouponAssignedUser")
   managedBrokerages Brokerage[] @relation("BrokerageAdmin")
   
   // TC relations
@@ -210,10 +214,16 @@ model Invoice {
   dueDate           DateTime?
   paidAt            DateTime?
   paidAmount        Float?
+  paidByType        String?
+  paidByUserId      String?
+  paymentCardId     String?
+  paymentCardNickname String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   lastReminderSentAt DateTime?
   reminderCount     Int              @default(0)
+  payments          InvoicePayment[]
+  paymentSchedules  InvoicePaymentSchedule[]
   
   @@map("invoices")
   @@index([userId])
@@ -315,6 +325,8 @@ model Coupon {
   expiresAt      DateTime?  // null = no expiration
   isActive       Boolean    @default(true)
   description    String?
+  assignedUserId String?
+  assignedUser   User?      @relation("CouponAssignedUser", fields: [assignedUserId], references: [id], onDelete: SetNull)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
@@ -322,6 +334,79 @@ model Coupon {
   
   @@map("coupons")
   @@index([code])
+  @@index([isActive])
+  @@index([assignedUserId])
+}
+
+model PaymentCard {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname              String
+  cardBrand             String?
+  cardLast4             String
+  expMonth              Int
+  expYear               Int
+  encryptedCardNumber   String
+  encryptedCvv          String
+  billingAddressLine1   String
+  billingAddressLine2   String?
+  billingCity           String
+  billingState          String
+  billingPostalCode     String
+  billingCountry        String   @default("US")
+  termsAcceptedAt       DateTime
+  refundPolicyAcceptedAt DateTime
+  cardPolicyAcceptedAt  DateTime
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  invoicePayments       InvoicePayment[]
+  paymentSchedules      InvoicePaymentSchedule[]
+
+  @@map("payment_cards")
+  @@index([userId])
+}
+
+model InvoicePayment {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentCardId  String?
+  paymentCard    PaymentCard? @relation(fields: [paymentCardId], references: [id], onDelete: SetNull)
+  amount         Float
+  status         String   @default("PAID") // PAID | FAILED
+  payerType      String   // AGENT | BROKERAGE
+  processedAt    DateTime @default(now())
+  notes          String?
+  createdAt      DateTime @default(now())
+
+  @@map("invoice_payments")
+  @@index([invoiceId])
+  @@index([userId])
+  @@index([paymentCardId])
+}
+
+model InvoicePaymentSchedule {
+  id             String   @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  paymentCardId  String
+  paymentCard    PaymentCard @relation(fields: [paymentCardId], references: [id], onDelete: Cascade)
+  dayOfMonth     Int
+  recurring      Boolean  @default(false)
+  isActive       Boolean  @default(true)
+  nextRunAt      DateTime
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("invoice_payment_schedules")
+  @@index([invoiceId])
+  @@index([userId])
+  @@index([paymentCardId])
   @@index([isActive])
 }
 

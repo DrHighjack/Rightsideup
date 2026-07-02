@@ -28,6 +28,7 @@ export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [availableCreditAmount, setAvailableCreditAmount] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [offset, setOffset] = useState(0);
 
@@ -48,6 +49,7 @@ export default function InvoicesPage() {
         const data = await res.json();
         setInvoices(data.invoices);
         setTotalCount(data.total);
+        setAvailableCreditAmount(data.availableCreditAmount || 0);
       }
     } catch (error) {
       console.error("Failed to fetch invoices:", error);
@@ -87,7 +89,7 @@ export default function InvoicesPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <p className="text-gray-600 text-sm font-medium">Total Invoices</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">{totalCount}</p>
@@ -104,6 +106,13 @@ export default function InvoicesPage() {
             <p className="text-gray-600 text-sm font-medium">Outstanding</p>
             <p className="text-3xl font-bold text-orange-600 mt-2">
               {formatCurrency(outstandingAmount)}
+            </p>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <p className="text-gray-600 text-sm font-medium">Available Credit</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2">
+              ${availableCreditAmount.toFixed(2)}
             </p>
           </div>
         </div>

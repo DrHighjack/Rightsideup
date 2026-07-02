@@ -2,9 +2,9 @@ import crypto from 'crypto';
 
 // Derive a 32-byte key from the encryption key
 function getEncryptionKey(): Buffer {
-  const ENCRYPTION_KEY = process.env.QB_ENCRYPTION_KEY;
+  const ENCRYPTION_KEY = process.env.PAYMENT_ENCRYPTION_KEY || process.env.QB_ENCRYPTION_KEY;
   if (!ENCRYPTION_KEY) {
-    throw new Error('QB_ENCRYPTION_KEY environment variable is not set');
+    throw new Error('PAYMENT_ENCRYPTION_KEY (or QB_ENCRYPTION_KEY) environment variable is not set');
   }
   return crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
 }

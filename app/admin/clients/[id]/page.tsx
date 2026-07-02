@@ -504,45 +504,6 @@ export default function RealtorDetailPage() {
           <div className="bg-red-50 p-4 rounded-lg text-red-800">Realtor not found</div>
         </div>
       </div>
-
-          {/* Credit Section */}
-          <div className="border-t pt-4">
-            <p className="text-gray-600 text-sm font-medium mb-2">Credit</p>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <input
-                type="number"
-                min="1"
-                step="0.01"
-                value={creditAmount}
-                onChange={(e) => setCreditAmount(e.target.value)}
-                placeholder="Credit amount"
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-              <input
-                type="text"
-                value={creditCode}
-                onChange={(e) => setCreditCode(e.target.value)}
-                placeholder="Credit code"
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-              <input
-                type="date"
-                value={creditExpirationDate}
-                onChange={(e) => setCreditExpirationDate(e.target.value)}
-                className="px-3 py-2 border border-gray-300 rounded-lg"
-              />
-            </div>
-            <div className="mt-3 flex items-center justify-between gap-3">
-              <p className="text-xs text-gray-500">Creates a reusable credit code that can be applied across orders until the balance is gone.</p>
-              <button
-                onClick={handleSendCredit}
-                disabled={sendingCredit}
-                className="px-4 py-2 rounded font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50"
-              >
-                {sendingCredit ? "Sending..." : "Send Credit"}
-              </button>
-            </div>
-          </div>
     );
   }
 
@@ -842,6 +803,45 @@ export default function RealtorDetailPage() {
                   </button>
                 </div>
               )}
+            </div>
+
+            {/* Credit Section */}
+            <div className="border-t pt-4">
+              <p className="text-gray-600 text-sm font-medium mb-2">Credit</p>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  step="0.01"
+                  value={creditAmount}
+                  onChange={(e) => setCreditAmount(e.target.value)}
+                  placeholder="Credit amount"
+                  className="px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <input
+                  type="text"
+                  value={creditCode}
+                  onChange={(e) => setCreditCode(e.target.value)}
+                  placeholder="Credit code"
+                  className="px-3 py-2 border border-gray-300 rounded-lg"
+                />
+                <input
+                  type="date"
+                  value={creditExpirationDate}
+                  onChange={(e) => setCreditExpirationDate(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-xs text-gray-500">Creates a reusable credit code that can be applied across orders until the balance is gone.</p>
+                <button
+                  onClick={handleSendCredit}
+                  disabled={sendingCredit}
+                  className="px-4 py-2 rounded font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:opacity-50"
+                >
+                  {sendingCredit ? "Sending..." : "Send Credit"}
+                </button>
+              </div>
             </div>
 
             {/* Free Install Section */}

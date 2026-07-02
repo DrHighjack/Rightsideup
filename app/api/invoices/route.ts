@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     };
     if (status) where.status = status;
 
-    const [invoices, total] = await Promise.all([
+    const [invoices, total, availableCredits] = await Promise.all([
       prisma.invoice.findMany({
         where,
         orderBy: { createdAt: "desc" },
@@ -31,7 +31,23 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.invoice.count({ where }),
+      prisma.coupon.findMany({
+        where: {
+          assignedUserId: session.user.id,
+          isCredit: true,
+          isActive: true,
+        },
+        select: {
+          id: true,
+          code: true,
+          remainingValue: true,
+        },
+      }),
     ]);
+
+    const availableCreditAmount = availableCredits.reduce((sum, credit) => {
+      return sum + (credit.remainingValue || 0);
+    }, 0);
 
     return NextResponse.json({
       invoices,
@@ -39,6 +55,8 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
       hasMore: offset + limit < total,
+      availableCreditAmount,
+      availableCredits,
     });
   } catch (error) {
     console.error("Failed to fetch invoices:", error);

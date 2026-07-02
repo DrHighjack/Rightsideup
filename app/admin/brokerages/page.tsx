@@ -12,6 +12,7 @@ interface Agent {
   lastName: string;
   email: string;
   phone?: string;
+  brokerageId?: string | null;
   brokerageName?: string;
   paymentMethod: string;
   freeInstallGivenBy?: string;
@@ -69,6 +70,13 @@ interface UserSearchResult {
   role: string;
 }
 
+interface RealtorSearchResult {
+  id: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}
+
 interface LinkFormState {
   selectedTcId: string | null;
   selectedAgentId: string | null;
@@ -102,12 +110,22 @@ export default function ManagementPage() {
     firstName: "",
     lastName: "",
     email: "",
+    brokerageId: "",
     phone: "",
     brokerageName: "",
     paymentMethod: "OFFICE" as "OFFICE" | "SELF",
     closedByUserId: "",
     password: "",
   });
+  const [brokerageSearchQuery, setBrokerageSearchQuery] = useState("");
+  const [showBrokerageDropdown, setShowBrokerageDropdown] = useState(false);
+  const [showAttachRealtorModal, setShowAttachRealtorModal] = useState(false);
+  const [attachBrokerage, setAttachBrokerage] = useState<{ id: string; name: string } | null>(null);
+  const [attachRealtorQuery, setAttachRealtorQuery] = useState("");
+  const [attachRealtorResults, setAttachRealtorResults] = useState<RealtorSearchResult[]>([]);
+  const [selectedAttachRealtorId, setSelectedAttachRealtorId] = useState("");
+  const [attachSubmitting, setAttachSubmitting] = useState(false);
+  const [attachError, setAttachError] = useState("");
   
   // TC Management State
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -506,12 +524,15 @@ export default function ManagementPage() {
         firstName: "",
         lastName: "",
         email: "",
+        brokerageId: "",
         phone: "",
         brokerageName: "",
         paymentMethod: "OFFICE",
         closedByUserId: "",
         password: "",
       });
+      setBrokerageSearchQuery("");
+      setShowBrokerageDropdown(false);
       setShowAddClientModal(false);
     } catch (err) {
       console.error(err);
@@ -520,6 +541,80 @@ export default function ManagementPage() {
       setAddingClient(false);
     }
   };
+
+  const openAttachRealtorModal = (brokerage: Brokerage) => {
+    setAttachBrokerage({ id: brokerage.id, name: brokerage.name });
+    setAttachRealtorQuery("");
+    setAttachRealtorResults([]);
+    setSelectedAttachRealtorId("");
+    setAttachError("");
+    setShowAttachRealtorModal(true);
+  };
+
+  const handleAttachRealtor = async () => {
+    if (!attachBrokerage?.id || !selectedAttachRealtorId) {
+      setAttachError("Select a realtor to add");
+      return;
+    }
+
+    try {
+      setAttachSubmitting(true);
+      setAttachError("");
+
+      const res = await fetch(`/api/admin/brokerages/${attachBrokerage.id}/agents/attach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ realtorId: selectedAttachRealtorId }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setAttachError(data.error || "Failed to add realtor to brokerage");
+        return;
+      }
+
+      await Promise.all([fetchBrokerages(), fetch("/api/admin/users").then(async (r) => {
+        if (r.ok) {
+          const refreshed = await r.json();
+          setAgents(refreshed.users || []);
+        }
+      })]);
+
+      setShowAttachRealtorModal(false);
+      setAttachBrokerage(null);
+    } catch (_err) {
+      setAttachError("Failed to add realtor to brokerage");
+    } finally {
+      setAttachSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!showAttachRealtorModal || attachRealtorQuery.trim().length < 2) {
+      setAttachRealtorResults([]);
+      return;
+    }
+
+    const timeout = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/admin/users/search?query=${encodeURIComponent(attachRealtorQuery.trim())}&role=REALTOR`
+        );
+
+        if (!res.ok) {
+          setAttachRealtorResults([]);
+          return;
+        }
+
+        const data = await res.json();
+        setAttachRealtorResults(data.users || []);
+      } catch {
+        setAttachRealtorResults([]);
+      }
+    }, 250);
+
+    return () => clearTimeout(timeout);
+  }, [attachRealtorQuery, showAttachRealtorModal]);
 
   // TC Management Functions
   const fetchTCs = async () => {
@@ -872,6 +967,12 @@ export default function ManagementPage() {
                             className="text-green-700 hover:text-green-800 font-medium"
                           >
                             Edit
+                          </button>
+                          <button
+                            onClick={() => openAttachRealtorModal(brokerage)}
+                            className="text-blue-600 hover:text-blue-700 font-medium"
+                          >
+                            Add Existing Realtor
                           </button>
                           <button
                             onClick={() =>
@@ -1289,13 +1390,64 @@ export default function ManagementPage() {
                 />
                 <input
                   type="text"
-                  placeholder="Brokerage (optional)"
-                  value={newClient.brokerageName}
-                  onChange={(e) =>
-                    setNewClient((prev) => ({ ...prev, brokerageName: e.target.value }))
-                  }
+                  placeholder="Search brokerage (optional)"
+                  value={brokerageSearchQuery}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    setBrokerageSearchQuery(value);
+                    setShowBrokerageDropdown(true);
+                    setNewClient((prev) => ({
+                      ...prev,
+                      brokerageName: value,
+                      brokerageId: "",
+                    }));
+                  }}
+                  onFocus={() => setShowBrokerageDropdown(true)}
                   className="px-3 py-2 border border-gray-300 rounded-lg"
                 />
+                {showBrokerageDropdown && (
+                  <div className="md:col-span-2 border border-gray-200 rounded-lg bg-white shadow-sm max-h-48 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNewClient((prev) => ({ ...prev, brokerageId: "", brokerageName: "" }));
+                        setBrokerageSearchQuery("");
+                        setShowBrokerageDropdown(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                    >
+                      No brokerage
+                    </button>
+                    {brokerages
+                      .filter((brokerage) =>
+                        brokerage.name.toLowerCase().includes(brokerageSearchQuery.trim().toLowerCase())
+                      )
+                      .slice(0, 10)
+                      .map((brokerage) => (
+                        <button
+                          key={brokerage.id}
+                          type="button"
+                          onClick={() => {
+                            setNewClient((prev) => ({
+                              ...prev,
+                              brokerageId: brokerage.id,
+                              brokerageName: brokerage.name,
+                            }));
+                            setBrokerageSearchQuery(brokerage.name);
+                            setShowBrokerageDropdown(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {brokerage.name}
+                        </button>
+                      ))}
+                    {brokerages.filter((brokerage) =>
+                      brokerage.name.toLowerCase().includes(brokerageSearchQuery.trim().toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-3 py-2 text-sm text-gray-500">No matching brokerages</div>
+                    )}
+                  </div>
+                )}
                 <select
                   value={newClient.paymentMethod}
                   onChange={(e) =>
@@ -1354,6 +1506,78 @@ export default function ManagementPage() {
                   className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg"
                 >
                   {addingClient ? "Creating..." : "Create Realtor"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showAttachRealtorModal && attachBrokerage && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg max-w-xl w-full p-6 shadow-lg">
+              <h2 className="text-xl font-bold text-gray-900 mb-2">Add Existing Realtor</h2>
+              <p className="text-sm text-gray-600 mb-4">Assign a realtor to {attachBrokerage.name}</p>
+
+              <input
+                type="text"
+                placeholder="Search realtor by name or email"
+                value={attachRealtorQuery}
+                onChange={(e) => {
+                  setAttachRealtorQuery(e.target.value);
+                  setSelectedAttachRealtorId("");
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3"
+              />
+
+              <div className="border border-gray-200 rounded-lg max-h-56 overflow-y-auto mb-3">
+                {attachRealtorResults.length === 0 ? (
+                  <div className="px-3 py-3 text-sm text-gray-500">Type at least 2 characters to search</div>
+                ) : (
+                  attachRealtorResults.map((realtor) => {
+                    const fullName = `${realtor.firstName || ""} ${realtor.lastName || ""}`.trim();
+                    return (
+                      <button
+                        key={realtor.id}
+                        type="button"
+                        onClick={() => setSelectedAttachRealtorId(realtor.id)}
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                          selectedAttachRealtorId === realtor.id ? "bg-blue-50" : ""
+                        }`}
+                      >
+                        <div className="font-medium text-gray-900">{fullName || "Unnamed Realtor"}</div>
+                        <div className="text-xs text-gray-600">{realtor.email}</div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {attachError && (
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  {attachError}
+                </div>
+              )}
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => {
+                    setShowAttachRealtorModal(false);
+                    setAttachBrokerage(null);
+                    setAttachRealtorQuery("");
+                    setAttachRealtorResults([]);
+                    setSelectedAttachRealtorId("");
+                    setAttachError("");
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 hover:bg-gray-50 font-medium rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAttachRealtor}
+                  disabled={attachSubmitting || !selectedAttachRealtorId}
+                  className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-medium rounded-lg"
+                >
+                  {attachSubmitting ? "Adding..." : "Add Realtor"}
                 </button>
               </div>
             </div>

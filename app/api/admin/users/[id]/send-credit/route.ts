@@ -67,6 +67,7 @@ export async function POST(
         value: parsedAmount,
         remainingValue: parsedAmount,
         isCredit: true,
+        assignedUserId: params.id,
         maxUses: null,
         expiresAt: couponExpiration,
         description: `Realtor credit for ${user.firstName}`,

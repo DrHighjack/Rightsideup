@@ -10,6 +10,7 @@ const createRealtorSchema = z.object({
   firstName: z.string().min(1),
   lastName: z.string().min(1),
   phone: z.string().optional(),
+  brokerageId: z.string().optional(),
   brokerageName: z.string().optional(),
   paymentMethod: z.enum(["OFFICE", "SELF"]).default("OFFICE"),
   closedByUserId: z.string().min(1),
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
         lastName: true,
         email: true,
         role: true,
+        brokerageId: true,
         brokerageName: true,
         phone: true,
         paymentMethod: true,
@@ -110,11 +112,32 @@ export async function POST(request: NextRequest) {
       firstName,
       lastName,
       phone,
+      brokerageId,
       brokerageName,
       paymentMethod,
       closedByUserId,
       password,
     } = createRealtorSchema.parse(body);
+
+    let resolvedBrokerageId: string | null = null;
+    let resolvedBrokerageName: string | null = brokerageName?.trim() || null;
+
+    if (brokerageId?.trim()) {
+      const brokerage = await prisma.brokerage.findUnique({
+        where: { id: brokerageId.trim() },
+        select: { id: true, name: true },
+      });
+
+      if (!brokerage) {
+        return NextResponse.json(
+          { error: "Selected brokerage not found" },
+          { status: 404 }
+        );
+      }
+
+      resolvedBrokerageId = brokerage.id;
+      resolvedBrokerageName = brokerage.name;
+    }
 
     const closer = await prisma.user.findUnique({
       where: { id: closedByUserId },
@@ -154,7 +177,8 @@ export async function POST(request: NextRequest) {
         firstName,
         lastName,
         phone: phone || null,
-        brokerageName: brokerageName || null,
+        brokerageId: resolvedBrokerageId,
+        brokerageName: resolvedBrokerageName,
         paymentMethod,
         role: "REALTOR",
         passwordHash,

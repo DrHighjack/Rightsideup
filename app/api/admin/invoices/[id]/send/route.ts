@@ -22,11 +22,17 @@ export async function POST(
       where: { id: params.id },
       include: {
         user: {
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
+          include: {
+            brokerage: {
+              select: {
+                email: true,
+                admin: {
+                  select: {
+                    email: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -49,6 +55,16 @@ export async function POST(
             email: true,
             firstName: true,
             lastName: true,
+            brokerage: {
+              select: {
+                email: true,
+                admin: {
+                  select: {
+                    email: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -71,6 +87,25 @@ export async function POST(
 
     // Send new invoice email
     try {
+      const tcLinks = await prisma.tCAgentLink.findMany({
+        where: { agentUserId: updated.user.id },
+        select: { tcUser: { select: { email: true } } },
+      });
+
+      const shouldSendToAgent = updated.paidByType !== "BROKERAGE";
+      const recipientList = Array.from(
+        new Set(
+          [
+            ...(shouldSendToAgent ? [updated.user.email] : []),
+            updated.user.brokerage?.email,
+            updated.user.brokerage?.admin?.email,
+            ...tcLinks.map((link) => link.tcUser.email),
+          ]
+            .filter((email): email is string => Boolean(email))
+            .map((email) => email.toLowerCase())
+        )
+      );
+
       const invoiceEmail = getNewInvoiceEmail(
         updated.user.firstName,
         `INV-${updated.id.slice(0, 8).toUpperCase()}`,
@@ -82,7 +117,7 @@ export async function POST(
       );
 
       await sendEmail({
-        to: updated.user.email,
+        to: recipientList,
         subject: invoiceEmail.subject,
         html: invoiceEmail.html,
       });

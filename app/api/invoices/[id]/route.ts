@@ -29,7 +29,28 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(invoice);
+    const availableCredits = await prisma.coupon.findMany({
+      where: {
+        assignedUserId: session.user.id,
+        isCredit: true,
+        isActive: true,
+      },
+      select: {
+        id: true,
+        code: true,
+        remainingValue: true,
+      },
+    });
+
+    const availableCreditAmount = availableCredits.reduce((sum, credit) => {
+      return sum + (credit.remainingValue || 0);
+    }, 0);
+
+    return NextResponse.json({
+      ...invoice,
+      availableCreditAmount,
+      availableCredits,
+    });
   } catch (error) {
     console.error("Failed to fetch invoice:", error);
     return NextResponse.json(

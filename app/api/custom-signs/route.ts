@@ -55,26 +55,23 @@ export async function POST(request: NextRequest) {
     }
 
     const blobToken = getBlobToken();
-    if (!blobToken) {
-      return NextResponse.json(
-        {
-          error:
-            'Image uploads are not configured. Set BLOB_READ_WRITE_TOKEN in your Vercel environment variables and redeploy.',
-        },
-        { status: 500 }
-      );
-    }
 
     const timestamp = Date.now();
     const safeName = image.name.replace(/[^a-zA-Z0-9._-]/g, '-');
     const fileName = `custom-signs/${timestamp}-${safeName}`;
 
     const buffer = await image.arrayBuffer();
-    const blob = await put(fileName, Buffer.from(buffer), {
+    const blobOptions: any = {
       access: 'public',
       contentType: image.type || 'application/octet-stream',
-      token: blobToken,
-    });
+    };
+
+    // Prefer explicit token when available, otherwise let Vercel resolve credentials.
+    if (blobToken) {
+      blobOptions.token = blobToken;
+    }
+
+    const blob = await put(fileName, Buffer.from(buffer), blobOptions);
 
     // Create custom sign request in database
     const customSign = await prisma.sign.create({

@@ -56,15 +56,6 @@ export async function POST(request: NextRequest) {
     }
 
     const blobToken = getBlobToken();
-    if (!blobToken) {
-      return NextResponse.json(
-        {
-          error:
-            'Image uploads are not configured. Set BLOB_READ_WRITE_TOKEN in your Vercel environment variables and redeploy.',
-        },
-        { status: 500 }
-      );
-    }
 
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
@@ -75,11 +66,17 @@ export async function POST(request: NextRequest) {
     const filename = `inventory/${timestamp}-${file.name}`;
 
     // Upload to Vercel Blob
-    const blob = await put(filename, buffer, {
+    const blobOptions: any = {
       contentType: file.type,
       access: 'public',
-      token: blobToken,
-    });
+    };
+
+    // Prefer explicit token when available, otherwise let Vercel resolve credentials.
+    if (blobToken) {
+      blobOptions.token = blobToken;
+    }
+
+    const blob = await put(filename, buffer, blobOptions);
 
     return NextResponse.json({
       success: true,

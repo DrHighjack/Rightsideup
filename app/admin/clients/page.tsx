@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
+import Link from "next/link";
 
 interface RealtorData {
   id: string;
@@ -29,6 +30,7 @@ export default function AdminClientsPage() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [clientsWithInvoices, setClientsWithInvoices] = useState<Map<string, boolean>>(new Map());
   const [sendingSMSId, setSendingSMSId] = useState<string | null>(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
 
   useEffect(() => {
     async function fetchRealtors() {
@@ -189,6 +191,52 @@ export default function AdminClientsPage() {
     } catch (error) {
       alert(error instanceof Error ? error.message : "Failed to send password reset email");
       console.error(error);
+    }
+  };
+
+  const handleToggleActive = async (realtor: RealtorData) => {
+    const isInactive = Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE");
+    const nextIsActive = isInactive;
+    const actionLabel = nextIsActive ? "reactivate" : "deactivate";
+
+    if (
+      !confirm(
+        `${nextIsActive ? "Reactivate" : "Deactivate"} ${realtor.firstName} ${realtor.lastName}?`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      setUpdatingStatusId(realtor.id);
+
+      const res = await fetch(`/api/admin/users/${realtor.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: nextIsActive }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || `Failed to ${actionLabel} account`);
+        return;
+      }
+
+      setRealtors((prev) =>
+        prev.map((existing) =>
+          existing.id === realtor.id
+            ? {
+                ...existing,
+                tags: data.user?.tags || existing.tags,
+              }
+            : existing
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      alert(`Failed to ${actionLabel} account`);
+    } finally {
+      setUpdatingStatusId(null);
     }
   };
 
@@ -384,9 +432,27 @@ export default function AdminClientsPage() {
                             {sendingSMSId === realtor.id ? "Sending..." : "SMS"}
                           </button>
                         )}
-                        <a href={`/admin/clients/${realtor.id}`} className="text-blue-600 hover:text-blue-900 font-medium text-sm">
-                          View
-                        </a>
+                        <Link
+                          href={`/admin/clients/${realtor.id}`}
+                          className="text-blue-600 hover:text-blue-900 font-medium text-sm"
+                        >
+                          Profile
+                        </Link>
+                        <button
+                          onClick={() => handleToggleActive(realtor)}
+                          disabled={updatingStatusId === realtor.id}
+                          className={`font-medium text-sm disabled:opacity-50 ${
+                            Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE")
+                              ? "text-green-700 hover:text-green-900"
+                              : "text-red-600 hover:text-red-900"
+                          }`}
+                        >
+                          {updatingStatusId === realtor.id
+                            ? "Saving..."
+                            : Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE")
+                            ? "Reactivate"
+                            : "Deactivate"}
+                        </button>
                       </div>
                     </td>
                   </tr>

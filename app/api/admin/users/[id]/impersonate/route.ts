@@ -24,8 +24,8 @@ export async function POST(
       },
     });
 
-    if (!targetUser || targetUser.role !== "REALTOR") {
-      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    if (!targetUser || !["REALTOR", "TC"].includes(targetUser.role)) {
+      return NextResponse.json({ error: "Supported user not found" }, { status: 404 });
     }
 
     if (targetUser.tags.includes("INACTIVE")) {
@@ -49,7 +49,7 @@ export async function POST(
       expiresInMinutes: 10,
     });
   } catch (error) {
-    console.error("Failed to generate client login link:", error);
+    console.error("Failed to generate user login link:", error);
     return NextResponse.json(
       { error: "Failed to generate login link" },
       { status: 500 }

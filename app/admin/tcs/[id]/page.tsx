@@ -139,6 +139,7 @@ export default function AdminTCProfilePage() {
   const [mapKey, setMapKey] = useState("");
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [profileSubmitting, setProfileSubmitting] = useState(false);
+  const [generatingLoginLink, setGeneratingLoginLink] = useState(false);
   const [profileForm, setProfileForm] = useState({
     email: "",
     phone: "",
@@ -285,6 +286,39 @@ export default function AdminTCProfilePage() {
     }
   };
 
+  const handleLoginAsTc = async () => {
+    if (!profile) return;
+
+    try {
+      setGeneratingLoginLink(true);
+      setError("");
+
+      const response = await fetch(`/api/admin/users/${profile.tc.id}/impersonate`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate login link");
+      }
+
+      try {
+        await navigator.clipboard.writeText(data.loginUrl);
+      } catch {
+        // Keep going even if clipboard access is denied.
+      }
+
+      const newWindow = window.open(data.loginUrl, "_blank", "noopener,noreferrer");
+      if (!newWindow) {
+        window.location.href = data.loginUrl;
+      }
+    } catch (err) {
+      setError((err as Error).message || "Failed to log in as TC");
+    } finally {
+      setGeneratingLoginLink(false);
+    }
+  };
+
   const selectedOrder =
     selectedOrderId && profile
       ? profile.orders.find((o) => o.id === selectedOrderId) || null
@@ -397,6 +431,14 @@ export default function AdminTCProfilePage() {
                   className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
                 >
                   Reset Password
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoginAsTc}
+                  disabled={generatingLoginLink}
+                  className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700 disabled:bg-emerald-400"
+                >
+                  {generatingLoginLink ? "Opening..." : "Log In As TC"}
                 </button>
                 <span
                   className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${

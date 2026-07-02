@@ -42,6 +42,7 @@ export default function AdminTCsPage() {
   const [loading, setLoading] = useState(true);
   const [expandedTcId, setExpandedTcId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [loggingInAsTcId, setLoggingInAsTcId] = useState<string | null>(null);
 
   // Link Modal State
   const [showLinkModal, setShowLinkModal] = useState(false);
@@ -225,6 +226,36 @@ export default function AdminTCsPage() {
     }
   };
 
+  const handleLoginAsTc = async (tcId: string) => {
+    try {
+      setLoggingInAsTcId(tcId);
+      const response = await fetch(`/api/admin/users/${tcId}/impersonate`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate login link");
+      }
+
+      try {
+        await navigator.clipboard.writeText(data.loginUrl);
+      } catch {
+        // Keep going even if clipboard write is blocked.
+      }
+
+      const newWindow = window.open(data.loginUrl, "_blank", "noopener,noreferrer");
+      if (!newWindow) {
+        window.location.href = data.loginUrl;
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to log in as TC");
+      console.error(error);
+    } finally {
+      setLoggingInAsTcId(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
@@ -301,6 +332,13 @@ export default function AdminTCsPage() {
                               className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
                             >
                               Reset
+                            </button>
+                            <button
+                              onClick={() => handleLoginAsTc(tc.id)}
+                              disabled={loggingInAsTcId === tc.id}
+                              className="text-emerald-600 hover:text-emerald-800 font-medium text-sm disabled:opacity-50"
+                            >
+                              {loggingInAsTcId === tc.id ? "Opening..." : "Log In As"}
                             </button>
                             {tc.agentCount > 0 && (
                               <button

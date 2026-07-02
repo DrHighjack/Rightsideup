@@ -114,13 +114,13 @@ export default function AdminLayout({
                 Coupons
               </Link>
               <Link
-                href="/admin/clients"
+                href="/admin/brokerages?tab=clients"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >
                 Client Management
               </Link>
               <Link
-                href="/admin/brokerages"
+                href="/admin/brokerages?tab=brokerages"
                 className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
               >
                 Brokerages & TCs

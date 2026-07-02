@@ -180,6 +180,28 @@ export default function ManagementPage() {
     }
   }, [status, router]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const tab = new URLSearchParams(window.location.search).get("tab");
+    if (tab === "clients" || tab === "brokerages" || tab === "tcs") {
+      setView(tab);
+    }
+  }, []);
+
+  const handleViewChange = (nextView: "clients" | "brokerages" | "tcs") => {
+    setView(nextView);
+
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    params.set("tab", nextView);
+    const nextQuery = params.toString();
+    const nextUrl = nextQuery
+      ? `${window.location.pathname}?${nextQuery}`
+      : window.location.pathname;
+    window.history.replaceState(null, "", nextUrl);
+  };
+
   const fetchBrokerages = async () => {
     const brokeragesRes = await fetch("/api/admin/brokerages");
     if (!brokeragesRes.ok) throw new Error("Failed to fetch brokerages");
@@ -880,7 +902,7 @@ export default function ManagementPage() {
         {/* View Toggle */}
         <div className="mb-6 flex gap-4">
           <button
-            onClick={() => setView("clients")}
+            onClick={() => handleViewChange("clients")}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               view === "clients"
                 ? "bg-green-600 text-white"
@@ -890,7 +912,7 @@ export default function ManagementPage() {
             Realtor Accounts
           </button>
           <button
-            onClick={() => setView("brokerages")}
+            onClick={() => handleViewChange("brokerages")}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               view === "brokerages"
                 ? "bg-green-600 text-white"
@@ -900,7 +922,7 @@ export default function ManagementPage() {
             Brokerages & TC Groups
           </button>
           <button
-            onClick={() => setView("tcs")}
+            onClick={() => handleViewChange("tcs")}
             className={`px-6 py-2 rounded-lg font-medium transition-colors ${
               view === "tcs"
                 ? "bg-green-600 text-white"

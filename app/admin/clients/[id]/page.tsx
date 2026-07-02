@@ -105,6 +105,10 @@ export default function RealtorDetailPage() {
   // Free install state
   const [allocatingFreeInstall, setAllocatingFreeInstall] = useState(false);
   const [closers, setClosers] = useState<Closer[]>([]);
+  const [updatingActivation, setUpdatingActivation] = useState(false);
+  const [generatingLoginLink, setGeneratingLoginLink] = useState(false);
+  const [clientLoginLink, setClientLoginLink] = useState("");
+  const [pendingActivationState, setPendingActivationState] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -313,6 +317,80 @@ export default function RealtorDetailPage() {
     }
   };
 
+  const handleSetAccountActive = async (isActive: boolean) => {
+    if (!realtor || !editData) return;
+
+    try {
+      setUpdatingActivation(true);
+      setError("");
+
+      const response = await fetch(`/api/admin/users/${realtorId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update account status");
+      }
+
+      const data = await response.json();
+      setRealtor(data.user);
+      setEditData(data.user);
+      if (!isActive) {
+        setClientLoginLink("");
+      }
+    } catch (err) {
+      setError((err as Error).message || "Failed to update account status");
+    } finally {
+      setUpdatingActivation(false);
+    }
+  };
+
+  const requestActivationChange = (isActive: boolean) => {
+    setPendingActivationState(isActive);
+  };
+
+  const closeActivationModal = () => {
+    setPendingActivationState(null);
+  };
+
+  const confirmActivationChange = async () => {
+    if (pendingActivationState === null) return;
+    const targetState = pendingActivationState;
+    setPendingActivationState(null);
+    await handleSetAccountActive(targetState);
+  };
+
+  const handleGenerateClientLoginLink = async () => {
+    try {
+      setGeneratingLoginLink(true);
+      setError("");
+
+      const response = await fetch(`/api/admin/users/${realtorId}/impersonate`, {
+        method: "POST",
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate login link");
+      }
+
+      setClientLoginLink(data.loginUrl);
+
+      try {
+        await navigator.clipboard.writeText(data.loginUrl);
+      } catch {
+        // Keep the link visible even if clipboard write fails.
+      }
+    } catch (err) {
+      setError((err as Error).message || "Failed to generate login link");
+    } finally {
+      setGeneratingLoginLink(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -349,6 +427,8 @@ export default function RealtorDetailPage() {
   };
 
   const selectedCloser = closers.find((c) => c.id === realtor?.freeInstallGivenBy);
+  const isAdmin = (sessionData?.user as any)?.role === "ADMIN";
+  const isInactive = realtor?.tags.includes("INACTIVE") ?? false;
 
   const filteredOrders = orders.filter((order) => {
     if (filterStatus === "all") return true;
@@ -430,7 +510,14 @@ export default function RealtorDetailPage() {
                     <h1 className="text-3xl font-bold text-gray-900">
                       {realtor.firstName} {realtor.lastName}
                     </h1>
-                    <p className="text-gray-600">{realtor.email}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-gray-600">{realtor.email}</p>
+                      {isInactive && (
+                        <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                          Inactive
+                        </span>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -469,6 +556,32 @@ export default function RealtorDetailPage() {
                       >
                         Reset Password
                       </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => requestActivationChange(isInactive)}
+                          disabled={updatingActivation}
+                          className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                            isInactive
+                              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                              : "bg-red-600 text-white hover:bg-red-700"
+                          }`}
+                        >
+                          {updatingActivation
+                            ? "Updating..."
+                            : isInactive
+                              ? "Re-enable Account"
+                              : "Deactivate Account"}
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={handleGenerateClientLoginLink}
+                          disabled={generatingLoginLink || isInactive}
+                          className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                        >
+                          {generatingLoginLink ? "Generating..." : "Generate Login Link"}
+                        </button>
+                      )}
                     <Link
                       href={`/admin/orders/new?realtorId=${realtorId}`}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
@@ -479,6 +592,53 @@ export default function RealtorDetailPage() {
                 )}
               </div>
             </div>
+
+            {clientLoginLink && isAdmin && (
+              <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
+                <p className="mb-2 text-sm font-medium text-amber-900">
+                  Admin login-as-client link (expires in 10 minutes)
+                </p>
+                <a
+                  href={clientLoginLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="break-all text-sm text-amber-800 underline"
+                >
+                  {clientLoginLink}
+                </a>
+              </div>
+            )}
+
+            {pendingActivationState !== null && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+                  <h3 className="mb-2 text-lg font-semibold text-gray-900">Are you sure?</h3>
+                  <p className="mb-6 text-sm text-gray-700">
+                    {pendingActivationState
+                      ? `Re-enable account for ${realtor.email}?`
+                      : `Deactivate account for ${realtor.email}? They will no longer be able to sign in.`}
+                  </p>
+                  <div className="flex justify-end gap-3">
+                    <button
+                      onClick={closeActivationModal}
+                      className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => void confirmActivationChange()}
+                      className={`rounded-md px-4 py-2 text-sm font-medium text-white ${
+                        pendingActivationState
+                          ? "bg-emerald-600 hover:bg-emerald-700"
+                          : "bg-red-600 hover:bg-red-700"
+                      }`}
+                    >
+                      {pendingActivationState ? "Re-enable" : "Deactivate"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Editable Fields */}
             <div className="grid grid-cols-2 gap-4 mb-6">

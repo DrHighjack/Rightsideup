@@ -6,14 +6,18 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [impersonationTried, setImpersonationTried] = useState(false);
   const router = useRouter();
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
+  const impersonationToken = searchParams.get("impersonationToken");
 
   // If already logged in, redirect to appropriate dashboard
   useEffect(() => {
@@ -27,6 +31,47 @@ export default function LoginPage() {
       }
     }
   }, [session, router]);
+
+  useEffect(() => {
+    if (!impersonationToken || session?.user || impersonationTried) return;
+
+    const runImpersonationLogin = async () => {
+      setError("");
+      setLoading(true);
+      setImpersonationTried(true);
+
+      try {
+        const result = await signIn("credentials", {
+          impersonationToken,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError("Unable to use admin login-as-client link.");
+          return;
+        }
+
+        const response = await fetch("/api/auth/session");
+        const newSession = await response.json();
+
+        if (newSession?.user?.role === "ADMIN") {
+          router.push("/admin");
+        } else if (newSession?.user?.role === "SALESMEN") {
+          router.push("/admin");
+        } else if (newSession?.user?.role === "BROKERAGE") {
+          router.push("/brokerage");
+        } else {
+          router.push("/dashboard");
+        }
+      } catch {
+        setError("Unable to use admin login-as-client link.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void runImpersonationLogin();
+  }, [impersonationToken, session, router, impersonationTried]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -60,7 +105,7 @@ export default function LoginPage() {
           router.push("/dashboard");
         }
       }
-    } catch (err) {
+    } catch {
       setError("An error occurred. Please try again.");
     } finally {
       setLoading(false);

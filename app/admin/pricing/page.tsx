@@ -43,6 +43,14 @@ interface Brokerage {
   name: string;
 }
 
+interface InventoryPriceItem {
+  id: string;
+  name: string;
+  category: string;
+  isOrderable?: boolean;
+  pricePerUnit?: number | null;
+}
+
 type OverrideFilter = "all" | "realtors" | "brokerages" | "locked" | "unlocked";
 
 export default function PricingPage() {
@@ -50,6 +58,8 @@ export default function PricingPage() {
   const [overrides, setOverrides] = useState<PriceOverride[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [inventoryItems, setInventoryItems] = useState<InventoryPriceItem[]>([]);
+  const [savingInventoryPriceId, setSavingInventoryPriceId] = useState<string | null>(null);
 
   // Master price editing
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -98,20 +108,23 @@ export default function PricingPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [pricesRes, overridesRes] = await Promise.all([
+      const [pricesRes, overridesRes, inventoryRes] = await Promise.all([
         fetch("/api/admin/pricing"),
         fetch("/api/admin/pricing/overrides"),
+        fetch("/api/admin/inventory"),
       ]);
 
-      if (!pricesRes.ok || !overridesRes.ok) {
+      if (!pricesRes.ok || !overridesRes.ok || !inventoryRes.ok) {
         throw new Error("Failed to fetch pricing data");
       }
 
       const pricesData = await pricesRes.json();
       const overridesData = await overridesRes.json();
+      const inventoryData = await inventoryRes.json();
 
       setMasterPrices(pricesData.masterPrices || []);
       setOverrides(overridesData.overrides || []);
+      setInventoryItems((inventoryData.items || []).filter((item: InventoryPriceItem) => item.isOrderable !== false));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -212,6 +225,7 @@ export default function PricingPage() {
       const body: any = {
         serviceType: overrideForm.serviceType,
         amountCents: overrideForm.amountCents,
+        isLocked: overrideForm.isLocked,
       };
 
       if (overrideForm.clientType === "realtor") {
@@ -254,6 +268,35 @@ export default function PricingPage() {
 
   const getMasterPrice = (serviceType: string): number | null => {
     return masterPrices.find((p) => p.serviceType === serviceType)?.amountCents ?? null;
+  };
+
+  const getServiceTypeLabel = (serviceType: string): string => {
+    if (!serviceType.startsWith("ADDON:")) return serviceType;
+    const itemId = serviceType.slice("ADDON:".length);
+    const item = inventoryItems.find((inv) => inv.id === itemId);
+    return item ? `Add-On: ${item.name}` : "Add-On Item";
+  };
+
+  const handleSaveInventoryPrice = async (itemId: string, pricePerUnit: number) => {
+    try {
+      setSavingInventoryPriceId(itemId);
+
+      const res = await fetch(`/api/admin/inventory/${itemId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pricePerUnit }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Failed to update inventory price");
+      }
+
+      await fetchData();
+    } catch (err) {
+      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+    } finally {
+      setSavingInventoryPriceId(null);
+    }
   };
 
   const getPriceDifference = (overridePrice: number, masterPrice: number | null) => {
@@ -316,7 +359,7 @@ export default function PricingPage() {
               {masterPrices.map((price) => (
                 <tr key={price.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                    {price.serviceType}
+                    {getServiceTypeLabel(price.serviceType)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     {editingId === price.id ? (
@@ -376,6 +419,79 @@ export default function PricingPage() {
             overrides for this service type.
           </div>
         )}
+      </div>
+
+      {/* Section 1b: Inventory Price Floors */}
+      <div className="mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Inventory Price Floors</h2>
+        </div>
+
+        <div className="bg-white rounded-lg shadow overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                  Item
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                  Category
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                  Floor Price
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {inventoryItems.map((item) => {
+                const key = `ADDON:${item.id}`;
+                const editableCents =
+                  getMasterPrice(key) ?? (typeof item.pricePerUnit === "number" ? item.pricePerUnit : 0);
+
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {item.name}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                      {item.category}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      ${(editableCents / 100).toFixed(2)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                      <button
+                        onClick={() => {
+                          const next = prompt(
+                            `Set floor price for ${item.name} (dollars, e.g. 12.50):`,
+                            (editableCents / 100).toFixed(2)
+                          );
+                          if (next === null) return;
+                          const dollars = Number(next);
+                          if (Number.isNaN(dollars) || dollars < 0) {
+                            alert("Please enter a valid non-negative number");
+                            return;
+                          }
+                          void handleSaveInventoryPrice(item.id, Math.round(dollars * 100));
+                        }}
+                        disabled={savingInventoryPriceId === item.id}
+                        className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 disabled:opacity-50"
+                      >
+                        {savingInventoryPriceId === item.id ? "Saving..." : "Set Price"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {inventoryItems.length === 0 && (
+            <div className="px-6 py-8 text-center text-gray-500">No orderable inventory items found</div>
+          )}
+        </div>
       </div>
 
       {/* Section 2: Client Price Overrides */}
@@ -457,7 +573,7 @@ export default function PricingPage() {
                       <div className="text-xs text-gray-500">{clientType}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {override.serviceType}
+                      {getServiceTypeLabel(override.serviceType)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                       ${(override.amountCents / 100).toFixed(2)}
@@ -597,7 +713,7 @@ export default function PricingPage() {
                   <option value="">Select service type...</option>
                   {masterPrices.map((price) => (
                     <option key={price.serviceType} value={price.serviceType}>
-                      {price.serviceType}
+                      {getServiceTypeLabel(price.serviceType)}
                     </option>
                   ))}
                 </select>

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { serviceType, amountCents, userId, brokerageId } =
+    const { serviceType, amountCents, userId, brokerageId, isLocked } =
       await request.json();
 
     if (!serviceType || amountCents === undefined) {
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
     // Import the pricing helper
     const { setPriceOverride } = await import("@/lib/pricing");
 
-    await setPriceOverride(serviceType, amountCents, userId, brokerageId);
+    await setPriceOverride(serviceType, amountCents, userId, brokerageId, isLocked);
 
     // Fetch the created/updated override
     let override;

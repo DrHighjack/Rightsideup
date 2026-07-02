@@ -338,13 +338,21 @@ export default function AdminTCsPage() {
                                         </p>
                                         <p className="text-sm text-gray-600">{agent.email}</p>
                                       </div>
-                                      <button
-                                        onClick={() => handleUnlink(agent.linkId)}
-                                        disabled={unlinkingId === agent.linkId}
-                                        className="px-3 py-1 text-red-600 hover:text-red-900 text-sm font-medium disabled:opacity-50"
-                                      >
-                                        {unlinkingId === agent.linkId ? "Unlinking..." : "Unlink"}
-                                      </button>
+                                      <div className="flex items-center gap-3">
+                                        <button
+                                          onClick={() => handleSendPasswordReset(agent.email)}
+                                          className="px-3 py-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium"
+                                        >
+                                          Reset
+                                        </button>
+                                        <button
+                                          onClick={() => handleUnlink(agent.linkId)}
+                                          disabled={unlinkingId === agent.linkId}
+                                          className="px-3 py-1 text-red-600 hover:text-red-900 text-sm font-medium disabled:opacity-50"
+                                        >
+                                          {unlinkingId === agent.linkId ? "Unlinking..." : "Unlink"}
+                                        </button>
+                                      </div>
                                     </li>
                                   ))}
                                 </ul>

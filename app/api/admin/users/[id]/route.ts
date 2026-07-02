@@ -85,6 +85,7 @@ export async function PUT(
       closedByUserId,
       tags,
       adminNotes,
+      isActive,
     } = body;
 
     const hasUpdatableField =
@@ -96,7 +97,8 @@ export async function PUT(
       brokerageName !== undefined ||
       closedByUserId !== undefined ||
       tags !== undefined ||
-      adminNotes !== undefined;
+      adminNotes !== undefined ||
+      isActive !== undefined;
 
     if (!hasUpdatableField) {
       return NextResponse.json(
@@ -167,6 +169,35 @@ export async function PUT(
       }
     }
 
+    const existingUser = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: { id: true, tags: true },
+    });
+
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    let nextTags: string[] | undefined;
+    if (Array.isArray(tags) || typeof isActive === "boolean") {
+      const baseTags = Array.isArray(tags)
+        ? tags
+            .map((tag: string) => (typeof tag === "string" ? tag.trim() : ""))
+            .filter(Boolean)
+        : existingUser.tags;
+
+      const uniqueTags = Array.from(new Set(baseTags));
+      const tagsWithoutInactive = uniqueTags.filter((tag) => tag !== "INACTIVE");
+
+      if (typeof isActive === "boolean") {
+        nextTags = isActive
+          ? tagsWithoutInactive
+          : [...tagsWithoutInactive, "INACTIVE"];
+      } else {
+        nextTags = uniqueTags;
+      }
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id: params.id },
       data: {
@@ -186,9 +217,7 @@ export async function PUT(
             ? new Date()
             : null
           : undefined,
-        ...(Array.isArray(tags)
-          ? { tags: tags.filter((t) => t?.trim()) }
-          : {}),
+        ...(nextTags ? { tags: { set: nextTags } } : {}),
         ...(adminNotes !== undefined ? { adminNotes: adminNotes || null } : {}),
       },
       select: {

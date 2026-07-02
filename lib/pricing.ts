@@ -1,5 +1,15 @@
 import { prisma } from "@/lib/prisma";
 
+export function getInventoryPriceServiceType(inventoryItemId: string): string {
+  return `ADDON:${inventoryItemId}`;
+}
+
+export function parseInventoryPriceServiceType(serviceType: string): string | null {
+  if (!serviceType.startsWith("ADDON:")) return null;
+  const itemId = serviceType.slice("ADDON:".length).trim();
+  return itemId || null;
+}
+
 /**
  * Get the effective price for a service, resolving overrides in this order:
  * 1. Realtor-level override (if userId provided)
@@ -201,7 +211,8 @@ export async function setPriceOverride(
   serviceType: string,
   amountCents: number,
   userId?: string,
-  brokerageId?: string
+  brokerageId?: string,
+  isLocked?: boolean
 ): Promise<void> {
   try {
     if (userId && brokerageId) {
@@ -222,13 +233,14 @@ export async function setPriceOverride(
         },
         update: {
           amountCents,
+          ...(typeof isLocked === "boolean" ? { isLocked } : {}),
           updatedAt: new Date(),
         },
         create: {
           serviceType,
           amountCents,
           userId,
-          isLocked: false,
+          isLocked: typeof isLocked === "boolean" ? isLocked : false,
         },
       });
     } else if (brokerageId) {
@@ -241,13 +253,14 @@ export async function setPriceOverride(
         },
         update: {
           amountCents,
+          ...(typeof isLocked === "boolean" ? { isLocked } : {}),
           updatedAt: new Date(),
         },
         create: {
           serviceType,
           amountCents,
           brokerageId,
-          isLocked: false,
+          isLocked: typeof isLocked === "boolean" ? isLocked : false,
         },
       });
     }

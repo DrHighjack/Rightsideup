@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { getInventoryPriceServiceType, updateMasterPrice } from '@/lib/pricing';
 
 export async function PUT(
   request: NextRequest,
@@ -48,6 +49,10 @@ export async function PUT(
         },
       },
     });
+
+    if (typeof pricePerUnit === 'number' && pricePerUnit >= 0) {
+      await updateMasterPrice(getInventoryPriceServiceType(params.id), pricePerUnit);
+    }
 
     // Update printers if provided
     if (printerIds.length >= 0) {

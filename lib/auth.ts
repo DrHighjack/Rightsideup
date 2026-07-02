@@ -4,6 +4,7 @@ import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import * as Sentry from "@sentry/nextjs";
+import { verifyAdminImpersonationToken } from "@/lib/admin-impersonation";
 
 const authSecret =
   process.env.NEXTAUTH_SECRET ||
@@ -11,17 +12,80 @@ const authSecret =
     ? "dev-only-nextauth-secret-change-me"
     : undefined);
 
-const credentialsSchema = z.object({
+const passwordCredentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
 });
+
+const impersonationCredentialsSchema = z.object({
+  impersonationToken: z.string().min(1),
+});
+
+const credentialsSchema = z.union([
+  passwordCredentialsSchema,
+  impersonationCredentialsSchema,
+]);
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
       async authorize(credentials) {
         try {
-          const { email, password } = credentialsSchema.parse(credentials);
+          const parsedCredentials = credentialsSchema.parse(credentials);
+
+          if ("impersonationToken" in parsedCredentials) {
+            const impersonation = await verifyAdminImpersonationToken(
+              parsedCredentials.impersonationToken
+            );
+
+            if (!impersonation) {
+              console.error("[AUTH] Invalid impersonation token");
+              return null;
+            }
+
+            const adminUser = await prisma.user.findUnique({
+              where: { id: impersonation.adminUserId },
+              select: { id: true, role: true, tags: true },
+            });
+
+            if (
+              !adminUser ||
+              adminUser.role !== "ADMIN" ||
+              adminUser.tags.includes("INACTIVE")
+            ) {
+              console.error("[AUTH] Impersonation denied: invalid admin context");
+              return null;
+            }
+
+            const targetUser = await prisma.user.findUnique({
+              where: { id: impersonation.targetUserId },
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                brokerageName: true,
+                tags: true,
+              },
+            });
+
+            if (!targetUser || targetUser.tags.includes("INACTIVE")) {
+              console.error("[AUTH] Impersonation denied: target unavailable");
+              return null;
+            }
+
+            return {
+              id: targetUser.id,
+              email: targetUser.email,
+              name: `${targetUser.firstName} ${targetUser.lastName}`,
+              role: targetUser.role,
+              brokerageName: targetUser.brokerageName,
+              emailVerifiedAt: new Date().toISOString(),
+            };
+          }
+
+          const { email, password } = parsedCredentials;
 
           const user = await prisma.user.findUnique({
             where: { email },
@@ -33,6 +97,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               role: true,
               brokerageName: true,
               passwordHash: true,
+              tags: true,
             },
           });
 
@@ -48,6 +113,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (!isPasswordValid) {
             console.error("[AUTH] Invalid password for user:", email);
+            return null;
+          }
+
+          if (user.tags.includes("INACTIVE")) {
+            console.error("[AUTH] Inactive account blocked:", email);
             return null;
           }
 

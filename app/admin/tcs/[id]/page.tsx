@@ -456,13 +456,21 @@ export default function AdminTCProfilePage() {
                     </p>
                     <p className="text-sm text-gray-600">{linked.agent.email}</p>
                   </div>
-                  <button
-                    onClick={() => handleUnlink(linked.linkId)}
-                    disabled={unlinkingId === linked.linkId}
-                    className="px-3 py-1 text-sm font-medium text-red-600 hover:text-red-800 disabled:text-gray-400"
-                  >
-                    {unlinkingId === linked.linkId ? "Removing..." : "Remove Agent"}
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => handleSendPasswordReset(linked.agent.email)}
+                      className="px-3 py-1 text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                    >
+                      Reset Password
+                    </button>
+                    <button
+                      onClick={() => handleUnlink(linked.linkId)}
+                      disabled={unlinkingId === linked.linkId}
+                      className="px-3 py-1 text-sm font-medium text-red-600 hover:text-red-800 disabled:text-gray-400"
+                    >
+                      {unlinkingId === linked.linkId ? "Removing..." : "Remove Agent"}
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

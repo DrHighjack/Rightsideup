@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { parseInventoryPriceServiceType } from "@/lib/pricing";
 
 export async function GET() {
   try {
@@ -53,6 +54,15 @@ export async function POST(request: Request) {
 
     // This updates the master price AND cascades to unlocked overrides
     await updateMasterPrice(serviceType, amountCents);
+
+    // Keep inventory pricing in sync when this is an inventory-backed service key.
+    const inventoryItemId = parseInventoryPriceServiceType(serviceType);
+    if (inventoryItemId) {
+      await prisma.inventoryItem.update({
+        where: { id: inventoryItemId },
+        data: { pricePerUnit: amountCents },
+      });
+    }
 
     // Fetch the updated master price
     const masterPrice = await prisma.masterPrice.findUnique({

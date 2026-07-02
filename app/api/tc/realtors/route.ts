@@ -146,7 +146,7 @@ export async function POST(request: NextRequest) {
 
       const welcomeHtml = `
         <p>Hi ${existingUser.firstName},</p>
-        <p>Welcome to RightSignUP. ${tcName} has invited you to collaborate so your sign can be placed faster.</p>
+        <p>Welcome to North Shore Sign Co. ${tcName} has invited you to collaborate so your sign can be placed faster.</p>
         <p>Please complete your registration by logging in and confirming your account details.</p>
         <p><a href="${loginLink}">Go to Login</a></p>
       `;
@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
         sendEmail({ to: existingUser.email, subject: invitationEmail.subject, html: invitationEmail.html }),
         sendEmail({
           to: existingUser.email,
-          subject: "Welcome to RightSignUP - Complete Your Registration",
+          subject: "Welcome to North Shore Sign Co - Complete Your Registration",
           html: welcomeHtml,
         }),
       ]).catch((error) => {
@@ -213,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     const welcomeHtml = `
       <p>Hi ${firstName},</p>
-      <p>Welcome to RightSignUP. ${tcName} is inviting you to the platform so your sign can be placed.</p>
+      <p>Welcome to North Shore Sign Co. ${tcName} is inviting you to the platform so your sign can be placed.</p>
       <p>Please complete your registration using this link:</p>
       <p><a href="${signupLink}">${signupLink}</a></p>
     `;
@@ -222,7 +222,7 @@ export async function POST(request: NextRequest) {
       sendEmail({ to: email, subject: invitationEmail.subject, html: invitationEmail.html }),
       sendEmail({
         to: email,
-        subject: "Welcome to RightSignUP - Complete Your Registration",
+        subject: "Welcome to North Shore Sign Co - Complete Your Registration",
         html: welcomeHtml,
       }),
     ]).catch((error) => {

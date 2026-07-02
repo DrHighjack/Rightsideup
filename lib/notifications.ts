@@ -183,7 +183,7 @@ export async function sendEmailNotification(
     const transporter = await getEmailTransporter();
 
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@rightsignup.com',
+      from: process.env.SMTP_FROM || 'noreply@northshoresignco.com',
       to: toEmail,
       subject,
       html: `<p>${body.replace(/\n/g, '<br>')}</p>`,

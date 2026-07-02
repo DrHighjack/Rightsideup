@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const testMessage = message || `Test message from RightSignUP - ${new Date().toLocaleString()}`;
+    const testMessage = message || `Test message from North Shore Sign Co - ${new Date().toLocaleString()}`;
 
     const result = await sendSMS({
       to: phone,

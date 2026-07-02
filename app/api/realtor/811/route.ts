@@ -204,7 +204,7 @@ export async function POST(request: Request) {
     const ticket = await prisma.ticket811.create({
       data: {
         ticketNumber,
-        sourceEmail: 'manual-entry@rightsignup.local',
+        sourceEmail: 'manual-entry@northshoresignco.local',
         emailSubject: `Manual 811 Ticket Entry - ${ticketNumber}`,
         emailBody: `Manually created by realtor ${session.user.id}`,
         parsedAddress: order.address,

@@ -48,6 +48,13 @@ export async function POST(
     const couponCode = String(creditCode).trim().toUpperCase();
     const couponExpiration = new Date(expirationDate);
 
+    if (Number.isNaN(couponExpiration.getTime())) {
+      return NextResponse.json(
+        { error: "expirationDate must be a valid date" },
+        { status: 400 }
+      );
+    }
+
     const existingCoupon = await prisma.coupon.findUnique({
       where: { code: couponCode },
       select: { id: true },
@@ -74,25 +81,43 @@ export async function POST(
       },
     });
 
-    // Send credit email
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "https://app.northshoresignco.com";
+
+    // Send credit email (coupon creation should not fail if email provider is unavailable)
     const emailData = getFreeInstallCreditEmail(
       user.firstName,
-      parsedAmount.toString(),
+      `$${parsedAmount.toFixed(2)}`,
       couponExpiration.toLocaleDateString(),
       coupon.code,
       `Valid until ${couponExpiration.toLocaleDateString()}`,
-      `${process.env.NEXTAUTH_URL}/dashboard`
+      `${appUrl}/dashboard`
     );
 
-    await sendEmail({
-      to: user.email,
-      subject: emailData.subject,
-      html: emailData.html,
-    });
+    let emailSent = false;
+    let emailErrorMessage: string | null = null;
+
+    try {
+      await sendEmail({
+        to: user.email,
+        subject: emailData.subject,
+        html: emailData.html,
+      });
+      emailSent = true;
+    } catch (emailError: any) {
+      emailErrorMessage = emailError?.message || "Unknown email provider error";
+      console.error("Credit created, but failed to send credit email:", emailError);
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Credit notification email sent successfully",
+      emailSent,
+      message: emailSent
+        ? "Credit notification email sent successfully"
+        : "Credit created, but email delivery failed. Please verify your SendGrid sender/template settings.",
+      emailError: emailErrorMessage,
       user: { firstName: user.firstName, email: user.email },
       credit: {
         code: coupon.code,

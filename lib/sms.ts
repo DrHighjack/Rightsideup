@@ -53,7 +53,7 @@ export function getPasswordResetSMS(
 
 // Welcome SMS template
 export function getWelcomeSMS(firstName: string, appUrl: string): string {
-  return `Welcome to RightSignUP, ${firstName}! Login here: ${appUrl}/login - Change your temp password immediately.`;
+  return `Welcome to North Shore Sign Co, ${firstName}! Login here: ${appUrl}/login - Change your temp password immediately.`;
 }
 
 // Generic notification SMS
@@ -63,5 +63,5 @@ export function getNotificationSMS(message: string): string {
 
 // Two-factor authentication SMS
 export function get2FASMS(code: string): string {
-  return `Your RightSignUP verification code is: ${code}. Do not share this code.`;
+  return `Your North Shore Sign Co verification code is: ${code}. Do not share this code.`;
 }

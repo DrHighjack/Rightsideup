@@ -4,6 +4,7 @@
  */
 
 import { prisma } from '@/lib/prisma';
+import { getEffectivePrice, getInventoryPriceServiceType } from '@/lib/pricing';
 
 export interface CouponValidationResult {
   valid: boolean;
@@ -24,6 +25,53 @@ export interface OrderPriceSummary {
   discountAmount: number;
   total: number;
   appliedCoupons: string[];
+}
+
+async function calculateOrderSubtotal(order: {
+  type: string;
+  realtorId: string;
+  realtor: { brokerageId: string | null } | null;
+  items: Array<{ quantity: number }>;
+  addons: Array<{ quantity: number; priceAtOrder: number; inventoryItemId: string }>;
+}): Promise<number> {
+  let subtotal = 0;
+
+  for (const item of order.items) {
+    const serviceType = order.type || 'INSTALL';
+
+    try {
+      const priceInCents = await getEffectivePrice(
+        serviceType,
+        order.realtorId,
+        order.realtor?.brokerageId || undefined
+      );
+      subtotal += (priceInCents / 100) * item.quantity;
+    } catch (error) {
+      console.warn(`Using fallback price for service type ${serviceType}:`, error);
+      subtotal += 150 * item.quantity;
+    }
+  }
+
+  for (const addon of order.addons) {
+    if (addon.priceAtOrder > 0) {
+      subtotal += (addon.priceAtOrder / 100) * addon.quantity;
+      continue;
+    }
+
+    try {
+      const serviceType = getInventoryPriceServiceType(addon.inventoryItemId);
+      const addonPriceInCents = await getEffectivePrice(
+        serviceType,
+        order.realtorId,
+        order.realtor?.brokerageId || undefined
+      );
+      subtotal += (addonPriceInCents / 100) * addon.quantity;
+    } catch (error) {
+      console.warn(`Unable to resolve addon pricing for ${addon.inventoryItemId}:`, error);
+    }
+  }
+
+  return subtotal;
 }
 
 /**
@@ -285,8 +333,20 @@ export async function getOrderPriceSummary(orderId: string): Promise<OrderPriceS
     const order = await prisma.order.findUnique({
       where: { id: orderId },
       include: {
+        realtor: {
+          select: {
+            brokerageId: true,
+          },
+        },
         items: {
           include: { sign: true },
+        },
+        addons: {
+          select: {
+            inventoryItemId: true,
+            quantity: true,
+            priceAtOrder: true,
+          },
         },
         discounts: {
           include: { coupon: true },
@@ -298,10 +358,7 @@ export async function getOrderPriceSummary(orderId: string): Promise<OrderPriceS
       throw new Error('Order not found');
     }
 
-    // Calculate subtotal
-    const subtotal = order.items.reduce((sum, item) => {
-      return sum + (150 * item.quantity);
-    }, 0);
+    const subtotal = await calculateOrderSubtotal(order);
 
     // Calculate total discount
     const discountAmount = order.discounts.reduce((sum, od) => {

@@ -4,7 +4,12 @@
  */
 
 import { auth } from '@/lib/auth';
-import { validateAndApplyCoupon, applyCouponToOrder, removeCouponFromOrder, getOrderPriceSummary } from '@/lib/discounts';
+import {
+  validateAndApplyCoupon,
+  applyCouponToOrder,
+  removeCouponFromOrder,
+  getOrderPriceSummary,
+} from '@/lib/discounts';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
@@ -32,9 +37,9 @@ export async function POST(
     // Get order
     const order = await prisma.order.findUnique({
       where: { id: params.id },
-      include: {
-        realtor: true,
-        items: { include: { sign: true } },
+      select: {
+        id: true,
+        realtorId: true,
       },
     });
 
@@ -47,14 +52,8 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Calculate order subtotal
-    // Note: Sign model no longer has price field in Phase 3. Using quantity-based calculation.
-    // TODO: Integrate with pricing system when available
-    const subtotal = order.items.reduce((sum, item) => {
-      // Assume each item has a base cost - adjust as needed when pricing is implemented
-      const itemPrice = 150; // Default price per sign/item
-      return sum + (itemPrice * item.quantity);
-    }, 0);
+    const orderSummary = await getOrderPriceSummary(params.id);
+    const subtotal = orderSummary.subtotal;
 
     // Validate coupon
     const validation = await validateAndApplyCoupon(couponCode, subtotal);

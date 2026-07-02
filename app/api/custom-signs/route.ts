@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { put } from '@vercel/blob';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+
+const getBlobToken = () => process.env.BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN;
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,20 +54,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Save image to public folder
-    const uploadsDir = join(process.cwd(), 'public', 'uploads', 'custom-signs');
-    
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
+    const blobToken = getBlobToken();
+    if (!blobToken) {
+      return NextResponse.json(
+        {
+          error:
+            'Image uploads are not configured. Set BLOB_READ_WRITE_TOKEN in your Vercel environment variables and redeploy.',
+        },
+        { status: 500 }
+      );
     }
 
     const timestamp = Date.now();
-    const fileName = `${timestamp}-${image.name}`;
-    const filePath = join(uploadsDir, fileName);
-    const fileUrl = `/uploads/custom-signs/${fileName}`;
+    const safeName = image.name.replace(/[^a-zA-Z0-9._-]/g, '-');
+    const fileName = `custom-signs/${timestamp}-${safeName}`;
 
     const buffer = await image.arrayBuffer();
-    await writeFile(filePath, Buffer.from(buffer));
+    const blob = await put(fileName, Buffer.from(buffer), {
+      access: 'public',
+      contentType: image.type || 'application/octet-stream',
+      token: blobToken,
+    });
 
     // Create custom sign request in database
     const customSign = await prisma.sign.create({
@@ -81,7 +88,7 @@ export async function POST(request: NextRequest) {
           width,
           height,
           material,
-          imageUrl: fileUrl,
+          imageUrl: blob.url,
           requestedBy: session.user.email,
           requestedAt: new Date().toISOString(),
           preferredPrinterIds: printerIds,

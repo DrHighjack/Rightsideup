@@ -224,9 +224,9 @@ export default function ElevenPage() {
 
   const addTicketCard = (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Manaully Add 811 Ticket Number</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Ticket History & Manual Entry</h2>
       <p className="text-sm text-gray-600 mb-4">
-        Select the property and enter the 811 ticket number. It will stay pending until admin review.
+        Past tickets are listed above. Select the property and enter the 811 ticket number to add a new one.
       </p>
 
       <form onSubmit={handleAddTicket} className="grid grid-cols-1 md:grid-cols-3 gap-3">

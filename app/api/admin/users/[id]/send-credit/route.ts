@@ -27,6 +27,14 @@ export async function POST(
       );
     }
 
+    const parsedAmount = Number(creditAmount);
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      return NextResponse.json(
+        { error: "creditAmount must be a positive number" },
+        { status: 400 }
+      );
+    }
+
     // Get user details
     const user = await prisma.user.findUnique({
       where: { id: params.id },
@@ -37,13 +45,41 @@ export async function POST(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const couponCode = String(creditCode).trim().toUpperCase();
+    const couponExpiration = new Date(expirationDate);
+
+    const existingCoupon = await prisma.coupon.findUnique({
+      where: { code: couponCode },
+      select: { id: true },
+    });
+
+    if (existingCoupon) {
+      return NextResponse.json(
+        { error: "That credit code already exists" },
+        { status: 409 }
+      );
+    }
+
+    const coupon = await prisma.coupon.create({
+      data: {
+        code: couponCode,
+        type: "FIXED",
+        value: parsedAmount,
+        remainingValue: parsedAmount,
+        isCredit: true,
+        maxUses: null,
+        expiresAt: couponExpiration,
+        description: `Realtor credit for ${user.firstName}`,
+      },
+    });
+
     // Send credit email
     const emailData = getFreeInstallCreditEmail(
       user.firstName,
-      creditAmount.toString(),
-      new Date(expirationDate).toLocaleDateString(),
-      creditCode,
-      `Valid until ${new Date(expirationDate).toLocaleDateString()}`,
+      parsedAmount.toString(),
+      couponExpiration.toLocaleDateString(),
+      coupon.code,
+      `Valid until ${couponExpiration.toLocaleDateString()}`,
       `${process.env.NEXTAUTH_URL}/dashboard`
     );
 
@@ -57,6 +93,11 @@ export async function POST(
       success: true,
       message: "Credit notification email sent successfully",
       user: { firstName: user.firstName, email: user.email },
+      credit: {
+        code: coupon.code,
+        amount: parsedAmount,
+        expiresAt: coupon.expiresAt,
+      },
     });
   } catch (error) {
     console.error("Failed to send credit email:", error);

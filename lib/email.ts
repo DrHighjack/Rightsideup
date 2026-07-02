@@ -2607,7 +2607,7 @@ export function getFreeInstallCreditEmail(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Free Installation Added</title>
+    <title>Credit Added</title>
     <style>
         * {
             margin: 0;
@@ -2811,18 +2811,18 @@ export function getFreeInstallCreditEmail(
     <div class="container">
         <div class="header">
             <h1>ðŸŽ‰ Great News!</h1>
-            <p>A free installation has been added to your account</p>
+            <p>A credit has been added to your account</p>
         </div>
         
         <div class="content">
             <div class="greeting">
                 <p>Hi ${customerName},</p>
-                <p style="margin-top: 12px;">Excellent news! We've added a free installation credit to your account. You can now use this towards your next sign installation project.</p>
+                <p style="margin-top: 12px;">Excellent news! We've added a credit to your account. You can now use this towards future orders, either partially or in full.</p>
             </div>
             
             <div class="bonus-box">
                 <div class="bonus-icon">ðŸŽ</div>
-                <div class="bonus-title">Free Installation Credit</div>
+                <div class="bonus-title">Account Credit</div>
                 <div class="bonus-value">${creditValue}</div>
             </div>
             
@@ -2845,14 +2845,14 @@ export function getFreeInstallCreditEmail(
             
             <div class="highlight">
                 <div class="highlight-text">
-                    ðŸ’¡ This credit can be applied to any sign installation service. Simply mention this credit code when placing your next order, or apply it during checkout on our website.
+                    ðŸ’¡ This credit can be applied to future orders. Enter the credit code during checkout or mention it when placing an order, and any unused balance remains available for later.
                 </div>
             </div>
             
-            <a href="${orderLink}" class="cta-button">Browse Installation Services</a>
+            <a href="${orderLink}" class="cta-button">Browse Orders</a>
             
             <div class="terms">
-                <strong>Terms:</strong> This credit is valid for ${validity}. It cannot be transferred, refunded, or combined with other promotional offers. Valid for installation services only.
+                <strong>Terms:</strong> This credit is valid for ${validity}. It cannot be transferred, refunded, or combined with other promotional offers.
             </div>
             
             <div class="support-section">
@@ -2870,7 +2870,7 @@ export function getFreeInstallCreditEmail(
 </html>`;
 
   return {
-    subject: "ðŸŽ‰ Free Installation Credit Added to Your Account!",
+        subject: "ðŸŽ‰ Credit Added to Your Account!",
     html,
   };
 }

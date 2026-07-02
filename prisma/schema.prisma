@@ -308,6 +308,8 @@ model Coupon {
   code           String     @unique
   type           String     @default("FIXED")  // FIXED or PERCENTAGE
   value          Float      // Dollar amount or percentage
+  remainingValue Float?     @default(0)         // Remaining credit balance for credit-style coupons
+  isCredit       Boolean    @default(false)     // True when this coupon represents a reusable realtor credit
   maxUses        Int?       // null = unlimited
   usedCount      Int        @default(0)
   expiresAt      DateTime?  // null = no expiration

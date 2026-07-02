@@ -13,6 +13,8 @@ export interface CouponValidationResult {
     code: string;
     type: string;
     value: number;
+    isCredit?: boolean;
+    remainingValue?: number;
     discountAmount?: number;
   };
 }
@@ -60,19 +62,39 @@ export async function validateAndApplyCoupon(
       };
     }
 
-    // Check usage limit
-    if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
-      return {
-        valid: false,
-        error: 'This coupon has reached its usage limit',
-      };
-    }
-
     // Calculate discount amount
     let discountAmount = 0;
-    if (coupon.type === 'FIXED') {
+    if (coupon.isCredit) {
+      const remainingValue = typeof coupon.remainingValue === 'number' && coupon.remainingValue > 0
+        ? coupon.remainingValue
+        : coupon.value;
+
+      if (remainingValue <= 0) {
+        return {
+          valid: false,
+          error: 'This credit has been fully used',
+        };
+      }
+
+      discountAmount = Math.min(remainingValue, orderSubtotal);
+    } else if (coupon.type === 'FIXED') {
+      // Check usage limit for standard coupons only.
+      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+        return {
+          valid: false,
+          error: 'This coupon has reached its usage limit',
+        };
+      }
+
       discountAmount = Math.min(coupon.value, orderSubtotal); // Don't exceed order total
     } else if (coupon.type === 'PERCENTAGE') {
+      if (coupon.maxUses && coupon.usedCount >= coupon.maxUses) {
+        return {
+          valid: false,
+          error: 'This coupon has reached its usage limit',
+        };
+      }
+
       discountAmount = (orderSubtotal * coupon.value) / 100;
     }
 
@@ -83,6 +105,8 @@ export async function validateAndApplyCoupon(
         code: coupon.code,
         type: coupon.type,
         value: coupon.value,
+        isCredit: coupon.isCredit,
+        remainingValue: coupon.remainingValue ?? undefined,
         discountAmount,
       },
     };
@@ -100,36 +124,60 @@ export async function validateAndApplyCoupon(
  */
 export async function applyCouponToOrder(orderId: string, couponId: string, discountAmount: number) {
   try {
-    // Check if already applied
-    const existing = await prisma.orderDiscount.findUnique({
-      where: {
-        orderId_couponId: {
+    const orderDiscount = await prisma.$transaction(async (tx) => {
+      const coupon = await tx.coupon.findUnique({
+        where: { id: couponId },
+      });
+
+      if (!coupon) {
+        throw new Error('Coupon not found');
+      }
+
+      // Check if already applied
+      const existing = await tx.orderDiscount.findUnique({
+        where: {
+          orderId_couponId: {
+            orderId,
+            couponId,
+          },
+        },
+      });
+
+      if (existing) {
+        throw new Error('This coupon has already been applied to this order');
+      }
+
+      const orderDiscountRow = await tx.orderDiscount.create({
+        data: {
           orderId,
           couponId,
+          discountAmount,
         },
-      },
-    });
+        include: {
+          coupon: true,
+        },
+      });
 
-    if (existing) {
-      throw new Error('This coupon has already been applied to this order');
-    }
+      const couponUpdateData: any = {
+        usedCount: { increment: 1 },
+      };
 
-    // Create order discount
-    const orderDiscount = await prisma.orderDiscount.create({
-      data: {
-        orderId,
-        couponId,
-        discountAmount,
-      },
-      include: {
-        coupon: true,
-      },
-    });
+      if (coupon.isCredit) {
+        const currentRemaining = typeof coupon.remainingValue === 'number' && coupon.remainingValue > 0
+          ? coupon.remainingValue
+          : coupon.value;
+        const nextRemaining = Math.max(0, currentRemaining - discountAmount);
 
-    // Increment coupon usage
-    await prisma.coupon.update({
-      where: { id: couponId },
-      data: { usedCount: { increment: 1 } },
+        couponUpdateData.remainingValue = nextRemaining;
+        couponUpdateData.isActive = nextRemaining > 0;
+      }
+
+      await tx.coupon.update({
+        where: { id: couponId },
+        data: couponUpdateData,
+      });
+
+      return orderDiscountRow;
     });
 
     console.log(`✅ Coupon applied to order ${orderId}: -$${discountAmount.toFixed(2)}`);
@@ -201,6 +249,8 @@ export async function createCoupon(data: {
   code: string;
   type: 'FIXED' | 'PERCENTAGE';
   value: number;
+  remainingValue?: number;
+  isCredit?: boolean;
   description?: string;
   maxUses?: number;
   expiresAt?: Date;
@@ -211,6 +261,8 @@ export async function createCoupon(data: {
         code: data.code.toUpperCase(),
         type: data.type,
         value: data.value,
+        remainingValue: data.remainingValue ?? 0,
+        isCredit: data.isCredit ?? false,
         description: data.description,
         maxUses: data.maxUses,
         expiresAt: data.expiresAt,

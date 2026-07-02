@@ -28,6 +28,10 @@ export default function OrderDetailPage() {
   const id = params.id as string;
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [creditCode, setCreditCode] = useState("");
+  const [applyingCredit, setApplyingCredit] = useState(false);
+  const [creditMessage, setCreditMessage] = useState("");
+  const [creditError, setCreditError] = useState("");
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [cancelling, setCancelling] = useState(false);
@@ -83,6 +87,42 @@ export default function OrderDetailPage() {
       setCancelError(error instanceof Error ? error.message : "Failed to cancel order");
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleApplyCredit() {
+    setCreditError("");
+    setCreditMessage("");
+
+    if (!creditCode.trim()) {
+      setCreditError("Enter a credit code to apply it");
+      return;
+    }
+
+    try {
+      setApplyingCredit(true);
+      const response = await fetch(`/api/orders/${id}/coupon`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ couponCode: creditCode.trim() }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to apply credit");
+      }
+
+      const appliedAmount = data?.discount?.discountAmount ?? 0;
+      setCreditMessage(
+        appliedAmount > 0
+          ? `Applied $${appliedAmount.toFixed(2)} credit to this order.`
+          : "Credit applied."
+      );
+      setCreditCode("");
+    } catch (error) {
+      setCreditError(error instanceof Error ? error.message : "Failed to apply credit");
+    } finally {
+      setApplyingCredit(false);
     }
   }
 
@@ -175,6 +215,31 @@ export default function OrderDetailPage() {
             <p className="mt-1 text-base text-slate-900">{order.notes}</p>
           </div>
         )}
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+        <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Apply Credit</h2>
+        <p className="text-sm text-slate-600">Use a realtor credit code here. If the credit is larger than the order total, the remainder stays available for the next order.</p>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <input
+            type="text"
+            value={creditCode}
+            onChange={(e) => setCreditCode(e.target.value)}
+            placeholder="Enter credit code"
+            className="min-h-12 flex-1 rounded-lg border border-slate-300 px-4 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
+          />
+          <button
+            onClick={handleApplyCredit}
+            disabled={applyingCredit}
+            className="inline-flex h-12 items-center justify-center rounded-lg bg-navy-900 px-5 font-medium text-white transition-colors hover:bg-navy-800 disabled:opacity-50"
+          >
+            {applyingCredit ? "Applying..." : "Apply Credit"}
+          </button>
+        </div>
+
+        {creditError && <p className="text-sm text-red-700">{creditError}</p>}
+        {creditMessage && <p className="text-sm text-green-700">{creditMessage}</p>}
       </div>
 
       {/* Cancel button */}

@@ -18,23 +18,30 @@ export async function GET() {
     const userRole = (session.user as any).role;
     const userId = session.user.id;
 
+    const ticketInclude = {
+      realtor: {
+        select: { id: true, firstName: true, lastName: true, email: true },
+      },
+      clearedByUser: {
+        select: { id: true, firstName: true, lastName: true },
+      },
+      order: {
+        select: { id: true, orderNumber: true, address: true, addressLat: true, addressLng: true },
+      },
+    } as const;
+
     // REALTOR sees only their tickets, TC sees all tickets (linked agents' tickets)
     let tickets;
 
     if (userRole === 'REALTOR') {
       tickets = await prisma.ticket811.findMany({
-        where: { realtorId: userId },
-        include: {
-          realtor: {
-            select: { id: true, firstName: true, lastName: true, email: true },
-          },
-          clearedByUser: {
-            select: { id: true, firstName: true, lastName: true },
-          },
-          order: {
-            select: { id: true, orderNumber: true, address: true, addressLat: true, addressLng: true },
-          },
+        where: {
+          OR: [
+            { realtorId: userId },
+            { order: { is: { realtorId: userId } } },
+          ],
         },
+        include: ticketInclude,
         orderBy: { createdAt: 'desc' },
       });
     } else if (userRole === 'TC') {
@@ -47,18 +54,13 @@ export async function GET() {
       const agentIds = linkedAgents.map((link) => link.agentUserId);
 
       tickets = await prisma.ticket811.findMany({
-        where: { realtorId: { in: agentIds } },
-        include: {
-          realtor: {
-            select: { id: true, firstName: true, lastName: true, email: true },
-          },
-          clearedByUser: {
-            select: { id: true, firstName: true, lastName: true },
-          },
-          order: {
-            select: { id: true, orderNumber: true, address: true, addressLat: true, addressLng: true },
-          },
+        where: {
+          OR: [
+            { realtorId: { in: agentIds } },
+            { order: { is: { realtorId: { in: agentIds } } } },
+          ],
         },
+        include: ticketInclude,
         orderBy: { createdAt: 'desc' },
       });
     } else {

@@ -19,6 +19,7 @@ interface InventoryCardProps {
   lowStockThreshold: number;
   printers: Printer[];
   onOrderClick: () => void;
+  showQuantity?: boolean;
 }
 
 export function InventoryCard({
@@ -31,6 +32,7 @@ export function InventoryCard({
   lowStockThreshold,
   printers,
   onOrderClick,
+  showQuantity = true,
 }: InventoryCardProps) {
   const isLowStock = availableQuantity < lowStockThreshold;
 
@@ -74,31 +76,35 @@ export function InventoryCard({
           </span>
         </div>
 
-        {/* Stock Display */}
-        <div className="mb-3">
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-xs font-medium text-gray-600">In Stock:</span>
-            <span className="text-sm font-bold text-gray-900">
-              {availableQuantity} / {totalQuantity}
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className={`h-2 rounded-full transition-colors ${
-                isLowStock ? 'bg-red-500' : 'bg-green-500'
-              }`}
-              style={{
-                width: `${totalQuantity > 0 ? (availableQuantity / totalQuantity) * 100 : 0}%`,
-              }}
-            />
-          </div>
-        </div>
+        {/* Stock Display - Only show for admins */}
+        {showQuantity && (
+          <>
+            <div className="mb-3">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs font-medium text-gray-600">In Stock:</span>
+                <span className="text-sm font-bold text-gray-900">
+                  {availableQuantity} / {totalQuantity}
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className={`h-2 rounded-full transition-colors ${
+                    isLowStock ? 'bg-red-500' : 'bg-green-500'
+                  }`}
+                  style={{
+                    width: `${totalQuantity > 0 ? (availableQuantity / totalQuantity) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
 
-        {/* Low Stock Warning */}
-        {isLowStock && (
-          <div className="mb-3 px-2 py-1 bg-red-50 border border-red-200 rounded text-xs text-red-700 font-medium">
-            ⚠️ Low Stock
-          </div>
+            {/* Low Stock Warning */}
+            {isLowStock && (
+              <div className="mb-3 px-2 py-1 bg-red-50 border border-red-200 rounded text-xs text-red-700 font-medium">
+                ⚠️ Low Stock
+              </div>
+            )}
+          </>
         )}
 
         {/* Order More Button - only show if orderable */}
@@ -115,13 +121,6 @@ export function InventoryCard({
         {!isOrderable && (
           <div className="mt-auto px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm text-center">
             Not available for order
-          </div>
-        )}
-
-        {/* No Printers Message */}
-        {isOrderable && printers.length === 0 && (
-          <div className="mt-auto px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm text-center">
-            No printers available
           </div>
         )}
       </div>

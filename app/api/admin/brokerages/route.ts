@@ -4,6 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
+function isMissingEmailVerifiedColumn(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as any).code === "P2022" &&
+    String((error as any)?.meta?.column || "").includes("emailVerifiedAt")
+  );
+}
+
 const brokerageSchema = z.object({
   name: z.string().min(1),
   address: z.string().optional(),
@@ -135,24 +144,49 @@ export async function POST(request: NextRequest) {
 
       if (brokerageAccount) {
         const ownerPasswordHash = await bcrypt.hash(brokerageAccount.password, 12);
-        const owner = await tx.user.create({
-          data: {
-            email: brokerageAccount.email.trim().toLowerCase(),
-            firstName: brokerageAccount.firstName.trim(),
-            lastName: brokerageAccount.lastName.trim(),
-            passwordHash: ownerPasswordHash,
-            role: "BROKERAGE",
-            brokerageName: name.trim(),
-            paymentMethod: "OFFICE",
-            emailVerifiedAt: new Date(),
-          },
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
-          },
-        });
+        let owner;
+        try {
+          owner = await tx.user.create({
+            data: {
+              email: brokerageAccount.email.trim().toLowerCase(),
+              firstName: brokerageAccount.firstName.trim(),
+              lastName: brokerageAccount.lastName.trim(),
+              passwordHash: ownerPasswordHash,
+              role: "BROKERAGE",
+              brokerageName: name.trim(),
+              paymentMethod: "OFFICE",
+              emailVerifiedAt: new Date(),
+            },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          });
+        } catch (createError) {
+          if (!isMissingEmailVerifiedColumn(createError)) {
+            throw createError;
+          }
+
+          owner = await tx.user.create({
+            data: {
+              email: brokerageAccount.email.trim().toLowerCase(),
+              firstName: brokerageAccount.firstName.trim(),
+              lastName: brokerageAccount.lastName.trim(),
+              passwordHash: ownerPasswordHash,
+              role: "BROKERAGE",
+              brokerageName: name.trim(),
+              paymentMethod: "OFFICE",
+            },
+            select: {
+              id: true,
+              email: true,
+              firstName: true,
+              lastName: true,
+            },
+          });
+        }
 
         ownerId = owner.id;
         ownerSummary = owner;

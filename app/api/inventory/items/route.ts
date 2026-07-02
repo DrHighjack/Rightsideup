@@ -17,11 +17,20 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch all active inventory items with their linked printers
+    // Build where clause based on role
+    const whereClause: any = {
+      isActive: true,
+    };
+
+    // For REALTOR and TC users, only show SIGN category items
+    // Admin users see all categories (SIGN, FLYER_BOX, RIDER, OTHER, etc.)
+    if (userRole === 'REALTOR' || userRole === 'TC') {
+      whereClause.category = 'SIGN';
+    }
+
+    // Fetch active inventory items with their linked printers
     const items = await prisma.inventoryItem.findMany({
-      where: {
-        isActive: true,
-      },
+      where: whereClause,
       include: {
         printers: {
           include: {
@@ -31,6 +40,19 @@ export async function GET(_request: NextRequest) {
       },
       orderBy: { name: 'asc' },
     });
+
+    // For non-admin users, also fetch their custom signs
+    let customSignIds: string[] = [];
+    if (userRole === 'REALTOR' || userRole === 'TC') {
+      const customSigns = await prisma.sign.findMany({
+        where: {
+          type: 'Custom',
+          assignedToUserId: session.user.id,
+        },
+        select: { id: true },
+      });
+      customSignIds = customSigns.map(s => s.id);
+    }
 
     // Format response
     const formattedItems = items.map((item) => ({
@@ -43,6 +65,7 @@ export async function GET(_request: NextRequest) {
       isOrderable: item.isOrderable,
       pricePerUnit: item.pricePerUnit,
       lowStockThreshold: item.lowStockThreshold,
+      showQuantity: userRole === 'ADMIN', // Only show quantities to admins
       printers: item.printers.map((ip) => ({
         id: ip.printer.id,
         name: ip.printer.name,
@@ -52,7 +75,11 @@ export async function GET(_request: NextRequest) {
       })),
     }));
 
-    return NextResponse.json({ items: formattedItems });
+    return NextResponse.json({ 
+      items: formattedItems,
+      userRole,
+      hasCustomSigns: customSignIds.length > 0,
+    });
   } catch (error) {
     console.error('Inventory items fetch error:', error);
     return NextResponse.json(

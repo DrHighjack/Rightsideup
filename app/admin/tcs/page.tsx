@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface TC {
   id: string;
@@ -212,6 +213,18 @@ export default function AdminTCsPage() {
     }
   };
 
+  const handleSendPasswordReset = async (email: string) => {
+    if (!confirm(`Send a password reset email to ${email}?`)) return;
+
+    try {
+      await sendAdminPasswordReset(email);
+      alert(`Password reset email sent to ${email}`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to send password reset email");
+      console.error(error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
@@ -283,6 +296,12 @@ export default function AdminTCsPage() {
                             >
                               View Profile
                             </Link>
+                            <button
+                              onClick={() => handleSendPasswordReset(tc.email)}
+                              className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
+                            >
+                              Reset
+                            </button>
                             {tc.agentCount > 0 && (
                               <button
                                 onClick={() => handleSendInvitation(tc.id, tc.agents[0]?.agentId || "")}

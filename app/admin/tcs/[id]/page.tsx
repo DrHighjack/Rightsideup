@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import GoogleMapReact from "google-map-react";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface LinkedAgent {
   linkId: string;
@@ -273,6 +274,17 @@ export default function AdminTCProfilePage() {
     }
   };
 
+  const handleSendPasswordReset = async (email: string) => {
+    if (!confirm(`Send a password reset email to ${email}?`)) return;
+
+    try {
+      await sendAdminPasswordReset(email);
+      alert(`Password reset email sent to ${email}`);
+    } catch (_err) {
+      setError("Failed to send password reset email");
+    }
+  };
+
   const selectedOrder =
     selectedOrderId && profile
       ? profile.orders.find((o) => o.id === selectedOrderId) || null
@@ -379,6 +391,13 @@ export default function AdminTCProfilePage() {
                     </button>
                   </>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleSendPasswordReset(profile.tc.email)}
+                  className="rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700"
+                >
+                  Reset Password
+                </button>
                 <span
                   className={`inline-flex px-3 py-1 rounded-full text-xs font-semibold ${
                     profile.tc.isActive

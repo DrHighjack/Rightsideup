@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface Agent {
   id: string;
@@ -127,6 +128,18 @@ export default function BrokeragePage() {
     }
   };
 
+  const handleSendPasswordReset = async (email?: string) => {
+    if (!email) return;
+    if (!confirm(`Send a password reset email to ${email}?`)) return;
+
+    try {
+      await sendAdminPasswordReset(email);
+      alert(`Password reset email sent to ${email}`);
+    } catch (err: any) {
+      alert(err.message || "Failed to send password reset email");
+    }
+  };
+
   if (status === "loading" || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -160,6 +173,12 @@ export default function BrokeragePage() {
                 {brokerage.admin.firstName} {brokerage.admin.lastName}
               </p>
               <p className="text-gray-600">{brokerage.admin.email}</p>
+              <button
+                onClick={() => handleSendPasswordReset(brokerage.admin.email)}
+                className="mt-2 text-indigo-600 hover:text-indigo-700 font-medium"
+              >
+                Reset Admin Password
+              </button>
             </div>
             {brokerage.phone && (
               <div>
@@ -345,6 +364,12 @@ export default function BrokeragePage() {
                         >
                           View Profile
                         </Link>
+                        <button
+                          onClick={() => handleSendPasswordReset(agent.email)}
+                          className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
+                        >
+                          Reset Password
+                        </button>
                         <Link
                           href={`/admin/orders/new?realtorId=${agent.id}`}
                           className="text-primary hover:text-primary-dark text-sm font-medium"

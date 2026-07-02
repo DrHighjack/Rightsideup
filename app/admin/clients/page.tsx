@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface RealtorData {
   id: string;
@@ -169,6 +170,18 @@ export default function AdminClientsPage() {
     }
   };
 
+  const handleSendPasswordReset = async (email: string) => {
+    if (!confirm(`Send a password reset email to ${email}?`)) return;
+
+    try {
+      await sendAdminPasswordReset(email);
+      alert(`Password reset email sent to ${email}`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to send password reset email");
+      console.error(error);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -327,6 +340,12 @@ export default function AdminClientsPage() {
                     </td>
                     <td className="px-6 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => handleSendPasswordReset(realtor.email)}
+                          className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
+                        >
+                          Reset
+                        </button>
                         {realtor.phone && (
                           <button
                             onClick={() => handleSendSMS(realtor.id)}

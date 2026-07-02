@@ -18,6 +18,16 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
   const [signs, setSigns] = useState<SignItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showCustomModal, setShowCustomModal] = useState(false);
+  const [customTargetSignId, setCustomTargetSignId] = useState<string | null>(null);
+  const [customPostForm, setCustomPostForm] = useState({
+    postName: 'Custom Sign Post',
+    colorHex: '#1d4ed8',
+    material: 'METAL',
+    postHeight: '72',
+    notes: '',
+  });
+  const [customSaving, setCustomSaving] = useState(false);
 
   useEffect(() => {
     fetchSigns();
@@ -35,12 +45,25 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
         },
         credentials: 'include',
       });
-      
+
+      const contentType = res.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const payload = isJson ? await res.json().catch(() => null) : null;
+
       if (!res.ok) {
-        throw new Error(`Failed to fetch signs (${res.status})`);
+        throw new Error(
+          payload?.error ||
+            (res.status === 401 || res.status === 403
+              ? 'Your session expired. Please sign in again.'
+              : `Failed to fetch signs (${res.status})`)
+        );
       }
-      
-      const data = await res.json();
+
+      if (!isJson || !payload) {
+        throw new Error('Failed to load signs: server returned an invalid response.');
+      }
+
+      const data = payload;
       const signItems = (data.items || []).filter((item: any) => item.category === 'SIGN' && item.isOrderable);
       setSigns(signItems);
     } catch (err) {
@@ -48,6 +71,37 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
       setError(err instanceof Error ? err.message : 'Failed to load signs');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const getSignVariant = (name: string) => {
+    const normalized = name.toLowerCase();
+    if (normalized.includes('custom')) return 'CUSTOM';
+    if (normalized.includes('black') || normalized.includes('white')) return 'STANDARD';
+    return 'NONE';
+  };
+
+  const handleSignClick = (sign: SignItem) => {
+    const variant = getSignVariant(sign.name);
+    if (variant === 'CUSTOM') {
+      setCustomTargetSignId(sign.id);
+      setShowCustomModal(true);
+      return;
+    }
+
+    onSelectSign(sign.id);
+  };
+
+  const handleCustomPostOrderClick = async () => {
+    if (!customTargetSignId) return;
+
+    try {
+      setCustomSaving(true);
+      onSelectSign(customTargetSignId);
+      setShowCustomModal(false);
+      alert(`Custom post details saved: ${customPostForm.material} / ${customPostForm.colorHex}`);
+    } finally {
+      setCustomSaving(false);
     }
   };
 
@@ -86,13 +140,24 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
           <button
             key={sign.id}
             type="button"
-            onClick={() => onSelectSign(sign.id)}
+            onClick={() => handleSignClick(sign)}
             className={`relative flex-shrink-0 rounded-lg border-2 overflow-hidden transition ${
               selectedSignId === sign.id
                 ? 'border-blue-500 shadow-lg'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
           >
+            {getSignVariant(sign.name) === 'STANDARD' && (
+              <div className="absolute left-2 top-2 z-10 rounded-full bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                Available
+              </div>
+            )}
+            {getSignVariant(sign.name) === 'CUSTOM' && (
+              <div className="absolute left-2 top-2 z-10 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                Order
+              </div>
+            )}
+
             {/* Image or placeholder */}
             <div className="aspect-square bg-gray-100 flex items-center justify-center text-3xl">
               {sign.imageUrl ? (
@@ -134,6 +199,103 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
           </button>
         ))}
       </div>
+
+      {showCustomModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-2xl">
+            <h4 className="text-xl font-bold text-gray-900">Order Custom Post</h4>
+            <p className="mt-1 text-sm text-gray-600">
+              Configure your post color, material, and specs before placing the custom order.
+            </p>
+
+            <div className="mt-6 space-y-5">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Post Name</label>
+                <input
+                  type="text"
+                  value={customPostForm.postName}
+                  onChange={(e) => setCustomPostForm((prev) => ({ ...prev, postName: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Post Color (Hex Wheel)</label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="color"
+                      value={customPostForm.colorHex}
+                      onChange={(e) => setCustomPostForm((prev) => ({ ...prev, colorHex: e.target.value }))}
+                      className="h-11 w-14 rounded border border-gray-300"
+                    />
+                    <input
+                      type="text"
+                      value={customPostForm.colorHex}
+                      onChange={(e) => setCustomPostForm((prev) => ({ ...prev, colorHex: e.target.value }))}
+                      className="w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-gray-900"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">Material</label>
+                  <select
+                    value={customPostForm.material}
+                    onChange={(e) => setCustomPostForm((prev) => ({ ...prev, material: e.target.value }))}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
+                  >
+                    <option value="METAL">Metal</option>
+                    <option value="WOOD">Wood</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Post Height (inches)</label>
+                <input
+                  type="number"
+                  min="24"
+                  step="1"
+                  value={customPostForm.postHeight}
+                  onChange={(e) => setCustomPostForm((prev) => ({ ...prev, postHeight: e.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700">Notes</label>
+                <textarea
+                  rows={3}
+                  value={customPostForm.notes}
+                  onChange={(e) => setCustomPostForm((prev) => ({ ...prev, notes: e.target.value }))}
+                  placeholder="Anything special about finish, bracket style, or sizing"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowCustomModal(false)}
+                  className="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50"
+                  disabled={customSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCustomPostOrderClick}
+                  className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                  disabled={customSaving}
+                >
+                  {customSaving ? 'Saving...' : 'Order Custom Post'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

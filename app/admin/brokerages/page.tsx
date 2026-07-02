@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface Agent {
   id: string;
@@ -358,6 +359,19 @@ export default function ManagementPage() {
       await fetchBrokerages();
     } catch (err) {
       alert("Failed to deactivate brokerage");
+    }
+  };
+
+  const handleSendPasswordReset = async (email?: string) => {
+    if (!email) return;
+    if (!confirm(`Send a password reset email to ${email}?`)) return;
+
+    try {
+      await sendAdminPasswordReset(email);
+      alert(`Password reset email sent to ${email}`);
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to send password reset email");
+      console.error(error);
     }
   };
 
@@ -858,6 +872,16 @@ export default function ManagementPage() {
                             className="text-green-700 hover:text-green-800 font-medium"
                           >
                             Edit
+                          </button>
+                          <button
+                            onClick={() =>
+                              handleSendPasswordReset(
+                                brokerage.brokerageOwner?.email || brokerage.email
+                              )
+                            }
+                            className="text-indigo-600 hover:text-indigo-700 font-medium"
+                          >
+                            Reset Password
                           </button>
                           <button
                             onClick={() => handleDeactivateBrokerage(brokerage)}

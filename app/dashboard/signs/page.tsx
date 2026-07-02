@@ -1,6 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import Link from "next/link";
+
+interface ActiveAgent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+}
 
 interface Sign {
   id: string;
@@ -34,8 +43,12 @@ const initialPickupForm: PickupForm = {
 };
 
 export default function DashboardSignsPage() {
+  const { data: session } = useSession();
+  const userRole = (session?.user as any)?.role as string | undefined;
+  const isTC = userRole === "TC";
   const [signs, setSigns] = useState<Sign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeAgent, setActiveAgent] = useState<ActiveAgent | null>(null);
 
   // Report Issue Modal
   const [showReportModal, setShowReportModal] = useState(false);
@@ -61,13 +74,49 @@ export default function DashboardSignsPage() {
   const [pickupError, setPickupError] = useState("");
 
   useEffect(() => {
+    if (!isTC) {
+      setActiveAgent(null);
+      return;
+    }
+
+    const stored = localStorage.getItem("tc_active_agent");
+    if (!stored) {
+      setActiveAgent(null);
+      return;
+    }
+
+    try {
+      setActiveAgent(JSON.parse(stored) as ActiveAgent);
+    } catch (err) {
+      console.error("Invalid stored agent data", err);
+      localStorage.removeItem("tc_active_agent");
+      setActiveAgent(null);
+    }
+  }, [isTC]);
+
+  useEffect(() => {
+    if (isTC && !activeAgent) {
+      setSigns([]);
+      setLoading(false);
+      return;
+    }
+
     fetchSigns();
-  }, []);
+  }, [isTC, activeAgent]);
 
   const fetchSigns = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/signs/mine");
+      const searchParams = new URLSearchParams();
+      if (isTC && activeAgent?.id) {
+        searchParams.set("realtorId", activeAgent.id);
+      }
+
+      const requestUrl = searchParams.size > 0
+        ? `/api/signs/mine?${searchParams.toString()}`
+        : "/api/signs/mine";
+
+      const res = await fetch(requestUrl);
       if (res.ok) {
         const data = await res.json();
         setSigns(data.signs || []);
@@ -184,6 +233,7 @@ export default function DashboardSignsPage() {
           signIds: pickupForm.signIds,
           preferredDate: pickupForm.preferredDate,
           notes: pickupForm.notes || undefined,
+          realtorId: isTC ? activeAgent?.id : undefined,
         }),
       });
 
@@ -241,6 +291,35 @@ export default function DashboardSignsPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-6xl mx-auto">
+        {isTC && (
+          <div className="mb-6 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+            {activeAgent ? (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <p className="text-sm font-medium text-indigo-900">Acting for {activeAgent.firstName} {activeAgent.lastName}</p>
+                  <p className="text-xs text-indigo-700">{activeAgent.email}</p>
+                </div>
+                <Link
+                  href="/tc/select-agent"
+                  className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
+                >
+                  Switch Agent
+                </Link>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <p className="text-sm text-indigo-900">Select an agent to view and manage their signs.</p>
+                <Link
+                  href="/tc/select-agent"
+                  className="text-sm font-medium text-indigo-700 hover:text-indigo-900"
+                >
+                  Select Agent
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Signs</h1>

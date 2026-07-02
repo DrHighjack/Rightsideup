@@ -4,7 +4,7 @@ import crypto from "crypto";
 import { registerSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
-import { sendEmail, getAccountVerificationEmail } from "@/lib/email";
+import { sendEmail, getAccountVerificationEmail, getWelcomeEmail } from "@/lib/email";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
 
@@ -192,6 +192,17 @@ export async function POST(request: NextRequest) {
       });
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
+    }
+
+    try {
+      const welcomeEmail = getWelcomeEmail(firstName, `${appUrl}/login`);
+      await sendEmail({
+        to: normalizedEmail,
+        subject: welcomeEmail.subject,
+        html: welcomeEmail.html,
+      });
+    } catch (emailError) {
+      console.error("Failed to send welcome email:", emailError);
     }
 
     return NextResponse.json({ ...user, verificationRequired: true }, { status: 201 });

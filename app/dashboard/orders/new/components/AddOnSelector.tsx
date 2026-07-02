@@ -40,12 +40,25 @@ export function AddOnSelector({ selectedAddOns, onAddOnChange }: AddOnSelectorPr
         },
         credentials: 'include',
       });
-      
+
+      const contentType = res.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const payload = isJson ? await res.json().catch(() => null) : null;
+
       if (!res.ok) {
-        throw new Error(`Failed to fetch add-ons (${res.status})`);
+        throw new Error(
+          payload?.error ||
+            (res.status === 401 || res.status === 403
+              ? 'Your session expired. Please sign in again.'
+              : `Failed to fetch add-ons (${res.status})`)
+        );
       }
-      
-      const data = await res.json();
+
+      if (!isJson || !payload) {
+        throw new Error('Failed to load add-ons: server returned an invalid response.');
+      }
+
+      const data = payload;
       const addOnItems = (data.items || []).filter(
         (item: any) => (item.category === 'FLYER_BOX' || item.category === 'RIDER') && item.isOrderable
       );

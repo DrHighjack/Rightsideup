@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter, useParams } from "next/navigation";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface ActivityLogEntry {
   id: string;
@@ -300,6 +301,18 @@ export default function RealtorDetailPage() {
     }
   };
 
+  const handleSendPasswordReset = async (email: string) => {
+    if (!confirm(`Send a password reset email to ${email}?`)) return;
+
+    try {
+      await sendAdminPasswordReset(email);
+      alert(`Password reset email sent to ${email}`);
+    } catch (err) {
+      setError((err as Error).message || "Failed to send password reset email");
+      console.error(err);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -450,6 +463,12 @@ export default function RealtorDetailPage() {
                     >
                       Edit
                     </button>
+                      <button
+                        onClick={() => handleSendPasswordReset(realtor.email)}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+                      >
+                        Reset Password
+                      </button>
                     <Link
                       href={`/admin/orders/new?realtorId=${realtorId}`}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"

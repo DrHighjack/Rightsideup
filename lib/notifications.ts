@@ -528,3 +528,79 @@ export async function getUnreadCount(userId: string): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * Send sign pickup request notification to admin
+ */
+export async function sendSignPickupRequestNotification(adminEmail: string, request: any): Promise<void> {
+  try {
+    const requesterName = `${request.requestedByUser.firstName} ${request.requestedByUser.lastName}`;
+    const requesterEmail = request.requestedByUser.email;
+    const locationText = request.location;
+    const dateText = new Date(request.dateNeeded).toLocaleString();
+    const description = request.description || 'No additional details provided';
+
+    const emailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background-color: #1e3a8a; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
+    .content { background-color: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px; }
+    .field { margin: 15px 0; }
+    .label { font-weight: bold; color: #1e3a8a; margin-bottom: 5px; }
+    .value { color: #666; }
+    .button { display: inline-block; background-color: #3b82f6; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>📦 New Sign Pickup Request</h2>
+    </div>
+    <div class="content">
+      <p>A sign pickup request has been submitted and is pending your approval.</p>
+      
+      <div class="field">
+        <div class="label">Requested By:</div>
+        <div class="value">${requesterName} (${requesterEmail})</div>
+      </div>
+      
+      <div class="field">
+        <div class="label">Pickup Location:</div>
+        <div class="value">${locationText}</div>
+      </div>
+      
+      <div class="field">
+        <div class="label">Date Needed:</div>
+        <div class="value">${dateText}</div>
+      </div>
+      
+      <div class="field">
+        <div class="label">Additional Details:</div>
+        <div class="value">${description}</div>
+      </div>
+      
+      <p style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <strong>Status:</strong> Pending your approval. Please review this request and approve or reject it in the admin panel.
+      </p>
+    </div>
+  </div>
+</body>
+</html>
+    `;
+
+    await sendEmailNotification(
+      adminEmail,
+      'New Sign Pickup Request - Pending Approval',
+      emailBody
+    );
+
+    console.log(`[Notification] Sign pickup request notification sent to ${adminEmail}`);
+  } catch (error) {
+    console.error('[Notification] Failed to send sign pickup request notification:', error);
+    throw error;
+  }
+}

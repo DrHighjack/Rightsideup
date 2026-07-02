@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 interface Policy {
   id: string;
@@ -115,8 +116,8 @@ export function PolicyTab() {
               </div>
 
               <div className="bg-white border border-gray-200 rounded-lg p-6">
-                <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
-                  {policy.content}
+                <div className="prose prose-sm max-w-none text-gray-700">
+                  <ReactMarkdown>{policy.content}</ReactMarkdown>
                 </div>
               </div>
             </div>
@@ -182,8 +183,8 @@ export function PolicyTab() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Preview</label>
                 <div className="w-full h-96 px-4 py-3 border border-gray-300 rounded-lg overflow-y-auto bg-white">
-                  <div className="prose prose-sm max-w-none whitespace-pre-wrap text-gray-700">
-                    {formData.content}
+                  <div className="prose prose-sm max-w-none text-gray-700">
+                    <ReactMarkdown>{formData.content}</ReactMarkdown>
                   </div>
                 </div>
               </div>

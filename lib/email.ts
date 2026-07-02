@@ -1,7 +1,15 @@
-import sgMail from "@sendgrid/mail";
+﻿import sgMail from "@sendgrid/mail";
 
 const sendGridApiKey = process.env.SENDGRID_API_KEY || "";
 const isSendGridConfigured = sendGridApiKey.startsWith("SG.");
+const NORTH_SHORE_SIGN_CO = "North Shore Sign Co";
+const NORTH_SHORE_BILLING_EMAIL = "billing@northshoresignco.com";
+const NORTH_SHORE_SENDER_EMAIL = "noreply@northshoresignco.com";
+const NORTH_SHORE_APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://app.northshoresignco.com";
+const STANDARD_FOOTER_HTML = `
+        <div class="footer">
+            <div class="footer-text">${NORTH_SHORE_SIGN_CO} Â· Seattle, WA Â· (206) 659-6323 Â· <a href="mailto:${NORTH_SHORE_BILLING_EMAIL}">${NORTH_SHORE_BILLING_EMAIL}</a></div>
+        </div>`;
 
 if (isSendGridConfigured) {
     sgMail.setApiKey(sendGridApiKey);
@@ -29,15 +37,14 @@ export async function sendEmail(options: EmailOptions) {
       subject,
       html,
       text,
-            from =
-                process.env.SENDGRID_FROM_EMAIL ||
-                process.env.RESEND_FROM_EMAIL ||
-                "noreply@northshoresignco.com",
+            from = process.env.SENDGRID_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || NORTH_SHORE_SENDER_EMAIL,
     } = options;
+
+        const sender = from.includes("<") ? from : `${NORTH_SHORE_SIGN_CO} <${from}>`;
 
     const msg = {
       to,
-      from,
+            from: sender,
       subject,
       html,
       text: text || html.replace(/<[^>]*>/g, ""),
@@ -56,9 +63,9 @@ export async function sendEmail(options: EmailOptions) {
 export function getPasswordResetEmail(
   firstName: string,
   resetLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -292,20 +299,20 @@ export function getPasswordResetEmail(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🔐 Reset Your Password</h1>
-            <p>Secure access to your RightSignUP account</p>
+            <h1>ðŸ” Reset Your Password</h1>
+            <p>Secure access to your North Shore Sign Co account</p>
         </div>
         
         <!-- Content -->
         <div class="content">
             <div class="greeting">
                 <p>Hi ${firstName},</p>
-                <p style="margin-top: 12px;">We received a request to reset the password for your RightSignUP account. Click the button below to create a new password.</p>
+                <p style="margin-top: 12px;">We received a request to reset the password for your North Shore Sign Co account. Click the button below to create a new password.</p>
             </div>
             
             <!-- Security Notice -->
             <div class="security-notice">
-                <div class="security-notice-title">⚠️ Didn't request this?</div>
+                <div class="security-notice-title">âš ï¸ Didn't request this?</div>
                 <div class="security-notice-text">
                     If you didn't request a password reset, you can ignore this email. Your account remains secure.
                 </div>
@@ -323,7 +330,7 @@ export function getPasswordResetEmail(
             <!-- Expiration Warning -->
             <div class="expiration">
                 <div class="expiration-text">
-                    <strong>⏱️ This link expires in 24 hours</strong><br>
+                    <strong>â±ï¸ This link expires in 24 hours</strong><br>
                     If you don't reset your password within 24 hours, you'll need to request a new reset link.
                 </div>
             </div>
@@ -348,20 +355,13 @@ export function getPasswordResetEmail(
         </div>
         
         <!-- Footer -->
-        <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
-            </div>
-        </div>
+${STANDARD_FOOTER_HTML}
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "🔐 Reset Your Password",
+    subject: "ðŸ” Reset Your Password",
     html,
   };
 }
@@ -369,9 +369,9 @@ export function getPasswordResetEmail(
 export function getAccountVerificationEmail(
   firstName: string,
   verificationLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -411,14 +411,14 @@ export function getAccountVerificationEmail(
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>✅ Verify Your Email</h1>
-            <p>Confirm your RightSignUP account before placing orders</p>
+        <div class="header"> 
+            <h1>âœ… Verify Your Email</h1>
+            <p>Confirm your North Shore Sign Co account before placing orders</p>
         </div>
         <div class="content">
             <div class="greeting">
                 <p>Hi ${firstName},</p>
-                <p style="margin-top: 12px;">Your account was created successfully. Click the button below to verify your email address and activate ordering access.</p>
+                <p style="margin-top: 12px;">Your North Shore Sign Co account was created successfully. Click the button below to verify your email address and activate ordering access.</p>
             </div>
             <div class="notice">
                 <div class="notice-title">Why this is required</div>
@@ -443,22 +443,144 @@ export function getAccountVerificationEmail(
                 </div>
             </div>
         </div>
-        <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> |
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> |
-                <a href="${termsUrl || '#'}">Terms of Service</a>
-            </div>
-        </div>
+${STANDARD_FOOTER_HTML}
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "Verify your RightSignUP email",
+    subject: "Verify your North Shore Sign Co email",
     html,
   };
+}
+
+export function getWelcomeEmail(
+  firstName: string,
+  loginLink: string,
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
+) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to North Shore Sign Co</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif; background-color: #f3f4f6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; background-color: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        .header { background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; padding: 40px 30px; text-align: center; }
+        .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+        .header p { font-size: 16px; opacity: 0.95; }
+        .content { padding: 40px 30px; }
+        .greeting { font-size: 16px; margin-bottom: 24px; line-height: 1.6; }
+        .cta-button { display: inline-block; width: 100%; padding: 14px 24px; margin: 24px 0; background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%); color: white; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; text-align: center; }
+        .instructions { background-color: #f8fafc; padding: 16px; border-radius: 6px; margin: 20px 0; }
+        .instructions h3 { font-size: 14px; font-weight: 600; color: #1e293b; margin-bottom: 8px; }
+        .instructions ol { margin-left: 20px; font-size: 13px; color: #475569; line-height: 1.8; }
+        .footer { background-color: #f1f5f9; padding: 24px 30px; text-align: center; border-top: 1px solid #e2e8f0; }
+        .footer-text { font-size: 12px; color: #64748b; }
+        @media (max-width: 600px) { .container { margin: 0; border-radius: 0; } .header { padding: 30px 20px; } .header h1 { font-size: 24px; } .content { padding: 24px 20px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>ðŸŽ‰ Welcome to North Shore Sign Co!</h1>
+            <p>Your account is ready to use</p>
+        </div>
+        <div class="content">
+            <div class="greeting">
+                <p>Hi <strong>${firstName}</strong>,</p>
+                <p style="margin-top: 12px;">Your account has been created and is ready to go. Click the button below to log in and get started.</p>
+            </div>
+            <a href="${loginLink}" class="cta-button">Log In</a>
+            <div class="instructions">
+                <h3>Getting Started</h3>
+                <ol>
+                    <li>Click the login button above.</li>
+                    <li>Use your email address to sign in.</li>
+                    <li>Complete your profile and place your first order.</li>
+                </ol>
+            </div>
+        </div>
+${STANDARD_FOOTER_HTML}
+    </div>
+</body>
+</html>`;
+
+  return {
+    subject: "Welcome to North Shore Sign Co",
+    html,
+  };
+}
+
+export function getOrderStatusUpdateEmail(
+  customerName: string,
+  orderNumber: string,
+  status: string,
+  address: string,
+  dashboardLink: string
+) {
+  if (status === "COMPLETED") {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation Complete</title>
+</head>
+<body>
+    <div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;padding:24px;">
+        <div style="background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+            <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);color:#fff;padding:32px;text-align:center;">
+                <h1 style="margin:0;font-size:28px;">âœ… Installation Complete</h1>
+                <p style="margin-top:8px;opacity:0.95;">Your North Shore Sign Co order is complete</p>
+            </div>
+            <div style="padding:32px;">
+                <p style="margin-bottom:16px;">Hi ${customerName}, your order status is now <strong>COMPLETED</strong>.</p>
+                <p style="margin-bottom:16px;"><strong>Order #:</strong> ${orderNumber}</p>
+                <p style="margin-bottom:16px;"><strong>Address:</strong> ${address}</p>
+                <a href="${dashboardLink}" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>
+            </div>
+        </div>
+${STANDARD_FOOTER_HTML}
+    </div>
+</body>
+</html>`;
+
+    return { subject: `Order ${orderNumber} completed`, html };
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Status Updated</title>
+</head>
+<body>
+    <div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;padding:24px;">
+        <div style="background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
+            <div style="background:linear-gradient(135deg,#2563eb 0%,#1e40af 100%);color:#fff;padding:32px;text-align:center;">
+                <h1 style="margin:0;font-size:28px;">Order Status Updated</h1>
+                <p style="margin-top:8px;opacity:0.95;">Your North Shore Sign Co order has a new status</p>
+            </div>
+            <div style="padding:32px;">
+                <p style="margin-bottom:16px;">Hi ${customerName}, your order status is now <strong>${status}</strong>.</p>
+                <p style="margin-bottom:16px;"><strong>Order #:</strong> ${orderNumber}</p>
+                <p style="margin-bottom:16px;"><strong>Address:</strong> ${address}</p>
+                <a href="${dashboardLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>
+            </div>
+        </div>
+${STANDARD_FOOTER_HTML}
+    </div>
+</body>
+</html>`;
+
+  return { subject: `Order ${orderNumber} status updated to ${status}`, html };
 }
 
 // Welcome email with direct login link
@@ -468,9 +590,9 @@ export function getWelcomeEmailWithMagicLink(
   tempPassword: string,
   loginLink: string,
   loginPageUrl?: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const finalLoginPageUrl = loginPageUrl || `${process.env.NEXT_PUBLIC_APP_URL || "https://app.northshoresignco.com"}/login`;
   
@@ -479,7 +601,7 @@ export function getWelcomeEmailWithMagicLink(
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Welcome to RightSignUP</title>
+    <title>Welcome to North Shore Sign Co</title>
     <style>
         * {
             margin: 0;
@@ -708,7 +830,7 @@ export function getWelcomeEmailWithMagicLink(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🎉 Welcome to RightSignUP!</h1>
+            <h1>ðŸŽ‰ Welcome to North Shore Sign Co!</h1>
             <p>Your account is ready to use</p>
         </div>
         
@@ -737,7 +859,7 @@ export function getWelcomeEmailWithMagicLink(
             <!-- Warning -->
             <div class="warning">
                 <div style="display: flex;">
-                    <span class="warning-icon">⚠️</span>
+                    <span class="warning-icon">âš ï¸</span>
                     <div class="warning-text">
                         <strong>Important:</strong> Please change your password immediately after your first login for security.
                     </div>
@@ -773,19 +895,14 @@ export function getWelcomeEmailWithMagicLink(
         
         <!-- Footer -->
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "Welcome to RightSignUP! 🎉",
+    subject: "Welcome to North Shore Sign Co! ðŸŽ‰",
     html,
   };
 }
@@ -796,9 +913,9 @@ export function getTCInvitationEmail(
   tcName: string,
   tcEmail: string,
   signupLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1013,15 +1130,15 @@ export function getTCInvitationEmail(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>📋 You're Invited!</h1>
-            <p>Your Transaction Coordinator invited you to RightSignUP</p>
+            <h1>ðŸ“‹ You're Invited!</h1>
+            <p>Your Transaction Coordinator invited you to North Shore Sign Co</p>
         </div>
         
         <!-- Content -->
         <div class="content">
             <div class="greeting">
                 <p>Hi ${agentName},</p>
-                <p style="margin-top: 12px;">${tcName} invited you to the RightSignUP platform. Please complete your registration so your sign can be placed.</p>
+                <p style="margin-top: 12px;">${tcName} invited you to the North Shore Sign Co platform. Please complete your registration so your sign can be placed.</p>
             </div>
             
             <!-- TC Info -->
@@ -1064,19 +1181,14 @@ export function getTCInvitationEmail(
         
         <!-- Footer -->
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-        subject: `${tcName} invited you to RightSignUP - complete registration`,
+        subject: `${tcName} invited you to North Shore Sign Co - complete registration`,
     html,
   };
 }
@@ -1091,9 +1203,9 @@ export function getRealtorInvitesTCEmail(
   realtorBrokerage: string | null | undefined,
   tcInviteeEmail: string,
   signupLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+    supportUrl?: string,
+    privacyUrl?: string,
+    termsUrl?: string
 ) {
   const brokerageText = realtorBrokerage
     ? ` of <strong>${realtorBrokerage}</strong>`
@@ -1140,14 +1252,14 @@ export function getRealtorInvitesTCEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤝 You're Invited!</h1>
+            <h1>ðŸ¤ You're Invited!</h1>
             <p>A realtor has invited you to be their Transaction Coordinator</p>
         </div>
         <div class="content">
             <div class="greeting">
                 <p>Hi <strong>${tcInviteeName}</strong>,</p>
                 <p style="margin-top: 10px;">
-                    <strong>${realtorName}</strong>${brokerageText} has invited you to join RightSignUP as their
+                    <strong>${realtorName}</strong>${brokerageText} has invited you to join North Shore Sign Co as their
                     Transaction Coordinator. Once you complete registration, you'll be automatically
                     linked and can start managing their sign orders.
                 </p>
@@ -1177,7 +1289,7 @@ export function getRealtorInvitesTCEmail(
                 <div class="link-text">${signupLink}</div>
             </div>
             <div class="expiry">
-                ⏱️ <strong>This invite expires in 48 hours.</strong> Ask ${realtorName} to resend if it expires.
+                â±ï¸ <strong>This invite expires in 48 hours.</strong> Ask ${realtorName} to resend if it expires.
             </div>
             <div class="steps">
                 <div class="steps-title">How it works</div>
@@ -1193,7 +1305,7 @@ export function getRealtorInvitesTCEmail(
             </div>
         </div>
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             <a href="${supportUrl || "#"}">Help Center</a>
             <a href="${privacyUrl || "#"}">Privacy Policy</a>
             <a href="${termsUrl || "#"}">Terms of Service</a>
@@ -1203,7 +1315,7 @@ export function getRealtorInvitesTCEmail(
 </html>`;
 
   return {
-    subject: `${realtorName} invited you to RightSignUP as a Transaction Coordinator`,
+    subject: `${realtorName} invited you to North Shore Sign Co as a Transaction Coordinator`,
     html,
   };
 }
@@ -1214,16 +1326,16 @@ export function getBrokerageInvitationEmail(
   brokerageName: string,
   brokerageEmail: string,
   signupLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+        _supportUrl?: string,
+        _privacyUrl?: string,
+        _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Join Your Brokerage on RightSignUP</title>
+    <title>Join Your Brokerage on North Shore Sign Co</title>
     <style>
         * {
             margin: 0;
@@ -1456,15 +1568,15 @@ export function getBrokerageInvitationEmail(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>🏢 Welcome to ${brokerageName}!</h1>
-            <p>Join your brokerage on RightSignUP</p>
+            <h1>ðŸ¢ Welcome to ${brokerageName}!</h1>
+            <p>Join your brokerage on North Shore Sign Co</p>
         </div>
         
         <!-- Content -->
         <div class="content">
             <div class="greeting">
                 <p>Hi ${agentName},</p>
-                <p style="margin-top: 12px;">You've been invited to join ${brokerageName} on RightSignUP. Create your account below to access your brokerage's tools and manage your business.</p>
+                <p style="margin-top: 12px;">You've been invited to join ${brokerageName} on North Shore Sign Co. Create your account below to access your brokerage's tools and manage your business.</p>
             </div>
             
             <!-- Brokerage Info -->
@@ -1479,7 +1591,7 @@ export function getBrokerageInvitationEmail(
             <!-- Highlight -->
             <div class="highlight">
                 <div class="highlight-text">
-                    ✨ Once you create your account, you'll be part of ${brokerageName}'s team on RightSignUP with full access to collaboration tools and resources.
+                    âœ¨ Once you create your account, you'll be part of ${brokerageName}'s team on North Shore Sign Co with full access to collaboration tools and resources.
                 </div>
             </div>
             
@@ -1487,11 +1599,11 @@ export function getBrokerageInvitationEmail(
             <div class="benefits">
                 <div class="benefits-title">What You'll Get Access To:</div>
                 <ul class="benefits-list">
-                    <li>📊 Listing management and tracking</li>
-                    <li>👥 Team collaboration tools</li>
-                    <li>📧 Automated communications</li>
-                    <li>📱 Mobile-friendly interface</li>
-                    <li>📈 Performance analytics</li>
+                    <li>ðŸ“Š Listing management and tracking</li>
+                    <li>ðŸ‘¥ Team collaboration tools</li>
+                    <li>ðŸ“§ Automated communications</li>
+                    <li>ðŸ“± Mobile-friendly interface</li>
+                    <li>ðŸ“ˆ Performance analytics</li>
                 </ul>
             </div>
             
@@ -1519,19 +1631,14 @@ export function getBrokerageInvitationEmail(
         
         <!-- Footer -->
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: `You're invited to join ${brokerageName} on RightSignUP! 🏢`,
+    subject: `You're invited to join ${brokerageName} on North Shore Sign Co! ðŸ¢`,
     html,
   };
 }
@@ -1568,7 +1675,7 @@ export function getOrderConfirmationEmail(
     intro: `Hi ${escapeHtml(realtorName)}, your order has been successfully placed and we'll get started right away.`,
     fields,
     ctaLabel: "View Order in Dashboard",
-    ctaLink: `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/dashboard/orders`,
+        ctaLink: `${NORTH_SHORE_APP_URL}/dashboard/orders`,
     note: "You can manage this order anytime in your dashboard.",
     theme: ALERT_THEMES.success,
   });
@@ -1614,9 +1721,9 @@ export function getNewInvoiceEmail(
   itemDescription: string,
   totalAmount: string,
   invoiceLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -1809,7 +1916,7 @@ export function getNewInvoiceEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>📋 New Invoice</h1>
+            <h1>ðŸ“‹ New Invoice</h1>
             <p>Your invoice is ready to view</p>
         </div>
         
@@ -1848,7 +1955,7 @@ export function getNewInvoiceEmail(
             
             <div class="highlight">
                 <div class="highlight-text">
-                    💡 Please review this invoice carefully. If you have any questions, contact us at <a href="mailto:billing@northshoresignco.com" style="color: #1e40af; font-weight: 600;">billing@northshoresignco.com</a>
+                    ðŸ’¡ Please review this invoice carefully. If you have any questions, contact us at <a href="mailto:billing@northshoresignco.com" style="color: #1e40af; font-weight: 600;">billing@northshoresignco.com</a>
                 </div>
             </div>
             
@@ -1862,19 +1969,14 @@ export function getNewInvoiceEmail(
         </div>
         
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "📋 New Invoice",
+    subject: "ðŸ“‹ New Invoice",
     html,
   };
 }
@@ -1886,9 +1988,9 @@ export function get811ClearedEmail(
   clearanceId: string,
   clearanceDate: string,
   orderLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -2096,7 +2198,7 @@ export function get811ClearedEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>✅ 811 Clearance Approved</h1>
+            <h1>âœ… 811 Clearance Approved</h1>
             <p>Your utility clearance has been granted</p>
         </div>
         
@@ -2107,7 +2209,7 @@ export function get811ClearedEmail(
             </div>
             
             <div class="success-box">
-                <div class="success-icon">✨</div>
+                <div class="success-icon">âœ¨</div>
                 <div class="success-title">Clearance Fully Approved</div>
                 <div class="success-text">You are now approved for installation to begin on your property.</div>
             </div>
@@ -2130,7 +2232,7 @@ export function get811ClearedEmail(
             </div>
             
             <div class="next-steps">
-                <div class="next-steps-title">📅 What's Next?</div>
+                <div class="next-steps-title">ðŸ“… What's Next?</div>
                 <div class="next-steps-text">
                     Your installation crew will contact you within 24 hours to schedule a specific time for installation. Make sure someone is available at the property during the scheduled time.
                 </div>
@@ -2146,19 +2248,14 @@ export function get811ClearedEmail(
         </div>
         
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "✅ 811 Clearance Approved",
+    subject: "âœ… 811 Clearance Approved",
     html,
   };
 }
@@ -2171,9 +2268,9 @@ export function getPastDueInvoiceEmail(
   daysOverdue: number,
   totalAmount: string,
   paymentLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -2386,7 +2483,7 @@ export function getPastDueInvoiceEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>⚠️ Invoice Past Due</h1>
+            <h1>âš ï¸ Invoice Past Due</h1>
             <p>Action required: Payment is overdue</p>
         </div>
         
@@ -2397,7 +2494,7 @@ export function getPastDueInvoiceEmail(
             </div>
             
             <div class="warning-box">
-                <div class="warning-title">🚨 Immediate Action Required</div>
+                <div class="warning-title">ðŸš¨ Immediate Action Required</div>
                 <div class="warning-text">
                     Your payment is overdue. Please remit payment immediately to avoid service interruption or additional fees.
                 </div>
@@ -2441,21 +2538,56 @@ export function getPastDueInvoiceEmail(
         </div>
         
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "⚠️ Invoice Past Due - Immediate Action Required",
+    subject: "âš ï¸ Invoice Past Due - Immediate Action Required",
     html,
   };
+}
+
+export function getInvoiceReminderEmail(
+    customerName: string,
+    invoiceNumber: string,
+    dueDate: string,
+    daysOverdue: number,
+    totalAmount: string,
+    paymentLink: string,
+    reminderCount: number,
+    _supportUrl?: string,
+    _privacyUrl?: string,
+    _termsUrl?: string
+) {
+    const reminderConfig = [
+        { title: "7-Day Invoice Reminder", subtitle: "Your invoice is 7 days overdue", accent: "#2563eb" },
+        { title: "14-Day Invoice Reminder", subtitle: "Your invoice is 14 days overdue", accent: "#d97706" },
+        { title: "30-Day Invoice Reminder", subtitle: "Your invoice is 30 days overdue", accent: "#dc2626" },
+    ][Math.min(Math.max(reminderCount, 0), 2)];
+
+    const html = buildAlertEmail({
+        title: reminderConfig.title,
+        subtitle: reminderConfig.subtitle,
+        intro: `Hi ${escapeHtml(customerName)}, this is a friendly reminder that invoice ${escapeHtml(invoiceNumber)} is currently ${daysOverdue} days overdue.`,
+        fields: [
+            { label: "Invoice #", value: escapeHtml(invoiceNumber) },
+            { label: "Due Date", value: escapeHtml(dueDate) },
+            { label: "Days Overdue", value: String(daysOverdue) },
+            { label: "Amount Due", value: escapeHtml(totalAmount) },
+        ],
+        ctaLabel: "Pay Invoice Now",
+        ctaLink: paymentLink,
+        note: "Please pay as soon as possible to keep your account in good standing.",
+        theme: reminderCount >= 2 ? ALERT_THEMES.danger : reminderCount === 1 ? ALERT_THEMES.warning : ALERT_THEMES.info,
+    });
+
+    return {
+        subject: reminderConfig.title,
+        html,
+    };
 }
 
 // Free Installation Credit Email
@@ -2466,9 +2598,9 @@ export function getFreeInstallCreditEmail(
   creditCode: string,
   validity: string,
   orderLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -2678,7 +2810,7 @@ export function getFreeInstallCreditEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎉 Great News!</h1>
+            <h1>ðŸŽ‰ Great News!</h1>
             <p>A free installation has been added to your account</p>
         </div>
         
@@ -2689,7 +2821,7 @@ export function getFreeInstallCreditEmail(
             </div>
             
             <div class="bonus-box">
-                <div class="bonus-icon">🎁</div>
+                <div class="bonus-icon">ðŸŽ</div>
                 <div class="bonus-title">Free Installation Credit</div>
                 <div class="bonus-value">${creditValue}</div>
             </div>
@@ -2713,7 +2845,7 @@ export function getFreeInstallCreditEmail(
             
             <div class="highlight">
                 <div class="highlight-text">
-                    💡 This credit can be applied to any sign installation service. Simply mention this credit code when placing your next order, or apply it during checkout on our website.
+                    ðŸ’¡ This credit can be applied to any sign installation service. Simply mention this credit code when placing your next order, or apply it during checkout on our website.
                 </div>
             </div>
             
@@ -2731,19 +2863,14 @@ export function getFreeInstallCreditEmail(
         </div>
         
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "🎉 Free Installation Credit Added to Your Account!",
+    subject: "ðŸŽ‰ Free Installation Credit Added to Your Account!",
     html,
   };
 }
@@ -2757,9 +2884,9 @@ export function getPostInstalledEmail(
   installationImageUrl: string,
   orderLink: string,
   reviewLink: string,
-  supportUrl?: string,
-  privacyUrl?: string,
-  termsUrl?: string
+  _supportUrl?: string,
+  _privacyUrl?: string,
+  _termsUrl?: string
 ) {
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -3008,7 +3135,7 @@ export function getPostInstalledEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>✅ Installation Complete!</h1>
+            <h1>âœ… Installation Complete!</h1>
             <p>Your sign is now installed and looking great</p>
         </div>
         
@@ -3019,7 +3146,7 @@ export function getPostInstalledEmail(
             </div>
             
             <div class="success-banner">
-                <div class="success-text">🎉 Installation Successfully Completed</div>
+                <div class="success-text">ðŸŽ‰ Installation Successfully Completed</div>
             </div>
             
             <div class="image-section">
@@ -3047,7 +3174,7 @@ export function getPostInstalledEmail(
             <a href="${orderLink}" class="cta-button">View Full Order Details</a>
             
             <div class="next-steps">
-                <div class="next-steps-title">📋 What's Next?</div>
+                <div class="next-steps-title">ðŸ“‹ What's Next?</div>
                 <ul class="next-steps-list">
                     <li><strong>Maintenance:</strong> Your sign will require periodic maintenance. We offer maintenance packages if interested.</li>
                     <li><strong>Support:</strong> If you notice any issues, contact us right away for support.</li>
@@ -3057,7 +3184,7 @@ export function getPostInstalledEmail(
             
             <div class="rating-box">
                 <div class="rating-text">How was your experience with us?</div>
-                <a href="${reviewLink}" class="rating-link">Leave a Review ⭐</a>
+                <a href="${reviewLink}" class="rating-link">Leave a Review â­</a>
             </div>
             
             <div class="support-section">
@@ -3068,19 +3195,14 @@ export function getPostInstalledEmail(
         </div>
         
         <div class="footer">
-            <div class="footer-text">© 2026 North Shore Sign Co. All rights reserved.</div>
-            <div class="footer-links">
-                <a href="${supportUrl || '#'}">Help Center</a> | 
-                <a href="${privacyUrl || '#'}">Privacy Policy</a> | 
-                <a href="${termsUrl || '#'}">Terms of Service</a>
+            <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
             </div>
-        </div>
     </div>
 </body>
 </html>`;
 
   return {
-    subject: "✅ Your Installation is Complete!",
+    subject: "âœ… Your Installation is Complete!",
     html,
   };
 }
@@ -3312,7 +3434,7 @@ function buildAlertEmail({
                 </div>
 
                 <div class="footer">
-                        © 2026 North Shore Sign Co. Automated system alert.
+                        Â© 2026 North Shore Sign Co. Automated system alert.
                 </div>
         </div>
 </body>
@@ -3602,3 +3724,6 @@ export function getLowInventoryAlertEmail(
         }),
     };
 }
+
+
+

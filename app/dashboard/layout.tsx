@@ -61,6 +61,10 @@ export default function DashboardLayout({
           </Link>
           <Link
             href="/dashboard/inventory"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/dashboard/inventory';
+            }}
             className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
           >
             Inventory
@@ -140,6 +144,10 @@ export default function DashboardLayout({
           </Link>
           <Link
             href="/dashboard/inventory"
+            onClick={(e) => {
+              e.preventDefault();
+              window.location.href = '/dashboard/inventory';
+            }}
             className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
           >
             📦 Inv

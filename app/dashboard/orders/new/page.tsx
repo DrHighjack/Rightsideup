@@ -69,6 +69,7 @@ export default function NewOrderPage() {
   const [addRealtorMessage, setAddRealtorMessage] = useState('');
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
+  const is811Relevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
 
   useEffect(() => {
     async function fetchTCRealtors() {
@@ -221,6 +222,14 @@ export default function NewOrderPage() {
     }
   };
 
+  useEffect(() => {
+    if (!is811Relevant) {
+      setUse811Service(true);
+      setSelf811Accepted(false);
+      setShowPolicyModal(false);
+    }
+  }, [is811Relevant]);
+
   const handleAsapClick = () => {
     const today = new Date().toISOString().split('T')[0];
     setFormData((prev) => ({ ...prev, scheduledDate: today }));
@@ -343,7 +352,7 @@ export default function NewOrderPage() {
         notes: formData.notes || undefined,
         selectedSignId: selectedSignId || undefined,
         addons: addons,
-        self811Accepted: !use811Service ? self811Accepted : false,
+        self811Accepted: is811Relevant && !use811Service ? self811Accepted : false,
         realtorId: isTC ? selectedRealtorId : undefined,
       };
 
@@ -359,13 +368,25 @@ export default function NewOrderPage() {
         body: JSON.stringify(requestBody),
       });
 
+      const contentType = response.headers.get('content-type') || '';
+      const isJson = contentType.includes('application/json');
+      const payload = isJson ? await response.json().catch(() => null) : null;
+
       if (!response.ok) {
-        const data = await response.json();
-        console.error('❌ API Error Response:', data);
-        throw new Error(data.error || 'Failed to create order');
+        console.error('❌ API Error Response:', payload);
+        throw new Error(
+          payload?.error ||
+            (response.status === 401 || response.status === 403
+              ? 'Your session expired. Please sign in again.'
+              : `Failed to create order (${response.status})`)
+        );
       }
 
-      const order = await response.json();
+      if (!payload) {
+        throw new Error('Order service returned an invalid response. Please try again.');
+      }
+
+      const order = payload;
       console.log('✅ Order created:', order);
       setSuccessOrderId(order.id);
       setSuccessOrderNumber(order.orderNumber);
@@ -445,8 +466,14 @@ export default function NewOrderPage() {
   const addOnsTotalCents = selectedAddOnRows.reduce((sum, row) => sum + row.lineTotalCents, 0);
   const totalEstimatedPriceCents = selectedSignPriceCents + addOnsTotalCents;
 
-  const orderTypeLabel =
-    formData.type === "INSTALL" ? "Install" : formData.type === "REMOVAL" ? "Removal" : "Change";
+  const orderTypeLabels: Record<string, string> = {
+    INSTALL: 'Install',
+    REMOVAL: 'Removal',
+    CHANGE: 'Change',
+    SIGN_PICKUP: 'Sign Pick Up',
+  };
+
+  const orderTypeLabel = orderTypeLabels[formData.type] || 'Install';
 
   const formatMoneyFromCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
@@ -568,19 +595,24 @@ export default function NewOrderPage() {
             Order Type *
           </label>
           <div className="space-y-2">
-            {["INSTALL", "REMOVAL", "CHANGE"].map((type) => (
-              <label key={type} className={`flex h-12 cursor-pointer items-center rounded-lg border px-4 transition-colors ${
-                formData.type === type ? 'border-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'
+            {[
+              { value: 'INSTALL', label: 'Install' },
+              { value: 'REMOVAL', label: 'Removal' },
+              { value: 'CHANGE', label: 'Change' },
+              { value: 'SIGN_PICKUP', label: 'Sign Pick Up' },
+            ].map((type) => (
+              <label key={type.value} className={`flex h-12 cursor-pointer items-center rounded-lg border px-4 transition-colors ${
+                formData.type === type.value ? 'border-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'
               }`}>
                 <input
                   type="radio"
                   name="type"
-                  value={type}
-                  checked={formData.type === type}
+                  value={type.value}
+                  checked={formData.type === type.value}
                   onChange={handleChange}
                   className="h-5 w-5 accent-navy-900"
                 />
-                <span className={`ml-3 text-sm font-medium ${formData.type === type ? 'text-navy-900' : 'text-slate-700'}`}>{type}</span>
+                <span className={`ml-3 text-sm font-medium ${formData.type === type.value ? 'text-navy-900' : 'text-slate-700'}`}>{type.label}</span>
               </label>
             ))}
           </div>
@@ -672,36 +704,38 @@ export default function NewOrderPage() {
           )}
         </div>
 
-        {/* 811 Service Toggle */}
-        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="font-display font-semibold tracking-tight text-slate-900">811 Concierge Service</h3>
-              <p className="text-sm text-slate-600 mt-1">
-                We will contact 811 to mark utilities before installation
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={handle811Toggle}
-              className={`ml-4 relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition-colors ${
-                use811Service ? 'bg-navy-900' : 'bg-slate-300'
-              }`}
-              aria-label="Toggle 811 concierge service"
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
-                  use811Service ? 'translate-x-9' : 'translate-x-1'
+        {/* 811 Service Toggle - only relevant for INSTALL/CHANGE */}
+        {is811Relevant && (
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-display font-semibold tracking-tight text-slate-900">811 Concierge Service</h3>
+                <p className="text-sm text-slate-600 mt-1">
+                  We will contact 811 to mark utilities before installation
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handle811Toggle}
+                className={`ml-4 relative inline-flex h-8 w-16 flex-shrink-0 items-center rounded-full transition-colors ${
+                  use811Service ? 'bg-navy-900' : 'bg-slate-300'
                 }`}
-              />
-            </button>
-          </div>
-          {!use811Service && (
-            <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
-              ⚠️ You have opted out of 811 service and accepted the Self 811 Policy
+                aria-label="Toggle 811 concierge service"
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${
+                    use811Service ? 'translate-x-9' : 'translate-x-1'
+                  }`}
+                />
+              </button>
             </div>
-          )}
-        </div>
+            {!use811Service && (
+              <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+                ⚠️ You have opted out of 811 service and accepted the Self 811 Policy
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Review Summary */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -715,6 +749,12 @@ export default function NewOrderPage() {
               <p>
                 <span className="font-medium">Order type:</span> {orderTypeLabel}
               </p>
+              {is811Relevant && (
+                <p>
+                  <span className="font-medium">811 service status:</span>{' '}
+                  {use811Service ? 'Included' : 'Self-managed by customer'}
+                </p>
+              )}
               <p>
                 <span className="font-medium">Assigned realtor:</span>{' '}
                 {isTC
@@ -747,10 +787,6 @@ export default function NewOrderPage() {
                   <p className="mt-1">No add-ons selected</p>
                 )}
               </div>
-              <p>
-                <span className="font-medium">811 service status:</span>{' '}
-                {use811Service ? 'Included' : 'Opted out'}
-              </p>
               <p className="pt-1 text-base font-semibold text-slate-900">
                 Total estimated price: {formatMoneyFromCents(totalEstimatedPriceCents)}
               </p>

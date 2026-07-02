@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activityLog";
 import { createNotification } from "@/lib/notifications";
 import { ActivityAction } from "@prisma/client";
+import { sendEmail, getOrderStatusUpdateEmail } from "@/lib/email";
 
 export async function GET(
   _request: NextRequest,
@@ -81,6 +82,11 @@ export async function PUT(
 
     const order = await prisma.order.findUnique({
       where: { id: params.id },
+      include: {
+        realtor: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+      },
     });
 
     if (!order) {
@@ -160,6 +166,24 @@ export async function PUT(
         message: `Your order status has changed from ${order.status} to ${body.status}`,
         link: `/dashboard/orders/${order.id}`,
       });
+
+      try {
+        const statusEmail = getOrderStatusUpdateEmail(
+          order.realtor.firstName || "there",
+          order.orderNumber,
+          body.status,
+          order.address,
+          `${process.env.NEXT_PUBLIC_APP_URL || "https://app.northshoresignco.com"}/dashboard/orders/${order.id}`
+        );
+
+        await sendEmail({
+          to: order.realtor.email,
+          subject: statusEmail.subject,
+          html: statusEmail.html,
+        });
+      } catch (emailError) {
+        console.error("Failed to send order status email:", emailError);
+      }
     }
 
     return NextResponse.json(updatedOrder);

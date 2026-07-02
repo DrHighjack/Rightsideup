@@ -448,48 +448,52 @@ export default function ElevenPage() {
 
       {/* 4-Stage Progress Stepper */}
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="flex items-center justify-between mb-6">
-          {stages.map((stage, idx) => {
-            const isCompleted = stageIndex > idx;
-            const isCurrent = stageIndex === idx;
+        <div className="relative mb-6">
+          {/* Connector track centered through circle middle */}
+          <div className="absolute left-0 right-0 top-6 h-1 bg-gray-300" />
+          <div
+            className="absolute left-0 top-6 h-1 bg-green-600 transition-all duration-300"
+            style={{
+              width: `${
+                stages.length > 1
+                  ? Math.max(0, Math.min(100, (Math.max(stageIndex, 0) / (stages.length - 1)) * 100))
+                  : 0
+              }%`,
+            }}
+          />
 
-            return (
-              <div key={stage} className="flex flex-col items-center flex-1">
-                {/* Circle */}
-                <div
-                  className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 transition-all ${
-                    isCurrent
-                      ? 'bg-blue-600 text-white animate-pulse scale-110'
-                      : isCompleted
-                        ? 'bg-green-600 text-white'
-                        : 'bg-gray-300 text-gray-600'
-                  }`}
-                >
-                  {isCompleted ? '✓' : isCurrent ? '●' : idx + 1}
-                </div>
+          <div className="relative grid grid-cols-4 gap-2">
+            {stages.map((stage, idx) => {
+              const isCompleted = stageIndex > idx;
+              const isCurrent = stageIndex === idx;
 
-                {/* Stage name */}
-                <div
-                  className={`text-center text-sm font-medium ${
-                    isCurrent ? 'text-blue-600 font-bold' : isCompleted ? 'text-green-600' : 'text-gray-500'
-                  }`}
-                >
-                  {stageLabels[stage]}
-                </div>
-
-                {/* Connector line */}
-                {idx < stages.length - 1 && (
+              return (
+                <div key={stage} className="flex flex-col items-center">
+                  {/* Circle */}
                   <div
-                    className={`absolute mt-14 h-1 ${isCompleted ? 'bg-green-600' : 'bg-gray-300'}`}
-                    style={{
-                      width: 'calc((100% - 48px) / 4 + 24px)',
-                      left: 'calc(50% + 24px)',
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })}
+                    className={`relative z-10 w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 transition-all ${
+                      isCurrent
+                        ? 'bg-blue-600 text-white animate-pulse scale-110'
+                        : isCompleted
+                          ? 'bg-green-600 text-white'
+                          : 'bg-gray-300 text-gray-600'
+                    }`}
+                  >
+                    {isCompleted ? '✓' : isCurrent ? '●' : idx + 1}
+                  </div>
+
+                  {/* Stage name */}
+                  <div
+                    className={`text-center text-sm font-medium ${
+                      isCurrent ? 'text-blue-600 font-bold' : isCompleted ? 'text-green-600' : 'text-gray-500'
+                    }`}
+                  >
+                    {stageLabels[stage]}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Status message */}

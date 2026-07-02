@@ -99,6 +99,8 @@ model User {
   firstName      String
   lastName       String
   phone          String?
+  isOnboarded    Boolean    @default(false)
+  onboardedAt    DateTime?
   brokerageName  String?
   brokerageId    String?
   brokerage      Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: SetNull)
@@ -146,6 +148,10 @@ model User {
   // Sales tracking
   freeInstallGivenBy String?   // ID of the salesman who gave the free install
   freeInstallDate    DateTime? // Date when free install was given
+  
+  // Sign pickup requests
+  signPickupRequests SignPickupRequest[] @relation("SignPickupRequests")
+  approvedPickupRequests SignPickupRequest[] @relation("ApprovedSignPickupRequests")
   
   @@map("users")
   @@index([brokerageId])
@@ -637,6 +643,27 @@ model Self811Policy {
   updatedAt DateTime @updatedAt
   
   @@map("self_811_policies")
+}
+
+model SignPickupRequest {
+  id              String    @id @default(cuid())
+  requestedByUserId String
+  requestedByUser User     @relation("SignPickupRequests", fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  location        String    // Where the sign should be picked up from
+  dateNeeded      DateTime  // When the sign is needed
+  description     String?   // Optional details about the sign
+  status          String    @default("PENDING") // PENDING, APPROVED, REJECTED, PICKED_UP
+  approvedByUserId String?
+  approvedByUser  User?     @relation("ApprovedSignPickupRequests", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedAt      DateTime?
+  rejectionReason String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("sign_pickup_requests")
+  @@index([requestedByUserId])
+  @@index([status])
+  @@index([dateNeeded])
 }
 
 model Instaads {

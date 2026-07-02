@@ -5,7 +5,7 @@ async function checkInvoiceAging() {
   try {
     // Dynamically import at runtime to avoid webpack bundling issues
     const { prisma } = await import('./prisma');
-    const { getPastDueInvoiceEmail, sendEmail } = await import('./email');
+    const { getInvoiceReminderEmail, sendEmail } = await import('./email');
 
     console.log('[SCHEDULER] Checking invoice aging...');
 
@@ -67,15 +67,16 @@ async function checkInvoiceAging() {
       if (shouldSendReminder) {
         console.log(`[SCHEDULER] Sending reminder for invoice ${invoice.id} - ${reminderTrigger}`);
 
-        const invoiceUrl = `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/invoices/${invoice.id}`;
+        const invoiceUrl = `${process.env.NEXTAUTH_URL || 'https://app.northshoresignco.com'}/dashboard/invoices/${invoice.id}`;
         const amountStr = invoice.amount ? `$${invoice.amount.toFixed(2)}` : 'Amount pending';
-        const reminderEmail = getPastDueInvoiceEmail(
+        const reminderEmail = getInvoiceReminderEmail(
           invoice.user.firstName || 'there',
           invoice.id,
           dueDate.toLocaleDateString(),
           daysOverdue,
           amountStr,
-          invoiceUrl
+          invoiceUrl,
+          invoice.reminderCount || 0
         );
 
         // Send email (non-blocking)

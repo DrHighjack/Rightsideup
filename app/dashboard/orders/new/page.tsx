@@ -41,6 +41,7 @@ export default function NewOrderPage() {
     notes: '',
   });
   const [selectedSignId, setSelectedSignId] = useState<string | null>(null);
+  const [signSetup, setSignSetup] = useState<"COMPANY_POSTS" | "CLIENT_INVENTORY_SIGN" | "SELF_HANG">("COMPANY_POSTS");
   const [selectedAddOns, setSelectedAddOns] = useState<{ [key: string]: number }>({});
   const [use811Service, setUse811Service] = useState(true);
   const [self811Accepted, setSelf811Accepted] = useState(false);
@@ -70,6 +71,7 @@ export default function NewOrderPage() {
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
   const is811Relevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
+  const isSignSetupRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
 
   useEffect(() => {
     async function fetchTCRealtors() {
@@ -332,6 +334,11 @@ export default function NewOrderPage() {
       return;
     }
 
+    if (isSignSetupRelevant && signSetup === 'CLIENT_INVENTORY_SIGN' && !selectedSignId) {
+      setError('Please select a sign from inventory or choose a different sign setup option.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -350,9 +357,10 @@ export default function NewOrderPage() {
         addressLng: formData.addressLng,
         scheduledDate: formData.scheduledDate || undefined,
         notes: formData.notes || undefined,
-        selectedSignId: selectedSignId || undefined,
+        selectedSignId: signSetup === 'CLIENT_INVENTORY_SIGN' ? selectedSignId || undefined : undefined,
         addons: addons,
         self811Accepted: is811Relevant && !use811Service ? self811Accepted : false,
+        signSetup: isSignSetupRelevant ? signSetup : undefined,
         realtorId: isTC ? selectedRealtorId : undefined,
       };
 
@@ -430,6 +438,7 @@ export default function NewOrderPage() {
                   notes: "",
                 });
                 setSelectedSignId(null);
+                setSignSetup("COMPANY_POSTS");
                 setSelectedAddOns({});
                 setUse811Service(true);
                 setSelf811Accepted(false);
@@ -476,6 +485,12 @@ export default function NewOrderPage() {
   const orderTypeLabel = orderTypeLabels[formData.type] || 'Install';
 
   const formatMoneyFromCents = (cents: number) => `$${(cents / 100).toFixed(2)}`;
+
+  const signSetupLabels: Record<string, string> = {
+    COMPANY_POSTS: "Use North Shore posts",
+    CLIENT_INVENTORY_SIGN: "Use my sign from inventory",
+    SELF_HANG: "I'll hang it myself",
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -688,15 +703,80 @@ export default function NewOrderPage() {
           />
         </div>
 
-        {/* Sign Selection */}
+        {/* Sign Setup */}
         <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+          {isSignSetupRelevant && (
+            <div className="mb-5 space-y-2">
+              <label className="block text-sm font-medium text-gray-700">Sign Setup *</label>
+              <div className="space-y-2">
+                <label className={`flex h-11 cursor-pointer items-center rounded-lg border px-4 transition-colors ${
+                  signSetup === 'COMPANY_POSTS' ? 'border-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="signSetup"
+                    checked={signSetup === 'COMPANY_POSTS'}
+                    onChange={() => {
+                      setSignSetup('COMPANY_POSTS');
+                      setSelectedSignId(null);
+                    }}
+                    className="h-4 w-4 accent-navy-900"
+                  />
+                  <span className="ml-3 text-sm font-medium text-slate-700">Use North Shore posts</span>
+                </label>
+                <label className={`flex h-11 cursor-pointer items-center rounded-lg border px-4 transition-colors ${
+                  signSetup === 'CLIENT_INVENTORY_SIGN' ? 'border-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="signSetup"
+                    checked={signSetup === 'CLIENT_INVENTORY_SIGN'}
+                    onChange={() => setSignSetup('CLIENT_INVENTORY_SIGN')}
+                    className="h-4 w-4 accent-navy-900"
+                  />
+                  <span className="ml-3 text-sm font-medium text-slate-700">Use my sign from inventory</span>
+                </label>
+                <label className={`flex h-11 cursor-pointer items-center rounded-lg border px-4 transition-colors ${
+                  signSetup === 'SELF_HANG' ? 'border-navy-900 bg-navy-50' : 'border-slate-200 hover:border-slate-300'
+                }`}>
+                  <input
+                    type="radio"
+                    name="signSetup"
+                    checked={signSetup === 'SELF_HANG'}
+                    onChange={() => {
+                      setSignSetup('SELF_HANG');
+                      setSelectedSignId(null);
+                    }}
+                    className="h-4 w-4 accent-navy-900"
+                  />
+                  <span className="ml-3 text-sm font-medium text-slate-700">I'll hang it myself</span>
+                </label>
+              </div>
+            </div>
+          )}
+
           {isTC && !selectedRealtorId ? (
             <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
               Select a realtor first to load sign inventory.
             </div>
           ) : (
             <>
-              <SignSelector selectedSignId={selectedSignId} onSelectSign={setSelectedSignId} />
+              {(!isSignSetupRelevant || signSetup === 'CLIENT_INVENTORY_SIGN') && (
+                <SignSelector selectedSignId={selectedSignId} onSelectSign={setSelectedSignId} />
+              )}
+
+              {isSignSetupRelevant && signSetup === 'COMPANY_POSTS' && (
+                <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800">
+                  North Shore Sign Co will provide and install our post setup for this order.
+                </div>
+              )}
+
+              {isSignSetupRelevant && signSetup === 'SELF_HANG' && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+                  You selected self-hang. Our team will not hang a post/sign for this order.
+                </div>
+              )}
+
               <div className="mt-6">
                 <AddOnSelector selectedAddOns={selectedAddOns} onAddOnChange={handleAddOnChange} />
               </div>
@@ -768,9 +848,15 @@ export default function NewOrderPage() {
                 {isAsap ? 'ASAP (Today)' : formData.scheduledDate || 'Not specified'}
               </p>
               <p>
+                <span className="font-medium">Sign setup:</span>{' '}
+                {isSignSetupRelevant ? signSetupLabels[signSetup] : 'Not applicable'}
+              </p>
+              <p>
                 <span className="font-medium">Selected sign:</span>{' '}
-                {selectedSign ? selectedSign.name : 'None selected'}
-                {selectedSign ? ` (${formatMoneyFromCents(selectedSignPriceCents)})` : ''}
+                {signSetup === 'CLIENT_INVENTORY_SIGN' && selectedSign ? selectedSign.name : 'None selected'}
+                {signSetup === 'CLIENT_INVENTORY_SIGN' && selectedSign
+                  ? ` (${formatMoneyFromCents(selectedSignPriceCents)})`
+                  : ''}
               </p>
               <div>
                 <p className="font-medium">Add-ons:</p>

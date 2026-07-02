@@ -178,6 +178,8 @@ export async function POST(request: NextRequest) {
       selectedSignId,
       addons,
       self811Accepted,
+      signSetup,
+      postColor,
       realtorId,
     } = body;
 
@@ -245,9 +247,29 @@ export async function POST(request: NextRequest) {
       selectedSignId,
       addonsCount: addons?.length || 0,
       self811Accepted,
+      signSetup,
+      postColor,
       placedByRole: sessionUser.role,
       targetRealtorId,
     });
+
+    const metadataLines: string[] = [];
+    if (typeof signSetup === 'string') {
+      metadataLines.push(`Sign setup: ${signSetup}`);
+    }
+    if (typeof postColor === 'string') {
+      metadataLines.push(`Post color: ${postColor}`);
+    }
+    if (typeof self811Accepted === 'boolean') {
+      metadataLines.push(`811 concierge opted out: ${self811Accepted ? 'Yes' : 'No'}`);
+    }
+
+    const combinedNotes = [
+      typeof notes === 'string' && notes.trim() ? notes.trim() : null,
+      metadataLines.length > 0 ? `--- Order Setup ---\n${metadataLines.join('\n')}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
 
     // Validate required fields
     if (!type || !address) {
@@ -328,7 +350,7 @@ export async function POST(request: NextRequest) {
           addressLat: addressLat ? parseFloat(addressLat) : null,
           addressLng: addressLng ? parseFloat(addressLng) : null,
           scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
-          notes: notes || null,
+          notes: combinedNotes || null,
           self811Accepted: self811Accepted || false,
           addons: {
             create: addonData,

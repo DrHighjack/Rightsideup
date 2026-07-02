@@ -2,8 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { mkdir, writeFile } from 'fs/promises';
+import { existsSync } from 'fs';
+import { join } from 'path';
 
 const getBlobToken = () => process.env.BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN;
+const shouldUseLocalUploads = () => process.env.UPLOAD_STORAGE === 'local' || process.env.NODE_ENV !== 'production';
+const getBlobAccess = (): 'public' | 'private' => (process.env.BLOB_ACCESS === 'private' ? 'private' : 'public');
 
 export async function POST(request: NextRequest) {
   try {
@@ -54,24 +59,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const blobToken = getBlobToken();
-
     const timestamp = Date.now();
     const safeName = image.name.replace(/[^a-zA-Z0-9._-]/g, '-');
     const fileName = `custom-signs/${timestamp}-${safeName}`;
 
     const buffer = await image.arrayBuffer();
-    const blobOptions: any = {
-      access: 'public',
-      contentType: image.type || 'application/octet-stream',
-    };
+    let imageUrl: string;
 
-    // Prefer explicit token when available, otherwise let Vercel resolve credentials.
-    if (blobToken) {
-      blobOptions.token = blobToken;
+    if (shouldUseLocalUploads()) {
+      const uploadsDir = join(process.cwd(), 'public', 'uploads', 'custom-signs');
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
+      }
+
+      const localName = `${timestamp}-${safeName}`;
+      await writeFile(join(uploadsDir, localName), Buffer.from(buffer));
+      imageUrl = `/uploads/custom-signs/${localName}`;
+    } else {
+      const blobToken = getBlobToken();
+      const blobOptions: any = {
+        access: getBlobAccess(),
+        contentType: image.type || 'application/octet-stream',
+      };
+
+      // Prefer explicit token when available, otherwise let Vercel resolve credentials.
+      if (blobToken) {
+        blobOptions.token = blobToken;
+      }
+
+      const blob = await put(fileName, Buffer.from(buffer), blobOptions);
+      imageUrl = blob.url;
     }
-
-    const blob = await put(fileName, Buffer.from(buffer), blobOptions);
 
     // Create custom sign request in database
     const customSign = await prisma.sign.create({
@@ -85,7 +103,7 @@ export async function POST(request: NextRequest) {
           width,
           height,
           material,
-          imageUrl: blob.url,
+          imageUrl,
           requestedBy: session.user.email,
           requestedAt: new Date().toISOString(),
           preferredPrinterIds: printerIds,

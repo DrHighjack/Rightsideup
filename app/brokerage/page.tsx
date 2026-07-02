@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
@@ -77,7 +77,7 @@ const invoiceStatusColors: Record<string, string> = {
   OVERDUE: "bg-orange-100 text-orange-700",
 };
 
-export default function BrokerageDashboardPage() {
+function BrokerageDashboardContent() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") === "billing" ? "billing" : "members";
 
@@ -626,5 +626,13 @@ export default function BrokerageDashboardPage() {
       </section>
       )}
     </div>
+  );
+}
+
+export default function BrokerageDashboardPage() {
+  return (
+    <Suspense fallback={<div className="py-10 text-center text-gray-600">Loading brokerage portal...</div>}>
+      <BrokerageDashboardContent />
+    </Suspense>
   );
 }

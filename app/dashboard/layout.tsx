@@ -87,6 +87,12 @@ export default function DashboardLayout({
           >
             Account
           </Link>
+          <Link
+            href="/dashboard/tutorials"
+            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
+          >
+            Tutorials
+          </Link>
         </nav>
       </div>
 
@@ -111,6 +117,13 @@ export default function DashboardLayout({
                   className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
                 >
                   Settings
+                </Link>
+                <Link
+                  href="/dashboard/tutorials"
+                  onClick={() => setAccountMenuOpen(false)}
+                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                >
+                  Tutorials
                 </Link>
                 <button
                   type="button"
@@ -169,6 +182,12 @@ export default function DashboardLayout({
             className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
           >
             Account
+          </Link>
+          <Link
+            href="/dashboard/tutorials"
+            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
+          >
+            Tutorials
           </Link>
         </nav>
 

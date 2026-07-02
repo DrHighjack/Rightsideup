@@ -385,23 +385,27 @@ export default function ManagementPage() {
     }
   };
 
-  const handleDeactivateBrokerage = async (brokerage: Brokerage) => {
-    if (!confirm(`Deactivate ${brokerage.name}?`)) return;
+  const handleToggleBrokerageActive = async (brokerage: Brokerage) => {
+    const nextIsActive = !brokerage.isActive;
+    const actionLabel = nextIsActive ? "reactivate" : "deactivate";
+    if (!confirm(`${nextIsActive ? "Reactivate" : "Deactivate"} ${brokerage.name}?`)) return;
 
     try {
       const res = await fetch(`/api/admin/brokerages/${brokerage.id}`, {
-        method: "DELETE",
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: nextIsActive }),
       });
 
       if (!res.ok) {
         const data = await res.json();
-        alert(data.error || "Failed to deactivate brokerage");
+        alert(data.error || `Failed to ${actionLabel} brokerage`);
         return;
       }
 
       await fetchBrokerages();
     } catch (err) {
-      alert("Failed to deactivate brokerage");
+      alert(`Failed to ${actionLabel} brokerage`);
     }
   };
 
@@ -451,6 +455,48 @@ export default function ManagementPage() {
       );
     } catch (_err) {
       setError("Failed to update client");
+    } finally {
+      setAgentUpdatingId(null);
+    }
+  };
+
+  const handleToggleAgentActive = async (agent: Agent) => {
+    const isInactive = Array.isArray(agent.tags) && agent.tags.includes("INACTIVE");
+    const nextIsActive = isInactive;
+    const actionLabel = nextIsActive ? "reactivate" : "deactivate";
+
+    if (!confirm(`${nextIsActive ? "Reactivate" : "Deactivate"} ${agent.firstName} ${agent.lastName}?`)) {
+      return;
+    }
+
+    try {
+      setAgentUpdatingId(agent.id);
+      setError("");
+
+      const res = await fetch(`/api/admin/users/${agent.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: nextIsActive }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || `Failed to ${actionLabel} realtor`);
+        return;
+      }
+
+      setAgents((prev) =>
+        prev.map((existingAgent) =>
+          existingAgent.id === agent.id
+            ? {
+                ...existingAgent,
+                tags: data.user?.tags || existingAgent.tags,
+              }
+            : existingAgent
+        )
+      );
+    } catch (_err) {
+      setError(`Failed to ${actionLabel} realtor`);
     } finally {
       setAgentUpdatingId(null);
     }
@@ -770,27 +816,32 @@ export default function ManagementPage() {
     }
   };
 
-  const handleDeactivateTc = async (tc: TC) => {
+  const handleToggleTcActive = async (tc: TC) => {
     const fullName = `${tc.firstName || ""} ${tc.lastName || ""}`.trim();
+    const isActive = tc.isActive ?? true;
+    const nextIsActive = !isActive;
+    const actionLabel = nextIsActive ? "reactivate" : "deactivate";
     const confirmed = confirm(
-      `Deactivate ${fullName}? They will no longer be able to log in.`
+      `${nextIsActive ? "Reactivate" : "Deactivate"} ${fullName}?`
     );
     if (!confirmed) return;
 
     try {
       const res = await fetch(`/api/admin/tcs/${tc.id}`, {
-        method: "DELETE",
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive: nextIsActive }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        alert(data.error || "Failed to deactivate TC");
+        alert(data.error || `Failed to ${actionLabel} TC`);
         return;
       }
 
       await fetchTCs();
     } catch (err) {
-      alert("Failed to deactivate TC");
+      alert(`Failed to ${actionLabel} TC`);
     }
   };
 
@@ -1038,11 +1089,14 @@ export default function ManagementPage() {
                             Reset Password
                           </button>
                           <button
-                            onClick={() => handleDeactivateBrokerage(brokerage)}
-                            disabled={!brokerage.isActive}
-                            className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed font-medium"
+                            onClick={() => handleToggleBrokerageActive(brokerage)}
+                            className={`font-medium ${
+                              brokerage.isActive
+                                ? "text-red-600 hover:text-red-700"
+                                : "text-green-700 hover:text-green-800"
+                            }`}
                           >
-                            Deactivate
+                            {brokerage.isActive ? "Deactivate" : "Reactivate"}
                           </button>
                         </div>
                       </td>
@@ -1338,7 +1392,7 @@ export default function ManagementPage() {
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Payment</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Closed By</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Status</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Profile</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
@@ -1398,12 +1452,27 @@ export default function ManagementPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm">
-                        <Link
-                          href={`/admin/clients/${agent.id}`}
-                          className="text-green-600 hover:text-green-700 font-medium transition-colors"
-                        >
-                          View Profile
-                        </Link>
+                        <div className="flex items-center gap-4">
+                          <Link
+                            href={`/admin/clients/${agent.id}`}
+                            className="text-green-600 hover:text-green-700 font-medium transition-colors"
+                          >
+                            View Profile
+                          </Link>
+                          <button
+                            onClick={() => handleToggleAgentActive(agent)}
+                            disabled={agentUpdatingId === agent.id}
+                            className={`font-medium disabled:text-gray-400 disabled:cursor-not-allowed ${
+                              Array.isArray(agent.tags) && agent.tags.includes("INACTIVE")
+                                ? "text-green-700 hover:text-green-800"
+                                : "text-red-600 hover:text-red-700"
+                            }`}
+                          >
+                            {Array.isArray(agent.tags) && agent.tags.includes("INACTIVE")
+                              ? "Reactivate"
+                              : "Deactivate"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -1740,11 +1809,14 @@ export default function ManagementPage() {
                                   View Profile
                                 </Link>
                                 <button
-                                  onClick={() => handleDeactivateTc(tc)}
-                                  disabled={!isActive}
-                                  className="text-red-600 hover:text-red-700 disabled:text-gray-400 disabled:cursor-not-allowed font-medium"
+                                  onClick={() => handleToggleTcActive(tc)}
+                                  className={`font-medium ${
+                                    isActive
+                                      ? "text-red-600 hover:text-red-700"
+                                      : "text-green-700 hover:text-green-800"
+                                  }`}
                                 >
-                                  Deactivate
+                                  {isActive ? "Deactivate" : "Reactivate"}
                                 </button>
                                 <button
                                   onClick={() => {

@@ -7,6 +7,7 @@ const updateTCSchema = z.object({
   firstName: z.string().trim().min(1).optional(),
   lastName: z.string().trim().min(1).optional(),
   phone: z.string().trim().optional(),
+  isActive: z.boolean().optional(),
 });
 
 export async function PUT(
@@ -22,7 +23,7 @@ export async function PUT(
 
     const existingTc = await prisma.user.findFirst({
       where: { id: params.id, role: "TC" },
-      select: { id: true },
+      select: { id: true, tags: true },
     });
 
     if (!existingTc) {
@@ -32,12 +33,21 @@ export async function PUT(
     const body = await request.json();
     const parsed = updateTCSchema.parse(body);
 
+    const tagsWithoutInactive = existingTc.tags.filter((tag) => tag !== "INACTIVE");
+    const nextTags =
+      parsed.isActive === undefined
+        ? undefined
+        : parsed.isActive
+        ? tagsWithoutInactive
+        : [...tagsWithoutInactive, "INACTIVE"];
+
     const updatedTc = await prisma.user.update({
       where: { id: params.id },
       data: {
         ...(parsed.firstName !== undefined ? { firstName: parsed.firstName } : {}),
         ...(parsed.lastName !== undefined ? { lastName: parsed.lastName } : {}),
         ...(parsed.phone !== undefined ? { phone: parsed.phone || null } : {}),
+        ...(nextTags ? { tags: { set: nextTags } } : {}),
       },
       select: {
         id: true,
@@ -45,6 +55,7 @@ export async function PUT(
         lastName: true,
         email: true,
         phone: true,
+        tags: true,
         createdAt: true,
       },
     });

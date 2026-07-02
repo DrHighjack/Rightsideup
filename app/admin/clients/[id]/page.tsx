@@ -113,6 +113,7 @@ export default function RealtorDetailPage() {
   const [generatingLoginLink, setGeneratingLoginLink] = useState(false);
   const [clientLoginLink, setClientLoginLink] = useState("");
   const [pendingActivationState, setPendingActivationState] = useState<boolean | null>(null);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -437,6 +438,39 @@ export default function RealtorDetailPage() {
     }
   };
 
+  const handlePermanentDelete = async () => {
+    if (!realtor || deletingAccount) return;
+
+    const confirmation = prompt(
+      `Type DELETE to permanently remove ${realtor.email}. This cannot be undone.`
+    );
+    if (confirmation !== "DELETE") {
+      return;
+    }
+
+    try {
+      setDeletingAccount(true);
+      setError("");
+
+      const response = await fetch(`/api/admin/users/${realtorId}`, {
+        method: "DELETE",
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to permanently delete account");
+      }
+
+      alert("Account permanently deleted");
+      router.push("/admin/clients");
+      router.refresh();
+    } catch (err) {
+      setError((err as Error).message || "Failed to permanently delete account");
+    } finally {
+      setDeletingAccount(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -628,6 +662,15 @@ export default function RealtorDetailPage() {
                           {generatingLoginLink ? "Generating..." : "Generate Login Link"}
                         </button>
                       )}
+                    {isAdmin && isInactive && (
+                      <button
+                        onClick={handlePermanentDelete}
+                        disabled={deletingAccount}
+                        className="bg-red-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-800 disabled:opacity-50 transition-colors"
+                      >
+                        {deletingAccount ? "Deleting..." : "Delete Permanently"}
+                      </button>
+                    )}
                     <Link
                       href={`/admin/orders/new?realtorId=${realtorId}`}
                       className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"

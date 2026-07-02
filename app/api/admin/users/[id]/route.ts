@@ -246,3 +246,106 @@ export async function PUT(
     );
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+
+    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (session.user.id === params.id) {
+      return NextResponse.json(
+        { error: "You cannot permanently delete your own account" },
+        { status: 400 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: params.id },
+      select: {
+        id: true,
+        role: true,
+        email: true,
+        tags: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (!["REALTOR", "TC", "FIELD_TECH"].includes(user.role)) {
+      return NextResponse.json(
+        { error: "Permanent delete is only allowed for deactivated test client accounts" },
+        { status: 400 }
+      );
+    }
+
+    if (!user.tags.includes("INACTIVE")) {
+      return NextResponse.json(
+        { error: "Account must be deactivated before permanent delete" },
+        { status: 400 }
+      );
+    }
+
+    const [orderCount, invoiceCount, tcLinkCount, assignedJobCount, ticketCount] =
+      await Promise.all([
+        prisma.order.count({ where: { realtorId: user.id } }),
+        prisma.invoice.count({ where: { userId: user.id } }),
+        prisma.tCAgentLink.count({
+          where: {
+            OR: [{ tcUserId: user.id }, { agentUserId: user.id }],
+          },
+        }),
+        prisma.jobAssignment.count({
+          where: {
+            OR: [{ assignedByUserId: user.id }, { fieldTechId: user.id }],
+          },
+        }),
+        prisma.ticket811.count({ where: { realtorId: user.id } }),
+      ]);
+
+    const hasBusinessData =
+      orderCount > 0 ||
+      invoiceCount > 0 ||
+      tcLinkCount > 0 ||
+      assignedJobCount > 0 ||
+      ticketCount > 0;
+
+    if (hasBusinessData) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot permanently delete this account because it has related business records. Keep it deactivated instead.",
+          details: {
+            orders: orderCount,
+            invoices: invoiceCount,
+            tcLinks: tcLinkCount,
+            jobAssignments: assignedJobCount,
+            tickets811: ticketCount,
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    await prisma.user.delete({ where: { id: user.id } });
+
+    return NextResponse.json({
+      success: true,
+      message: `Deleted account ${user.email}`,
+      deletedUserId: user.id,
+    });
+  } catch (error) {
+    console.error("Failed to permanently delete user:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

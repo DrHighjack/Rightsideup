@@ -72,14 +72,20 @@ export async function POST(request: NextRequest) {
     // Create custom sign request in database
     const customSign = await prisma.sign.create({
       data: {
-        name,
         type: 'Custom',
-        width: parseFloat(width),
-        height: parseFloat(height),
-        material,
-        imageUrl: fileUrl,
         assignedToUserId: session.user.id,
-        status: 'PENDING_APPROVAL',
+        status: 'RETIRED',
+        notes: JSON.stringify({
+          approvalStatus: 'PENDING_APPROVAL',
+          name,
+          width,
+          height,
+          material,
+          imageUrl: fileUrl,
+          requestedBy: session.user.email,
+          requestedAt: new Date().toISOString(),
+          preferredPrinterIds: printerIds,
+        }),
       },
     });
 
@@ -103,7 +109,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await auth();
     

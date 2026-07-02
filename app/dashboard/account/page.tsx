@@ -272,7 +272,9 @@ export default function AccountPage() {
         </p>
         <button
           type="button"
-          onClick={handleSendPasswordReset}
+          onClick={() => {
+            void handleSendPasswordReset();
+          }}
           disabled={passwordResetLoading}
           className="inline-flex h-12 items-center rounded-lg bg-navy-900 px-5 text-sm font-medium text-white transition-colors hover:bg-navy-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy-900/40 focus-visible:ring-offset-2 disabled:opacity-50"
         >

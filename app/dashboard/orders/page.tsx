@@ -48,8 +48,8 @@ export default function OrdersPage() {
           return;
         }
 
-        const sourceOrders = Array.isArray(data?.orders) ? data.orders : [];
-        let filtered = sourceOrders;
+        const sourceOrders: OrderData[] = Array.isArray(data?.orders) ? data.orders : [];
+        let filtered: OrderData[] = sourceOrders;
         if (search) {
           filtered = filtered.filter(
             (o: OrderData) =>

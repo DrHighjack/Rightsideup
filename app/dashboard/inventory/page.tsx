@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
 import { InventoryCard } from './components/InventoryCard';
 import { OrderMoreModal } from './components/OrderMoreModal';
 
@@ -28,7 +27,6 @@ interface InventoryItem {
 }
 
 export default function InventoryPage() {
-  const { data: session } = useSession();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

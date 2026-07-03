@@ -6,10 +6,15 @@ import { getInventoryPriceServiceType } from '@/lib/pricing';
 const HARDCODED_INVENTORY_IMAGE_BY_NAME: Record<string, string> = {
   'black flyer box': '/uploads/inventory/blackflyerbox.png',
   'black signpost': '/uploads/inventory/black_signpost.png',
+  'black sign post': '/uploads/inventory/black_signpost.png',
   'custom signpost': '/uploads/inventory/custom_signpost.png',
+  'custom color sign post': '/uploads/inventory/custom_signpost.png',
   'for lease rider': '/uploads/inventory/forleaserider.png',
+  'for sale rider': '/uploads/inventory/forleaserider.png',
+  'custom rider change': '/uploads/inventory/forleaserider.png',
   'white flyer box': '/uploads/inventory/whiteflyerbox.png',
-  'white signpost': '/uploads/inventory/white_signpost.HEIC',
+  // Temporary fallback: white signpost source image is HEIC and may not render in all browsers.
+  'white signpost': '/uploads/inventory/black_signpost.png',
 };
 
 function resolveInventoryImageUrl(name: string, imageUrl: string | null): string | null {

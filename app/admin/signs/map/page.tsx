@@ -77,11 +77,24 @@ const getMarkerSpriteStyle = (variant: MarkerVariant, width: number, height: num
   };
 };
 
+const getMarkerDimensionsForZoom = (zoom: number) => {
+  const minZoom = 3;
+  const maxZoom = 17;
+  const clampedZoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+  const ratio = (clampedZoom - minZoom) / (maxZoom - minZoom);
+
+  return {
+    width: Math.round(10 + ratio * 24),
+    height: Math.round(13 + ratio * 31),
+  };
+};
+
 export default function SignsMapPage() {
   const [signs, setSigns] = useState<SignLocation[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 39.8283, lng: -98.5795 }); // USA center
+  const [mapZoom, setMapZoom] = useState(4);
 
   useEffect(() => {
     fetchSigns();
@@ -197,6 +210,7 @@ export default function SignsMapPage() {
             <Map
               defaultCenter={mapCenter}
               defaultZoom={4}
+              onCameraChanged={(ev) => setMapZoom(ev.detail.zoom)}
               style={{ width: "100%", height: "100%" }}
               mapId="sign-deployment-map"
             >
@@ -212,10 +226,11 @@ export default function SignsMapPage() {
                 >
                   {(() => {
                     const variant = getMarkerVariant(sign);
+                    const markerSize = getMarkerDimensionsForZoom(mapZoom);
                     return (
                   <div
                     style={{
-                      ...getMarkerSpriteStyle(variant, 21, 28),
+                      ...getMarkerSpriteStyle(variant, markerSize.width, markerSize.height),
                       display: "flex",
                       alignItems: "flex-start",
                       justifyContent: "center",

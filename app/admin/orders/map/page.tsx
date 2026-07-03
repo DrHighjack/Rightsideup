@@ -48,6 +48,18 @@ const getMarkerSpriteStyle = (variant: MarkerVariant, width: number, height: num
   };
 };
 
+const getMarkerDimensionsForZoom = (zoom: number) => {
+  const minZoom = 4;
+  const maxZoom = 16;
+  const clampedZoom = Math.max(minZoom, Math.min(maxZoom, zoom));
+  const ratio = (clampedZoom - minZoom) / (maxZoom - minZoom);
+
+  return {
+    width: Math.round(12 + ratio * 20),
+    height: Math.round(16 + ratio * 26),
+  };
+};
+
 const getMarkerVariant = (status: string): MarkerVariant => {
   switch (status) {
     case "COMPLETED":
@@ -68,9 +80,10 @@ const getMarkerVariant = (status: string): MarkerVariant => {
   }
 };
 
-const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick: () => void; [key: string]: any }) => {
-  const { order, onClick } = props;
+const OrderMarker = (props: { order: OrderLocation; zoom: number; onClick: () => void; [key: string]: any }) => {
+  const { order, zoom, onClick } = props;
   const variant = getMarkerVariant(order.status);
+  const markerSize = getMarkerDimensionsForZoom(zoom);
   return (
   <div
     onClick={onClick}
@@ -79,7 +92,7 @@ const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick
   >
     <div
       style={{
-        ...getMarkerSpriteStyle(variant, 21, 28),
+        ...getMarkerSpriteStyle(variant, markerSize.width, markerSize.height),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -120,6 +133,7 @@ export default function OrdersMapPage() {
   const [loading, setLoading] = useState(true);
   const [selectedMarker, setSelectedMarker] = useState<string | null>(null);
   const [mapCenter, setMapCenter] = useState({ lat: 47.6, lng: -122.3 }); // Seattle area default
+  const [mapZoom, setMapZoom] = useState(8);
   const [error, setError] = useState("");
   const [mapKey, setMapKey] = useState("");
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(new Set(STATUS_OPTIONS));
@@ -428,6 +442,7 @@ export default function OrdersMapPage() {
             bootstrapURLKeys={{ key: mapKey }}
             defaultCenter={mapCenter}
             defaultZoom={8}
+            onChange={({ zoom }) => setMapZoom(zoom)}
             margin={[50, 50, 50, 50]}
             yesIWantToUseGoogleMapApiInternals
           >
@@ -438,7 +453,7 @@ export default function OrdersMapPage() {
                   lat={parseFloat(String(order.addressLat))}
                   lng={parseFloat(String(order.addressLng))}
                   order={order}
-                  isSelected={selectedMarker === order.id}
+                  zoom={mapZoom}
                   onClick={() => setSelectedMarker(selectedMarker === order.id ? null : order.id)}
                 />
               ) : null

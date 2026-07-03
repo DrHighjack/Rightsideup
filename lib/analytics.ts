@@ -688,44 +688,42 @@ export async function getStatusData(): Promise<StatusData[]> {
  * Get top 10 realtors by order count and revenue
  */
 export async function getRealtorsMetrics(): Promise<RealtorMetrics[]> {
+  // Use invoices for revenue instead of per-order pricing to avoid N+1 queries
   const realtors = await prisma.user.findMany({
     where: { role: 'REALTOR' },
-    include: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      brokerageId: true,
       orders: {
-        include: { items: true, discounts: true },
+        select: { id: true, createdAt: true },
         orderBy: { createdAt: 'desc' },
+        take: 1,
       },
+      _count: { select: { orders: true } },
     },
   });
 
-  const metrics = [];
+  // Aggregate paid invoice totals per user in one query
+  const invoiceTotals = await prisma.invoice.groupBy({
+    by: ['userId'],
+    where: { status: { in: ['PAID'] } },
+    _sum: { amount: true },
+  });
+  const invoiceTotalMap = new Map(
+    invoiceTotals.map((row) => [row.userId, row._sum.amount || 0])
+  );
 
-  for (const realtor of realtors) {
-    let totalRevenue = 0;
-    const completedOrders = realtor.orders.filter(
-      (order) => order.status === 'COMPLETED' || order.status === 'IN_GROUND'
-    );
-
-    for (const order of completedOrders) {
-      let subtotal = 0;
-      for (const item of order.items) {
-        const serviceType = order.type || 'INSTALL';
-        const priceInCents = await getEffectivePrice(serviceType, realtor.id, realtor.brokerageId || undefined);
-        subtotal += priceInCents * item.quantity;
-      }
-      const discount = order.discounts.reduce((s, od) => s + od.discountAmount, 0);
-      totalRevenue += subtotal - discount;
-    }
-
-    metrics.push({
-      id: realtor.id,
-      name: `${realtor.firstName} ${realtor.lastName}`,
-      email: realtor.email,
-      orderCount: realtor.orders.length,
-      totalRevenue,
-      lastOrderDate: realtor.orders[0]?.createdAt.toISOString().split('T')[0] || null,
-    });
-  }
+  const metrics = realtors.map((realtor) => ({
+    id: realtor.id,
+    name: `${realtor.firstName} ${realtor.lastName}`,
+    email: realtor.email,
+    orderCount: realtor._count.orders,
+    totalRevenue: invoiceTotalMap.get(realtor.id) || 0,
+    lastOrderDate: realtor.orders[0]?.createdAt.toISOString().split('T')[0] || null,
+  }));
 
   return metrics
     .sort((a, b) => b.orderCount - a.orderCount)

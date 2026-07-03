@@ -1,10 +1,19 @@
 import { Redis } from "@upstash/redis";
 
-// Redis caching layer for high-traffic queries
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-});
+// Redis caching layer — lazily initialized so missing env vars don't crash the module
+let _redis: Redis | null = null;
+function getRedis(): Redis | null {
+  if (_redis) return _redis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  try {
+    _redis = new Redis({ url, token });
+    return _redis;
+  } catch {
+    return null;
+  }
+}
 
 interface CacheOptions {
   ttl?: number; // seconds, default 300 (5 minutes)
@@ -14,6 +23,8 @@ interface CacheOptions {
  * Get value from Redis cache
  */
 export async function getCached<T>(key: string): Promise<T | null> {
+  const redis = getRedis();
+  if (!redis) return null;
   try {
     const value = await redis.get(key);
     return value as T | null;
@@ -31,6 +42,8 @@ export async function setCached<T>(
   value: T,
   options: CacheOptions = {}
 ): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
   try {
     const { ttl = 300 } = options;
     await redis.setex(key, ttl, JSON.stringify(value));
@@ -43,6 +56,8 @@ export async function setCached<T>(
  * Delete cache key
  */
 export async function clearCache(key: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
   try {
     await redis.del(key);
   } catch (error) {
@@ -54,6 +69,8 @@ export async function clearCache(key: string): Promise<void> {
  * Clear multiple cache keys by pattern
  */
 export async function clearCachePattern(pattern: string): Promise<void> {
+  const redis = getRedis();
+  if (!redis) return;
   try {
     const keys = await redis.keys(pattern);
     if (keys.length > 0) {

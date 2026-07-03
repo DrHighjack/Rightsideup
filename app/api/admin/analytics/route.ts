@@ -23,8 +23,8 @@ import {
 import { NextResponse } from 'next/server';
 import { createAuthenticatedCachedResponse } from '@/lib/cache-response';
 
-// Cache analytics for 60 seconds (dashboard refreshes every minute)
-export const revalidate = 60;
+// Force dynamic: route uses auth() which reads headers
+export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
   try {

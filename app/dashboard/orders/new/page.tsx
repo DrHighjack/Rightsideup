@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import { SignSelector } from './components/SignSelector';
 import { AddOnSelector } from './components/AddOnSelector';
 import { Self811PolicyModal } from './components/Self811PolicyModal';
@@ -29,6 +30,7 @@ interface TCPendingInvite {
 
 export default function NewOrderPage() {
   const { data: session } = useSession();
+  const searchParams = useSearchParams();
   const userRole = (session?.user as any)?.role as string | undefined;
   const isTC = userRole === 'TC';
 
@@ -96,8 +98,16 @@ export default function NewOrderPage() {
         const realtors = Array.isArray(data.realtors) ? data.realtors : [];
         setTcRealtors(realtors);
         setPendingInvites(Array.isArray(data.pendingInvites) ? data.pendingInvites : []);
-        if (!selectedRealtorId && realtors.length > 0) {
-          setSelectedRealtorId(realtors[0].id);
+        if (realtors.length > 0) {
+          const requestedRealtorId = searchParams.get('realtorId');
+          const requestedExists =
+            requestedRealtorId && realtors.some((realtor) => realtor.id === requestedRealtorId);
+
+          if (requestedExists) {
+            setSelectedRealtorId(requestedRealtorId as string);
+          } else if (!selectedRealtorId) {
+            setSelectedRealtorId(realtors[0].id);
+          }
         }
       } catch {
         setTcRealtors([]);
@@ -107,7 +117,15 @@ export default function NewOrderPage() {
     }
 
     fetchTCRealtors();
-  }, [isTC]);
+  }, [isTC, searchParams]);
+
+  useEffect(() => {
+    const requestedType = (searchParams.get('type') || '').toUpperCase();
+    const validTypes = new Set(['INSTALL', 'REMOVAL', 'CHANGE', 'SIGN_PICKUP']);
+    if (validTypes.has(requestedType)) {
+      setFormData((prev) => ({ ...prev, type: requestedType }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     async function fetchInventoryItems() {

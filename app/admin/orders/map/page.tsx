@@ -69,7 +69,7 @@ const getMarkerVariant = (status: string): MarkerVariant => {
 };
 
 const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick: () => void; [key: string]: any }) => {
-  const { order, isSelected, onClick } = props;
+  const { order, onClick } = props;
   const variant = getMarkerVariant(order.status);
   return (
   <div

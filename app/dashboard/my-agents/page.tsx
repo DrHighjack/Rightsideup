@@ -228,6 +228,12 @@ export default function MyAgentsPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <Link
+                          href={`/dashboard/my-agents/${agent.id}`}
+                          className="inline-flex h-9 items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100"
+                        >
+                          View Profile
+                        </Link>
+                        <Link
                           href={`/dashboard/orders/new?realtorId=${agent.id}&type=INSTALL`}
                           className="inline-flex h-9 items-center rounded-lg border border-navy-300 bg-navy-50 px-3 text-xs font-semibold text-navy-800 hover:bg-navy-100"
                         >

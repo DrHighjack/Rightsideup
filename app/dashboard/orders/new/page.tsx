@@ -95,7 +95,7 @@ export default function NewOrderPage() {
         }
 
         const data = await response.json();
-        const realtors = Array.isArray(data.realtors) ? data.realtors : [];
+        const realtors: TCRealtor[] = Array.isArray(data.realtors) ? data.realtors : [];
         setTcRealtors(realtors);
         setPendingInvites(Array.isArray(data.pendingInvites) ? data.pendingInvites : []);
         if (realtors.length > 0) {

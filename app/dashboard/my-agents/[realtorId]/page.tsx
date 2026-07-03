@@ -59,7 +59,17 @@ const markerColorByStatus: Record<string, string> = {
   CANCELLED: "#ef4444",
 };
 
-function MapMarker({ color, active, onClick }: { color: string; active: boolean; onClick: () => void }) {
+function MapMarker({
+  color,
+  active,
+  onClick,
+}: {
+  color: string;
+  active: boolean;
+  onClick: () => void;
+  lat?: number;
+  lng?: number;
+}) {
   return (
     <button type="button" onClick={onClick} className="cursor-pointer" aria-label="Map post marker">
       <span

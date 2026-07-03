@@ -59,10 +59,22 @@ const getMarkerVariant = (sign: SignLocation): MarkerVariant => {
   return "green";
 };
 
-const markerSpritePosition: Record<MarkerVariant, string> = {
-  green: "-1152px 0px",
-  yellow: "-384px 0px",
-  red: "-768px 0px",
+const markerSpriteCell: Record<MarkerVariant, { column: number; row: number }> = {
+  green: { column: 3, row: 0 },
+  yellow: { column: 1, row: 0 },
+  red: { column: 2, row: 0 },
+};
+
+const getMarkerSpriteStyle = (variant: MarkerVariant, width: number, height: number) => {
+  const { column, row } = markerSpriteCell[variant];
+  return {
+    width,
+    height,
+    backgroundImage: 'url("/sign-markers-sprite.png")',
+    backgroundSize: `${width * 4}px ${height * 2}px`,
+    backgroundPosition: `-${column * width}px -${row * height}px`,
+    backgroundRepeat: "no-repeat",
+  };
 };
 
 export default function SignsMapPage() {
@@ -143,10 +155,7 @@ export default function SignsMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.green,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("green", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Deployed (No Issues)</span>
@@ -155,10 +164,7 @@ export default function SignsMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.yellow,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("yellow", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Damaged</span>
@@ -167,10 +173,7 @@ export default function SignsMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.red,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("red", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Lost / Reported Issue</span>
@@ -212,12 +215,7 @@ export default function SignsMapPage() {
                     return (
                   <div
                     style={{
-                      width: 56,
-                      height: 56,
-                      backgroundImage: 'url("/sign-markers-sprite.png")',
-                      backgroundSize: "1536px 1024px",
-                      backgroundPosition: markerSpritePosition[variant],
-                      backgroundRepeat: "no-repeat",
+                      ...getMarkerSpriteStyle(variant, 42, 56),
                       display: "flex",
                       alignItems: "flex-start",
                       justifyContent: "center",

@@ -26,14 +26,26 @@ interface OrderLocation {
 
 type MarkerVariant = "white" | "yellow" | "red" | "green" | "blue" | "black" | "orange";
 
-const markerSpritePosition: Record<MarkerVariant, string> = {
-  white: "0px 0px",
-  yellow: "-384px 0px",
-  red: "-768px 0px",
-  green: "-1152px 0px",
-  blue: "0px -512px",
-  black: "-384px -512px",
-  orange: "-768px -512px",
+const markerSpriteCell: Record<MarkerVariant, { column: number; row: number }> = {
+  white: { column: 0, row: 0 },
+  yellow: { column: 1, row: 0 },
+  red: { column: 2, row: 0 },
+  green: { column: 3, row: 0 },
+  blue: { column: 0, row: 1 },
+  black: { column: 1, row: 1 },
+  orange: { column: 2, row: 1 },
+};
+
+const getMarkerSpriteStyle = (variant: MarkerVariant, width: number, height: number) => {
+  const { column, row } = markerSpriteCell[variant];
+  return {
+    width,
+    height,
+    backgroundImage: 'url("/sign-markers-sprite.png")',
+    backgroundSize: `${width * 4}px ${height * 2}px`,
+    backgroundPosition: `-${column * width}px -${row * height}px`,
+    backgroundRepeat: "no-repeat",
+  };
 };
 
 const getMarkerVariant = (status: string): MarkerVariant => {
@@ -67,12 +79,7 @@ const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick
   >
     <div
       style={{
-        width: 56,
-        height: 56,
-        backgroundImage: 'url("/sign-markers-sprite.png")',
-        backgroundSize: "1536px 1024px",
-        backgroundPosition: markerSpritePosition[variant],
-        backgroundRepeat: "no-repeat",
+        ...getMarkerSpriteStyle(variant, 42, 56),
         borderRadius: "8px",
         display: "flex",
         alignItems: "center",
@@ -322,10 +329,7 @@ export default function OrdersMapPage() {
                     <div
                       className="h-5 w-5 rounded"
                       style={{
-                        backgroundImage: 'url("/sign-markers-sprite.png")',
-                        backgroundSize: "1536px 1024px",
-                        backgroundPosition: markerSpritePosition[getMarkerVariant(status)],
-                        backgroundRepeat: "no-repeat",
+                        ...getMarkerSpriteStyle(getMarkerVariant(status), 20, 26),
                       }}
                     ></div>
                     <span className="text-sm text-gray-700">{status.replace(/_/g, " ")}</span>
@@ -344,10 +348,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.green,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("green", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Completed</span>
@@ -356,10 +357,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.blue,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("blue", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Scheduled</span>
@@ -368,10 +366,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.orange,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("orange", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">In Progress</span>
@@ -380,10 +375,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.black,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("black", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">On Hold</span>
@@ -392,10 +384,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.white,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("white", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">In Ground</span>
@@ -404,10 +393,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.yellow,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("yellow", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Pending</span>
@@ -416,10 +402,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  backgroundImage: 'url("/sign-markers-sprite.png")',
-                  backgroundSize: "1536px 1024px",
-                  backgroundPosition: markerSpritePosition.red,
-                  backgroundRepeat: "no-repeat",
+                  ...getMarkerSpriteStyle("red", 24, 32),
                 }}
               ></div>
               <span className="text-gray-700">Cancelled</span>

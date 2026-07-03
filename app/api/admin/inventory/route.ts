@@ -3,6 +3,23 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { getInventoryPriceServiceType, updateMasterPrice } from '@/lib/pricing';
 
+const HARDCODED_INVENTORY_IMAGE_BY_NAME: Record<string, string> = {
+  'black flyer box': '/uploads/inventory/blackflyerbox.png',
+  'black signpost': '/uploads/inventory/black_signpost.png',
+  'custom signpost': '/uploads/inventory/custom_signpost.png',
+  'for lease rider': '/uploads/inventory/forleaserider.png',
+  'white flyer box': '/uploads/inventory/whiteflyerbox.png',
+  'white signpost': '/uploads/inventory/white_signpost.HEIC',
+};
+
+function resolveInventoryImageUrl(name: string, imageUrl: string | null): string | null {
+  const key = name.trim().toLowerCase();
+  if (HARDCODED_INVENTORY_IMAGE_BY_NAME[key]) {
+    return HARDCODED_INVENTORY_IMAGE_BY_NAME[key];
+  }
+  return imageUrl;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
@@ -25,7 +42,12 @@ export async function GET(request: NextRequest) {
       orderBy: { name: 'asc' },
     });
 
-    return NextResponse.json({ items });
+    const resolvedItems = items.map((item) => ({
+      ...item,
+      imageUrl: resolveInventoryImageUrl(item.name, item.imageUrl),
+    }));
+
+    return NextResponse.json({ items: resolvedItems });
   } catch (error) {
     console.error('Inventory GET error:', error);
     return NextResponse.json(

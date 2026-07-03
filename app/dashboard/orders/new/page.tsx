@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { Suspense, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
@@ -29,6 +29,14 @@ interface TCPendingInvite {
 }
 
 export default function NewOrderPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-slate-600">Loading order form...</div>}>
+      <NewOrderPageContent />
+    </Suspense>
+  );
+}
+
+function NewOrderPageContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const userRole = (session?.user as any)?.role as string | undefined;

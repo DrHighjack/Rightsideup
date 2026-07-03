@@ -79,12 +79,10 @@ const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick
   >
     <div
       style={{
-        ...getMarkerSpriteStyle(variant, 42, 56),
-        borderRadius: "8px",
+        ...getMarkerSpriteStyle(variant, 21, 28),
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: isSelected ? "0 0 0 2px rgba(99,102,241,0.75)" : "0 2px 4px rgba(0,0,0,0.3)",
       }}
     />
   </div>
@@ -329,7 +327,7 @@ export default function OrdersMapPage() {
                     <div
                       className="h-5 w-5 rounded"
                       style={{
-                        ...getMarkerSpriteStyle(getMarkerVariant(status), 20, 26),
+                        ...getMarkerSpriteStyle(getMarkerVariant(status), 10, 13),
                       }}
                     ></div>
                     <span className="text-sm text-gray-700">{status.replace(/_/g, " ")}</span>
@@ -348,7 +346,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("green", 24, 32),
+                  ...getMarkerSpriteStyle("green", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Completed</span>
@@ -357,7 +355,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("blue", 24, 32),
+                  ...getMarkerSpriteStyle("blue", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Scheduled</span>
@@ -366,7 +364,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("orange", 24, 32),
+                  ...getMarkerSpriteStyle("orange", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">In Progress</span>
@@ -375,7 +373,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("black", 24, 32),
+                  ...getMarkerSpriteStyle("black", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">On Hold</span>
@@ -384,7 +382,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("white", 24, 32),
+                  ...getMarkerSpriteStyle("white", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">In Ground</span>
@@ -393,7 +391,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("yellow", 24, 32),
+                  ...getMarkerSpriteStyle("yellow", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Pending</span>
@@ -402,7 +400,7 @@ export default function OrdersMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("red", 24, 32),
+                  ...getMarkerSpriteStyle("red", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Cancelled</span>

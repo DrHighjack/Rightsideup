@@ -155,7 +155,7 @@ export default function SignsMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("green", 24, 32),
+                  ...getMarkerSpriteStyle("green", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Deployed (No Issues)</span>
@@ -164,7 +164,7 @@ export default function SignsMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("yellow", 24, 32),
+                  ...getMarkerSpriteStyle("yellow", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Damaged</span>
@@ -173,7 +173,7 @@ export default function SignsMapPage() {
               <div
                 className="h-7 w-7 rounded"
                 style={{
-                  ...getMarkerSpriteStyle("red", 24, 32),
+                  ...getMarkerSpriteStyle("red", 12, 16),
                 }}
               ></div>
               <span className="text-gray-700">Lost / Reported Issue</span>
@@ -215,25 +215,23 @@ export default function SignsMapPage() {
                     return (
                   <div
                     style={{
-                      ...getMarkerSpriteStyle(variant, 42, 56),
+                      ...getMarkerSpriteStyle(variant, 21, 28),
                       display: "flex",
                       alignItems: "flex-start",
                       justifyContent: "center",
                       cursor: "pointer",
-                      borderRadius: "8px",
-                      boxShadow: selectedMarker === sign.id ? "0 0 0 2px rgba(99,102,241,0.7)" : "0 2px 4px rgba(0,0,0,0.2)",
                     }}
                   >
                     <span
                       style={{
                         marginTop: 1,
-                        padding: "0 4px",
+                        padding: "0 2px",
                         borderRadius: 999,
                         background: "rgba(15, 23, 42, 0.72)",
                         color: "#fff",
-                        fontSize: 10,
+                        fontSize: 8,
                         fontWeight: 700,
-                        lineHeight: "14px",
+                        lineHeight: "11px",
                       }}
                     >
                       {sign.signNumber || "?"}

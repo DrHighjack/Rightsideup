@@ -21,6 +21,19 @@ interface ItemCardProps {
 
 export function ItemCard({ item, onEdit, onDelete }: ItemCardProps) {
   const isLowStock = item.availableQuantity < item.lowStockThreshold;
+  const normalizedName = item.name.trim().toLowerCase();
+  const isFlyerBox = item.category === 'FLYER_BOX';
+  const isCustomBluePost = normalizedName.includes('custom color sign post');
+
+  const getImageClasses = () => {
+    if (isFlyerBox) {
+      return 'w-full h-full object-contain p-5';
+    }
+    if (isCustomBluePost) {
+      return 'w-full h-full object-contain p-6';
+    }
+    return 'w-full h-full object-cover';
+  };
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
@@ -43,7 +56,7 @@ export function ItemCard({ item, onEdit, onDelete }: ItemCardProps) {
           <img
             src={item.imageUrl}
             alt={item.name}
-            className="w-full h-full object-cover"
+            className={getImageClasses()}
           />
         ) : (
           <span className="text-gray-400">{getCategoryIcon(item.category)}</span>

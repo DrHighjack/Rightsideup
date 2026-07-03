@@ -8,7 +8,6 @@ import { join } from 'path';
 
 const getBlobToken = () => process.env.BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN;
 const shouldUseLocalUploads = () => process.env.UPLOAD_STORAGE === 'local' || process.env.NODE_ENV !== 'production';
-const getBlobAccess = (): 'public' | 'private' => (process.env.BLOB_ACCESS === 'private' ? 'private' : 'public');
 
 export async function POST(request: NextRequest) {
   try {
@@ -78,7 +77,7 @@ export async function POST(request: NextRequest) {
     } else {
       const blobToken = getBlobToken();
       const blobOptions: any = {
-        access: getBlobAccess(),
+        access: 'private',
         contentType: image.type || 'application/octet-stream',
       };
 

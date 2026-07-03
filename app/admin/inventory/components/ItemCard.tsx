@@ -16,10 +16,11 @@ interface InventoryItem {
 interface ItemCardProps {
   item: InventoryItem;
   onEdit: () => void;
+  onToggleVisibility: () => void;
   onDelete: () => void;
 }
 
-export function ItemCard({ item, onEdit, onDelete }: ItemCardProps) {
+export function ItemCard({ item, onEdit, onToggleVisibility, onDelete }: ItemCardProps) {
   const isLowStock = item.availableQuantity < item.lowStockThreshold;
   const normalizedName = item.name.trim().toLowerCase();
   const isFlyerBox = item.category === 'FLYER_BOX';
@@ -73,6 +74,12 @@ export function ItemCard({ item, onEdit, onDelete }: ItemCardProps) {
           </span>
         </div>
 
+        {!item.isActive && (
+          <div className="mb-2 inline-block rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-800">
+            Hidden from Realtors
+          </div>
+        )}
+
         {/* Description */}
         {item.description && (
           <p className="text-xs text-gray-600 mb-3 line-clamp-2">{item.description}</p>
@@ -119,6 +126,16 @@ export function ItemCard({ item, onEdit, onDelete }: ItemCardProps) {
             className="flex-1 px-3 py-2 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 transition-colors"
           >
             Edit
+          </button>
+          <button
+            onClick={onToggleVisibility}
+            className={`flex-1 px-3 py-2 text-xs font-medium rounded transition-colors ${
+              item.isActive
+                ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                : 'bg-green-100 text-green-800 hover:bg-green-200'
+            }`}
+          >
+            {item.isActive ? 'Hide Realtors' : 'Show Realtors'}
           </button>
           <button
             onClick={onDelete}

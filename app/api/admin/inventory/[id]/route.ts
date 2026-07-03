@@ -22,9 +22,10 @@ export async function PUT(
       totalQuantity,
       availableQuantity,
       lowStockThreshold,
+      isActive,
       isOrderable,
       pricePerUnit,
-      printerIds = [],
+      printerIds,
     } = body;
 
     // Update the item
@@ -38,6 +39,7 @@ export async function PUT(
         ...(typeof totalQuantity === 'number' && { totalQuantity }),
         ...(typeof availableQuantity === 'number' && { availableQuantity }),
         ...(lowStockThreshold && { lowStockThreshold }),
+        ...(typeof isActive === 'boolean' && { isActive }),
         ...(typeof isOrderable === 'boolean' && { isOrderable }),
         ...(pricePerUnit !== undefined && { pricePerUnit }),
       },
@@ -54,8 +56,8 @@ export async function PUT(
       await updateMasterPrice(getInventoryPriceServiceType(params.id), pricePerUnit);
     }
 
-    // Update printers if provided
-    if (printerIds.length >= 0) {
+    // Update printers only when explicitly provided
+    if (Array.isArray(printerIds)) {
       // Delete existing printer links
       await prisma.inventoryItemPrinter.deleteMany({
         where: { inventoryItemId: params.id },

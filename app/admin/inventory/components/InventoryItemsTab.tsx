@@ -65,6 +65,30 @@ export function InventoryItemsTab() {
     setEditingItem(null);
   };
 
+  const handleToggleVisibility = async (item: InventoryItem) => {
+    try {
+      const res = await fetch(`/api/admin/inventory/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isActive: !item.isActive }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Failed to update visibility');
+      }
+
+      setItems((prev) =>
+        prev.map((current) =>
+          current.id === item.id ? { ...current, isActive: !item.isActive } : current
+        )
+      );
+    } catch (error) {
+      console.error('Toggle visibility failed:', error);
+      alert('Failed to update visibility');
+    }
+  };
+
   return (
     <div>
       {/* Category Filter */}
@@ -110,6 +134,7 @@ export function InventoryItemsTab() {
                 setEditingItem(item);
                 setShowModal(true);
               }}
+              onToggleVisibility={() => handleToggleVisibility(item)}
               onDelete={() => handleDelete(item.id)}
             />
           ))}

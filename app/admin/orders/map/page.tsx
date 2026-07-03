@@ -56,26 +56,6 @@ const getMarkerVariant = (status: string): MarkerVariant => {
   }
 };
 
-const getMarkerColor = (order: OrderLocation): string => {
-  switch (order.status) {
-    case "COMPLETED":
-      return "#10B981"; // Green
-    case "SCHEDULED":
-      return "#3B82F6"; // Blue
-    case "IN_PROGRESS":
-      return "#A855F7"; // Purple
-    case "IN_GROUND":
-      return "#06B6D4"; // Cyan
-    case "ON_HOLD":
-      return "#F97316"; // Orange
-    case "CANCELLED":
-      return "#EF4444"; // Red
-    case "PENDING":
-    default:
-      return "#FBBF24"; // Yellow
-  }
-};
-
 const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick: () => void; [key: string]: any }) => {
   const { order, isSelected, onClick } = props;
   const variant = getMarkerVariant(order.status);

@@ -24,6 +24,38 @@ interface OrderLocation {
   photoName?: string | null;
 }
 
+type MarkerVariant = "white" | "yellow" | "red" | "green" | "blue" | "black" | "orange";
+
+const markerSpritePosition: Record<MarkerVariant, string> = {
+  white: "0px 0px",
+  yellow: "-384px 0px",
+  red: "-768px 0px",
+  green: "-1152px 0px",
+  blue: "0px -512px",
+  black: "-384px -512px",
+  orange: "-768px -512px",
+};
+
+const getMarkerVariant = (status: string): MarkerVariant => {
+  switch (status) {
+    case "COMPLETED":
+      return "green";
+    case "SCHEDULED":
+      return "blue";
+    case "IN_PROGRESS":
+      return "orange";
+    case "IN_GROUND":
+      return "white";
+    case "ON_HOLD":
+      return "black";
+    case "CANCELLED":
+      return "red";
+    case "PENDING":
+    default:
+      return "yellow";
+  }
+};
+
 const getMarkerColor = (order: OrderLocation): string => {
   switch (order.status) {
     case "COMPLETED":
@@ -46,6 +78,7 @@ const getMarkerColor = (order: OrderLocation): string => {
 
 const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick: () => void; [key: string]: any }) => {
   const { order, isSelected, onClick } = props;
+  const variant = getMarkerVariant(order.status);
   return (
   <div
     onClick={onClick}
@@ -54,15 +87,17 @@ const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick
   >
     <div
       style={{
-        width: 28,
-        height: 28,
-        backgroundColor: getMarkerColor(order),
-        border: isSelected ? "3px solid white" : "2px solid rgba(0,0,0,0.3)",
-        borderRadius: "50%",
+        width: 56,
+        height: 56,
+        backgroundImage: 'url("/sign-markers-sprite.png")',
+        backgroundSize: "1536px 1024px",
+        backgroundPosition: markerSpritePosition[variant],
+        backgroundRepeat: "no-repeat",
+        borderRadius: "8px",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        boxShadow: isSelected ? "0 0 0 3px rgba(0,0,0,0.4)" : "0 2px 4px rgba(0,0,0,0.3)",
+        boxShadow: isSelected ? "0 0 0 2px rgba(99,102,241,0.75)" : "0 2px 4px rgba(0,0,0,0.3)",
       }}
     />
   </div>
@@ -305,22 +340,12 @@ export default function OrdersMapPage() {
                   />
                   <div className="flex items-center gap-2">
                     <div
-                      className="w-3 h-3 rounded-full"
+                      className="h-5 w-5 rounded"
                       style={{
-                        backgroundColor:
-                          status === "COMPLETED"
-                            ? "#10B981"
-                            : status === "SCHEDULED"
-                            ? "#3B82F6"
-                            : status === "IN_PROGRESS"
-                            ? "#A855F7"
-                            : status === "ON_HOLD"
-                            ? "#F97316"
-                            : status === "CANCELLED"
-                            ? "#EF4444"
-                            : status === "IN_GROUND"
-                            ? "#06B6D4"
-                            : "#FBBF24",
+                        backgroundImage: 'url("/sign-markers-sprite.png")',
+                        backgroundSize: "1536px 1024px",
+                        backgroundPosition: markerSpritePosition[getMarkerVariant(status)],
+                        backgroundRepeat: "no-repeat",
                       }}
                     ></div>
                     <span className="text-sm text-gray-700">{status.replace(/_/g, " ")}</span>
@@ -337,50 +362,85 @@ export default function OrdersMapPage() {
           <div className="flex flex-wrap gap-6 mt-4 text-sm">
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#10B981" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.green,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Completed</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#3B82F6" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.blue,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Scheduled</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#A855F7" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.orange,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">In Progress</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#F97316" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.black,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">On Hold</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#06B6D4" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.white,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">In Ground</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#FBBF24" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.yellow,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Pending</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#EF4444" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.red,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Cancelled</span>
             </div>

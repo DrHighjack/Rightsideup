@@ -9,6 +9,7 @@ interface InventoryItem {
   totalQuantity: number;
   availableQuantity: number;
   lowStockThreshold: number;
+  isActive: boolean;
   isOrderable: boolean;
   pricePerUnit?: number;
 }

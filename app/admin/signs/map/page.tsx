@@ -51,6 +51,20 @@ const getStatusLabel = (sign: SignLocation): string => {
   return "DEPLOYED";
 };
 
+type MarkerVariant = "green" | "yellow" | "red";
+
+const getMarkerVariant = (sign: SignLocation): MarkerVariant => {
+  if (sign.status === "DAMAGED") return "yellow";
+  if (sign.status === "LOST" || sign.reports.length > 0) return "red";
+  return "green";
+};
+
+const markerSpritePosition: Record<MarkerVariant, string> = {
+  green: "-1152px 0px",
+  yellow: "-384px 0px",
+  red: "-768px 0px",
+};
+
 export default function SignsMapPage() {
   const [signs, setSigns] = useState<SignLocation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,22 +141,37 @@ export default function SignsMapPage() {
           <div className="flex flex-wrap gap-6 mt-4 text-sm">
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#10B981" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.green,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Deployed (No Issues)</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#FBBF24" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.yellow,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Damaged</span>
             </div>
             <div className="flex items-center gap-2">
               <div
-                className="w-4 h-4 rounded-full"
-                style={{ backgroundColor: "#EF4444" }}
+                className="h-7 w-7 rounded"
+                style={{
+                  backgroundImage: 'url("/sign-markers-sprite.png")',
+                  backgroundSize: "1536px 1024px",
+                  backgroundPosition: markerSpritePosition.red,
+                  backgroundRepeat: "no-repeat",
+                }}
               ></div>
               <span className="text-gray-700">Lost / Reported Issue</span>
             </div>
@@ -178,25 +207,42 @@ export default function SignsMapPage() {
                   title={sign.signNumber || "Unknown"}
                   onClick={() => setSelectedMarker(sign.id)}
                 >
+                  {(() => {
+                    const variant = getMarkerVariant(sign);
+                    return (
                   <div
                     style={{
-                      width: 32,
-                      height: 32,
-                      backgroundColor: getMarkerColor(sign),
-                      border: selectedMarker === sign.id ? "3px solid white" : "2px solid rgba(0,0,0,0.2)",
-                      borderRadius: "50%",
+                      width: 56,
+                      height: 56,
+                      backgroundImage: 'url("/sign-markers-sprite.png")',
+                      backgroundSize: "1536px 1024px",
+                      backgroundPosition: markerSpritePosition[variant],
+                      backgroundRepeat: "no-repeat",
                       display: "flex",
-                      alignItems: "center",
+                      alignItems: "flex-start",
                       justifyContent: "center",
-                      fontSize: "12px",
-                      fontWeight: "bold",
-                      color: "white",
                       cursor: "pointer",
-                      boxShadow: selectedMarker === sign.id ? "0 0 0 3px rgba(0,0,0,0.3)" : "0 2px 4px rgba(0,0,0,0.2)",
+                      borderRadius: "8px",
+                      boxShadow: selectedMarker === sign.id ? "0 0 0 2px rgba(99,102,241,0.7)" : "0 2px 4px rgba(0,0,0,0.2)",
                     }}
                   >
-                    {sign.signNumber || "?"}
+                    <span
+                      style={{
+                        marginTop: 1,
+                        padding: "0 4px",
+                        borderRadius: 999,
+                        background: "rgba(15, 23, 42, 0.72)",
+                        color: "#fff",
+                        fontSize: 10,
+                        fontWeight: 700,
+                        lineHeight: "14px",
+                      }}
+                    >
+                      {sign.signNumber || "?"}
+                    </span>
                   </div>
+                    );
+                  })()}
 
                   {selectedMarker === sign.id && (
                     <InfoWindow

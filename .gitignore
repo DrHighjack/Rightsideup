@@ -16,6 +16,7 @@ build/
 .DS_Store
 *.pem
 *.log
+*.tsbuildinfo
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -43,3 +44,30 @@ public/workbox-*.js.map
 
 .vercel
 .env*
+
+# Local runtime data (never commit)
+.local-postgres/
+.pgdata/
+
+# Next/build artifacts
+public/fallback-*.js
+.build-*.log
+.build-*.txt
+build-*.log
+build-*.txt
+build-status.txt
+.onboarding-build.log
+
+# Local assets and exports
+inventorypics/
+backups/
+leads-export-*.csv
+Sheets Backend - *.csv
+scripts/*.json
+scripts/*.png
+
+# One-off root test/debug scripts
+test-*.ts
+test-*.js
+add-test-*.ts
+add-test-*.js

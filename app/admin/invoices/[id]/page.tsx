@@ -47,6 +47,11 @@ export default function InvoiceDetailPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundAmountDollars, setRefundAmountDollars] = useState("");
+  const [refundSubmitting, setRefundSubmitting] = useState(false);
+  const [refundError, setRefundError] = useState("");
+  const [showRefundToast, setShowRefundToast] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
@@ -150,6 +155,48 @@ export default function InvoiceDetailPage() {
       console.error(error);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const openRefundModal = () => {
+    if (!invoice) return;
+    const fullAmountDollars = ((invoice.amount - invoice.discountAmount) / 100).toFixed(2);
+    setRefundAmountDollars(fullAmountDollars);
+    setRefundError("");
+    setShowRefundModal(true);
+  };
+
+  const handleRefund = async () => {
+    try {
+      setRefundSubmitting(true);
+      setRefundError("");
+
+      const parsedAmount = Number(refundAmountDollars);
+      if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+        setRefundError("Enter a valid refund amount");
+        return;
+      }
+
+      const amountCents = Math.round(parsedAmount * 100);
+      const res = await fetch("/api/admin/payments/refund", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ invoiceId, amountCents }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to issue refund");
+      }
+
+      setInvoice((prev) => (prev ? { ...prev, status: "VOIDED" } : prev));
+      setShowRefundModal(false);
+      setShowRefundToast(true);
+      setTimeout(() => setShowRefundToast(false), 3000);
+    } catch (refundErr) {
+      setRefundError(refundErr instanceof Error ? refundErr.message : "Failed to issue refund");
+    } finally {
+      setRefundSubmitting(false);
     }
   };
 
@@ -289,6 +336,14 @@ export default function InvoiceDetailPage() {
                     Edit Status
                   </button>
                 )}
+                {invoice.status === "PAID" && (
+                  <button
+                    onClick={openRefundModal}
+                    className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg"
+                  >
+                    Issue Refund
+                  </button>
+                )}
               </>
             )}
 
@@ -389,6 +444,60 @@ export default function InvoiceDetailPage() {
             )}
           </div>
         </div>
+
+        {showRefundModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+              <h2 className="text-xl font-bold text-gray-900 mb-4">Issue Refund</h2>
+
+              <label className="block text-sm font-medium text-gray-900 mb-1">Refund Amount ($)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={refundAmountDollars}
+                onChange={(e) => setRefundAmountDollars(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500"
+              />
+
+              <p className="mt-4 text-sm text-gray-700">
+                This will refund {invoice.user.name} and void this invoice. This cannot be undone.
+              </p>
+
+              {refundError && (
+                <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-sm text-red-700">{refundError}</p>
+                </div>
+              )}
+
+              <div className="mt-6 flex gap-3">
+                <button
+                  onClick={handleRefund}
+                  disabled={refundSubmitting}
+                  className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg disabled:opacity-50"
+                >
+                  {refundSubmitting ? "Processing..." : "Confirm Refund"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowRefundModal(false);
+                    setRefundError("");
+                  }}
+                  disabled={refundSubmitting}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showRefundToast && (
+          <div className="fixed bottom-5 right-5 z-50 rounded-lg bg-green-600 text-white px-4 py-3 shadow-lg">
+            Refund issued successfully.
+          </div>
+        )}
       </div>
     </div>
   );

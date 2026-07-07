@@ -110,6 +110,7 @@ model User {
   emailVerificationExpiresAt DateTime?
   paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
   qboCustomerId  String?    // QuickBooks customer ID for this realtor
+  vaultId        String?    @unique // FluidPay vault record ID for saved card on file
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   lastLoginAt    DateTime?  // Track last login time for admin dashboard
@@ -218,6 +219,7 @@ model Invoice {
   paidByUserId      String?
   paymentCardId     String?
   paymentCardNickname String?
+  fluidpayTransactionId String?
   createdAt         DateTime         @default(now())
   updatedAt         DateTime         @updatedAt
   lastReminderSentAt DateTime?
@@ -230,6 +232,7 @@ model Invoice {
   @@index([status])
   @@index([dueDate])
   @@index([qboInvoiceId])
+  @@index([fluidpayTransactionId])
 }
 
 model Sign {

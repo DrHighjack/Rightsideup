@@ -222,11 +222,22 @@ export default function ElevenPage() {
     });
   });
 
+  const getStageLabel = (stage: string) => {
+    const labels: Record<string, string> = {
+      REQUESTED: 'Requested',
+      TICKET_SUBMITTED: 'Ticket Submitted',
+      LINES_RESPONDED: 'Lines Responded',
+      CLEAR: 'Good to Dig!',
+    };
+
+    return labels[stage] || stage;
+  };
+
   const addTicketCard = (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-1">Ticket History & Manual Entry</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-1">Submit 811 Ticket</h2>
       <p className="text-sm text-gray-600 mb-4">
-        Past tickets are listed above. Select the property and enter the 811 ticket number to add a new one.
+        Select the property and enter the 811 ticket number to add a new one.
       </p>
 
       <form onSubmit={handleAddTicket} className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -291,15 +302,58 @@ export default function ElevenPage() {
     </div>
   );
 
+  const ticketListCard = tickets.length > 0 && (
+    <div className="bg-white rounded-lg shadow p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">811 Tickets</h2>
+          <p className="text-sm text-gray-600">Click a ticket to view the full tracking details.</p>
+        </div>
+        <span className="inline-flex items-center rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+          {tickets.length} total
+        </span>
+      </div>
+
+      <div className="space-y-2">
+        {tickets.map((ticket) => (
+          <button
+            key={ticket.id}
+            onClick={() => setSelectedTicketId(ticket.id)}
+            className={`w-full rounded-lg border px-4 py-3 text-left transition ${
+              selectedTicketId === ticket.id
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-medium text-gray-900">{ticket.parsedAddress}</div>
+                <div className="mt-1 text-sm text-gray-600">
+                  Ticket #{ticket.ticketNumber || 'pending'}
+                </div>
+              </div>
+              <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-700">
+                {getStageLabel(ticket.stage)}
+              </span>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   if (!currentTicket) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
+        {isTC && addTicketCard}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
           <h1 className="text-2xl font-bold text-blue-900 mb-2">811 Ticket Tracker</h1>
           <p className="text-blue-700 mb-4">No 811 tickets yet. When you request a utility locating, you'll track progress here.</p>
-          <p className="text-sm text-blue-600">Contact support if you need to create a ticket.</p>
+          <p className="text-sm text-blue-600">
+            {isTC ? 'Use the submission form above to add the first ticket.' : 'Contact support if you need to create a ticket.'}
+          </p>
         </div>
-        {addTicketCard}
+        {!isTC && addTicketCard}
       </div>
     );
   }
@@ -401,28 +455,11 @@ export default function ElevenPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Ticket selector - only show if multiple tickets */}
-      {tickets.length > 1 && (
-        <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-sm font-semibold text-gray-700 mb-3">Select Ticket</h2>
-          <div className="space-y-2">
-            {tickets.map((ticket) => (
-              <button
-                key={ticket.id}
-                onClick={() => setSelectedTicketId(ticket.id)}
-                className={`w-full text-left px-4 py-3 rounded-lg border-2 transition ${
-                  selectedTicketId === ticket.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-gray-300'
-                }`}
-              >
-                <div className="font-medium text-gray-900">{ticket.parsedAddress}</div>
-                <div className="text-sm text-gray-600">#{ticket.ticketNumber || 'pending'}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
+      {isTC && addTicketCard}
+
+      {isTC && ticketListCard}
+
+      {!isTC && tickets.length > 1 && ticketListCard}
 
       {/* Conflict warning banner */}
       {hasConflict && (
@@ -627,8 +664,7 @@ export default function ElevenPage() {
           <p className="text-gray-600">No activity yet</p>
         </div>
       )}
-
-      {addTicketCard}
+      {!isTC && addTicketCard}
     </div>
   );
 }

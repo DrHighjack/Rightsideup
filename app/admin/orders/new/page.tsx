@@ -36,6 +36,19 @@ interface SelectedSign {
   storagePlannedAfter?: boolean;
 }
 
+interface StreetViewAttachment {
+  id: string;
+  imageUrl: string;
+  heading: number;
+  pitch: number;
+  fov: number;
+  markerX: number | null;
+  markerY: number | null;
+  markerLat: number | null;
+  markerLng: number | null;
+  note?: string;
+}
+
 function AdminNewOrderForm() {
   return (
     <Suspense fallback={
@@ -78,6 +91,18 @@ function AdminNewOrderFormContent() {
   const [mapsLoaded, setMapsLoaded] = useState(false);
   const [realtorSearchText, setRealtorSearchText] = useState("");
   const [showRealtorDropdown, setShowRealtorDropdown] = useState(false);
+  const [streetViewHeading, setStreetViewHeading] = useState(180);
+  const [streetViewPitch, setStreetViewPitch] = useState(-10);
+  const [streetViewFov, setStreetViewFov] = useState(90);
+  const [streetViewMarker, setStreetViewMarker] = useState<{
+    x: number;
+    y: number;
+    lat: number | null;
+    lng: number | null;
+  } | null>(null);
+  const [streetViewNote, setStreetViewNote] = useState("");
+  const [streetViewAttachments, setStreetViewAttachments] = useState<StreetViewAttachment[]>([]);
+  const [streetViewError, setStreetViewError] = useState("");
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
   const realtorInputRef = useRef<HTMLInputElement>(null);
@@ -141,6 +166,8 @@ function AdminNewOrderFormContent() {
               addressLat: place.geometry.location.lat(),
               addressLng: place.geometry.location.lng(),
             }));
+            setStreetViewMarker(null);
+            setStreetViewError("");
           }
         });
       } catch (err) {
@@ -196,6 +223,159 @@ function AdminNewOrderFormContent() {
     const searchText = realtorSearchText.toLowerCase();
     return fullName.includes(searchText) || email.includes(searchText);
   });
+
+  const hasStreetViewAddress =
+    mapsLoaded &&
+    formData.addressLat !== null &&
+    formData.addressLng !== null &&
+    Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
+
+  const streetViewImageUrl = hasStreetViewAddress
+    ? `https://maps.googleapis.com/maps/api/streetview?size=1280x720&location=${formData.addressLat},${formData.addressLng}&heading=${streetViewHeading}&pitch=${streetViewPitch}&fov=${streetViewFov}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
+    : "";
+
+  const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+  const toDegrees = (radians: number) => (radians * 180) / Math.PI;
+
+  const estimateGroundCoordinate = (
+    originLat: number,
+    originLng: number,
+    clickXPercent: number,
+    clickYPercent: number,
+    heading: number,
+    pitch: number,
+    fov: number
+  ) => {
+    // Approximate click->ground projection from camera POV.
+    const horizontalOffset = ((clickXPercent - 50) / 50) * (fov / 2);
+    const bearing = ((heading + horizontalOffset) % 360 + 360) % 360;
+
+    const baseDistance = 6 + ((100 - clickYPercent) / 100) * 30;
+    const pitchFactor = 1 + Math.max(-0.5, Math.min(0.5, pitch / 90));
+    const distanceMeters = Math.max(2, Math.min(60, baseDistance * pitchFactor));
+
+    const earthRadius = 6378137;
+    const angularDistance = distanceMeters / earthRadius;
+    const bearingRad = toRadians(bearing);
+    const lat1 = toRadians(originLat);
+    const lng1 = toRadians(originLng);
+
+    const lat2 = Math.asin(
+      Math.sin(lat1) * Math.cos(angularDistance) +
+        Math.cos(lat1) * Math.sin(angularDistance) * Math.cos(bearingRad)
+    );
+
+    const lng2 =
+      lng1 +
+      Math.atan2(
+        Math.sin(bearingRad) * Math.sin(angularDistance) * Math.cos(lat1),
+        Math.cos(angularDistance) - Math.sin(lat1) * Math.sin(lat2)
+      );
+
+    return {
+      lat: Number(toDegrees(lat2).toFixed(7)),
+      lng: Number(toDegrees(lng2).toFixed(7)),
+    };
+  };
+
+  const handleStreetViewClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+    const normalizedX = Math.max(0, Math.min(100, Number(x.toFixed(2))));
+    const normalizedY = Math.max(0, Math.min(100, Number(y.toFixed(2))));
+
+    let estimatedLat: number | null = null;
+    let estimatedLng: number | null = null;
+
+    if (formData.addressLat !== null && formData.addressLng !== null) {
+      const estimated = estimateGroundCoordinate(
+        formData.addressLat,
+        formData.addressLng,
+        normalizedX,
+        normalizedY,
+        streetViewHeading,
+        streetViewPitch,
+        streetViewFov
+      );
+      estimatedLat = estimated.lat;
+      estimatedLng = estimated.lng;
+    }
+
+    setStreetViewMarker({
+      x: normalizedX,
+      y: normalizedY,
+      lat: estimatedLat,
+      lng: estimatedLng,
+    });
+  };
+
+  const handleAttachStreetView = () => {
+    setStreetViewError("");
+
+    if (!streetViewImageUrl) {
+      setStreetViewError("Select a valid address from autocomplete first.");
+      return;
+    }
+
+    setStreetViewAttachments((prev) => [
+      {
+        id: `sv-${Date.now()}`,
+        imageUrl: streetViewImageUrl,
+        heading: streetViewHeading,
+        pitch: streetViewPitch,
+        fov: streetViewFov,
+        markerX: streetViewMarker ? streetViewMarker.x : null,
+        markerY: streetViewMarker ? streetViewMarker.y : null,
+        markerLat: streetViewMarker ? streetViewMarker.lat : null,
+        markerLng: streetViewMarker ? streetViewMarker.lng : null,
+        note: streetViewNote.trim() || undefined,
+      },
+      ...prev,
+    ]);
+
+    setStreetViewNote("");
+  };
+
+  const removeStreetViewAttachment = (id: string) => {
+    setStreetViewAttachments((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const buildNotesWithStreetView = () => {
+    const baseNotes = formData.notes?.trim() || "";
+
+    if (streetViewAttachments.length === 0) {
+      return baseNotes;
+    }
+
+    const refs = streetViewAttachments
+      .map((attachment, index) => {
+        const markerText =
+          attachment.markerX !== null && attachment.markerY !== null
+            ? `${attachment.markerX}%, ${attachment.markerY}%`
+            : "Not marked";
+
+        const coordinateText =
+          attachment.markerLat !== null && attachment.markerLng !== null
+            ? `${attachment.markerLat}, ${attachment.markerLng}`
+            : "Unavailable";
+
+        return [
+          `${index + 1}. ${attachment.imageUrl}`,
+          `   Camera: heading ${attachment.heading}, pitch ${attachment.pitch}, fov ${attachment.fov}`,
+          `   Marked point: ${markerText}`,
+          `   Sign coordinates: ${coordinateText}`,
+          attachment.note ? `   Note: ${attachment.note}` : undefined,
+        ]
+          .filter(Boolean)
+          .join("\n");
+      })
+      .join("\n");
+
+    const streetViewBlock = `[Street View Placement References]\n${refs}`;
+    return baseNotes ? `${baseNotes}\n\n${streetViewBlock}` : streetViewBlock;
+  };
 
   const handleSignSelection = (signId: string, checked: boolean, quantity: number = 1) => {
     if (checked) {
@@ -257,7 +437,7 @@ function AdminNewOrderFormContent() {
           addressLat: formData.addressLat,
           addressLng: formData.addressLng,
           scheduledDate: formData.scheduledDate || undefined,
-          notes: formData.notes || undefined,
+          notes: buildNotesWithStreetView() || undefined,
           realtorId: formData.realtorId,
           status: formData.status || undefined,
           items: selectedSigns.map((s) => ({
@@ -315,6 +495,10 @@ function AdminNewOrderFormContent() {
                 });
                 setSelectedSigns([]);
                 setRealtorSearchText("");
+                setStreetViewMarker(null);
+                setStreetViewNote("");
+                setStreetViewAttachments([]);
+                setStreetViewError("");
               }}
               className="rounded-md border border-green-600 px-6 py-2 text-green-600 font-medium hover:bg-green-50"
             >
@@ -450,6 +634,154 @@ function AdminNewOrderFormContent() {
           <p className="mt-1 text-xs text-gray-500">
             {mapsLoaded ? "Start typing to search for addresses" : "Loading address search..."}
           </p>
+        </div>
+
+        {/* Street View capture */}
+        <div className="rounded-lg border border-gray-200 p-4 space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Google Street View</h3>
+            <p className="text-sm text-gray-600">
+              Pick the view, click to mark where the sign should go, then attach it to this order.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label className="text-sm text-gray-700">
+              Heading: {streetViewHeading}
+              <input
+                type="range"
+                min={0}
+                max={360}
+                value={streetViewHeading}
+                onChange={(e) => setStreetViewHeading(Number(e.target.value))}
+                className="w-full"
+                disabled={!hasStreetViewAddress}
+              />
+            </label>
+            <label className="text-sm text-gray-700">
+              Pitch: {streetViewPitch}
+              <input
+                type="range"
+                min={-90}
+                max={90}
+                value={streetViewPitch}
+                onChange={(e) => setStreetViewPitch(Number(e.target.value))}
+                className="w-full"
+                disabled={!hasStreetViewAddress}
+              />
+            </label>
+            <label className="text-sm text-gray-700">
+              Zoom (FOV): {streetViewFov}
+              <input
+                type="range"
+                min={30}
+                max={120}
+                value={streetViewFov}
+                onChange={(e) => setStreetViewFov(Number(e.target.value))}
+                className="w-full"
+                disabled={!hasStreetViewAddress}
+              />
+            </label>
+          </div>
+
+          {!hasStreetViewAddress ? (
+            <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+              Choose an address from autocomplete to enable Street View preview.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div
+                className="relative aspect-video rounded-lg overflow-hidden border border-gray-300 bg-gray-100 cursor-crosshair"
+                onClick={handleStreetViewClick}
+                title="Click to mark sign placement"
+              >
+                <img
+                  src={streetViewImageUrl}
+                  alt="Street View"
+                  className="w-full h-full object-cover"
+                />
+
+                {streetViewMarker && (
+                  <div
+                    className="absolute -translate-x-1/2 -translate-y-1/2"
+                    style={{ left: `${streetViewMarker.x}%`, top: `${streetViewMarker.y}%` }}
+                  >
+                    <div className="h-4 w-4 rounded-full border-2 border-white bg-red-600 shadow" />
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col md:flex-row gap-3">
+                <input
+                  type="text"
+                  value={streetViewNote}
+                  onChange={(e) => setStreetViewNote(e.target.value)}
+                  placeholder="Optional note for this screenshot"
+                  className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                />
+                <button
+                  type="button"
+                  onClick={handleAttachStreetView}
+                  className="rounded-md bg-blue-600 px-4 py-2 text-white text-sm font-medium hover:bg-blue-700"
+                >
+                  Attach Screenshot
+                </button>
+              </div>
+
+              {streetViewMarker && (
+                <p className="text-xs text-gray-600">
+                  Sign mark: {streetViewMarker.x}%, {streetViewMarker.y}%
+                  {streetViewMarker.lat !== null && streetViewMarker.lng !== null
+                    ? ` | Coordinates: ${streetViewMarker.lat}, ${streetViewMarker.lng}`
+                    : " | Coordinates unavailable"}
+                </p>
+              )}
+
+              {streetViewError && (
+                <p className="text-sm text-red-700">{streetViewError}</p>
+              )}
+            </div>
+          )}
+
+          {streetViewAttachments.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-sm font-medium text-gray-800">
+                Attached Street View Screenshots ({streetViewAttachments.length})
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {streetViewAttachments.map((attachment, idx) => (
+                  <div key={attachment.id} className="rounded-md border border-gray-200 p-2 space-y-2">
+                    <img
+                      src={attachment.imageUrl}
+                      alt={`Street view attachment ${idx + 1}`}
+                      className="w-full aspect-video object-cover rounded"
+                    />
+                    <p className="text-xs text-gray-600">
+                      Camera: {attachment.heading}/{attachment.pitch}/{attachment.fov}
+                      {attachment.markerX !== null && attachment.markerY !== null
+                        ? ` | Marker: ${attachment.markerX}%, ${attachment.markerY}%`
+                        : " | Marker: not set"}
+                    </p>
+                    <p className="text-xs text-gray-600">
+                      {attachment.markerLat !== null && attachment.markerLng !== null
+                        ? `Coordinates: ${attachment.markerLat}, ${attachment.markerLng}`
+                        : "Coordinates: unavailable"}
+                    </p>
+                    {attachment.note && (
+                      <p className="text-xs text-gray-700">{attachment.note}</p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeStreetViewAttachment(attachment.id)}
+                      className="text-xs text-red-600 hover:text-red-800"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Scheduled date */}

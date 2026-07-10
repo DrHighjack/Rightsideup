@@ -26,6 +26,10 @@ const credentialsSchema = z.union([
   impersonationCredentialsSchema,
 ]);
 
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
     Credentials({
@@ -86,8 +90,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           const { email, password } = parsedCredentials;
+          const normalizedEmail = normalizeEmail(email);
 
-          const user = await prisma.user.findUnique({
+          let user = await prisma.user.findUnique({
             where: { email },
             select: {
               id: true,
@@ -101,8 +106,45 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             },
           });
 
+          if (!user && normalizedEmail !== email) {
+            user = await prisma.user.findUnique({
+              where: { email: normalizedEmail },
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                brokerageName: true,
+                passwordHash: true,
+                tags: true,
+              },
+            });
+          }
+
           if (!user) {
-            console.error("[AUTH] User not found:", email);
+            user = await prisma.user.findFirst({
+              where: {
+                email: {
+                  equals: normalizedEmail,
+                  mode: "insensitive",
+                },
+              },
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                brokerageName: true,
+                passwordHash: true,
+                tags: true,
+              },
+            });
+          }
+
+          if (!user) {
+            console.error("[AUTH] User not found:", normalizedEmail);
             return null;
           }
 

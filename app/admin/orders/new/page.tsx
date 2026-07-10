@@ -89,6 +89,7 @@ function AdminNewOrderFormContent() {
   const [loadingSigns, setLoadingSigns] = useState(true);
   const [showHangupStorage, setShowHangupStorage] = useState(false);
   const [mapsLoaded, setMapsLoaded] = useState(false);
+  const [mapsUnavailable, setMapsUnavailable] = useState(false);
   const [realtorSearchText, setRealtorSearchText] = useState("");
   const [showRealtorDropdown, setShowRealtorDropdown] = useState(false);
   const [streetViewHeading, setStreetViewHeading] = useState(180);
@@ -112,6 +113,12 @@ function AdminNewOrderFormContent() {
 
   // Load Google Maps script (prevent duplicates)
   useEffect(() => {
+    const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY;
+    if (!mapsApiKey || mapsApiKey === "undefined") {
+      setMapsUnavailable(true);
+      return;
+    }
+
     // Check if script is already loaded
     if (window.google?.maps?.places?.Autocomplete) {
       setMapsLoaded(true);
@@ -135,12 +142,12 @@ function AdminNewOrderFormContent() {
 
     // Load new script
     const script = document.createElement("script");
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}&libraries=places`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${mapsApiKey}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.onload = () => setMapsLoaded(true);
     script.onerror = () => {
-      setMapsLoaded(true);
+      setMapsUnavailable(true);
       console.warn("Google Maps API failed to load");
     };
     document.head.appendChild(script);
@@ -229,6 +236,7 @@ function AdminNewOrderFormContent() {
 
   const hasStreetViewAddress =
     mapsLoaded &&
+    !mapsUnavailable &&
     formData.addressLat !== null &&
     formData.addressLng !== null;
 
@@ -693,7 +701,11 @@ function AdminNewOrderFormContent() {
             className="w-full rounded-md border border-gray-300 px-4 py-2"
           />
           <p className="mt-1 text-xs text-gray-500">
-            {mapsLoaded ? "Start typing to search for addresses" : "Loading address search..."}
+            {mapsUnavailable
+              ? "Google Maps unavailable. Check API key, billing, and domain restrictions."
+              : mapsLoaded
+              ? "Start typing to search for addresses"
+              : "Loading address search..."}
           </p>
         </div>
 
@@ -745,7 +757,12 @@ function AdminNewOrderFormContent() {
             </label>
           </div>
 
-          {!hasStreetViewAddress ? (
+          {mapsUnavailable ? (
+            <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
+              Google Maps/Street View is unavailable. Verify your key has Maps JavaScript API enabled,
+              billing is active, and this domain is allowed in HTTP referrer restrictions.
+            </div>
+          ) : !hasStreetViewAddress ? (
             <div className="rounded-md bg-amber-50 border border-amber-200 p-3 text-sm text-amber-800">
               Choose an address from autocomplete to enable Street View preview.
             </div>

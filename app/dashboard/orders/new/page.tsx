@@ -7,6 +7,7 @@ import { useSearchParams } from 'next/navigation';
 import { SignSelector } from './components/SignSelector';
 import { AddOnSelector } from './components/AddOnSelector';
 import { Self811PolicyModal } from './components/Self811PolicyModal';
+import { StreetViewPlacement } from './components/StreetViewPlacement';
 
 declare global {
   interface Window {
@@ -83,6 +84,7 @@ function NewOrderPageContent() {
   const autocompleteRef = useRef<any>(null);
   const is811Relevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
   const isSignSetupRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
+  const isPlacementRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
 
   useEffect(() => {
     async function fetchTCRealtors() {
@@ -244,7 +246,12 @@ function NewOrderPageContent() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      if (name === 'address') {
+        return { ...prev, address: value, addressLat: null, addressLng: null };
+      }
+      return { ...prev, [name]: value };
+    });
 
     if (name === 'scheduledDate') {
       setIsAsap(false);
@@ -339,6 +346,19 @@ function NewOrderPageContent() {
         updated[addOnId] = quantity;
       }
       return updated;
+    });
+  };
+
+  const handlePlacementChange = ({ lat, lng }: { lat: number; lng: number }) => {
+    setFormData((prev) => {
+      if (prev.addressLat === lat && prev.addressLng === lng) {
+        return prev;
+      }
+      return {
+        ...prev,
+        addressLat: lat,
+        addressLng: lng,
+      };
     });
   };
 
@@ -695,6 +715,17 @@ function NewOrderPageContent() {
           </p>
         </div>
 
+        {isPlacementRelevant && (
+          <StreetViewPlacement
+            mapsLoaded={mapsLoaded}
+            mapsUnavailable={mapsUnavailable}
+            address={formData.address}
+            addressLat={formData.addressLat}
+            addressLng={formData.addressLng}
+            onPlacementChange={handlePlacementChange}
+          />
+        )}
+
         {/* Requested date */}
         <div>
           <label htmlFor="scheduledDate" className="block text-sm font-medium text-slate-700 mb-1">
@@ -875,6 +906,12 @@ function NewOrderPageContent() {
               <p>
                 <span className="font-medium">Property address:</span>{' '}
                 {formData.address || 'Not provided yet'}
+              </p>
+              <p>
+                <span className="font-medium">Placement coordinates:</span>{' '}
+                {typeof formData.addressLat === 'number' && typeof formData.addressLng === 'number'
+                  ? `${formData.addressLat.toFixed(6)}, ${formData.addressLng.toFixed(6)}`
+                  : 'Not set'}
               </p>
               <p>
                 <span className="font-medium">Order type:</span> {orderTypeLabel}

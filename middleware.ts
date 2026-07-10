@@ -5,7 +5,9 @@ import { authLimiter, registerLimiter, couponLimiter, apiLimiter, getIdentifier 
 export async function middleware(request: NextRequest) {
   const session = await auth();
   const pathname = request.nextUrl.pathname;
-  const ip = request.ip || request.headers.get("x-forwarded-for") || "unknown";
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  const firstForwardedIp = forwardedFor?.split(",")?.[0]?.trim();
+  const ip = request.ip || firstForwardedIp;
   const userId = (session?.user as any)?.id;
 
   // Apply rate limiting to API routes
@@ -13,13 +15,16 @@ export async function middleware(request: NextRequest) {
     // Auth/Login endpoint - 5 per 15 minutes per IP
     if (pathname.includes("/api/auth/callback/credentials")) {
       try {
-        const identifier = getIdentifier(ip);
-        const { success } = await authLimiter.limit(identifier);
-        if (!success) {
-          return NextResponse.json(
-            { error: "Too many requests, please try again later" },
-            { status: 429 }
-          );
+        // Skip auth limiter when IP is unavailable to prevent global lockouts.
+        if (ip) {
+          const identifier = getIdentifier(ip);
+          const { success } = await authLimiter.limit(identifier);
+          if (!success) {
+            return NextResponse.json(
+              { error: "Too many requests, please try again later" },
+              { status: 429 }
+            );
+          }
         }
       } catch (error) {
         console.error("Auth rate limiter error:", error);

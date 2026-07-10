@@ -7,6 +7,7 @@ import * as Sentry from "@sentry/nextjs";
 import { verifyAdminImpersonationToken } from "@/lib/admin-impersonation";
 
 const authSecret =
+  process.env.AUTH_SECRET ||
   process.env.NEXTAUTH_SECRET ||
   (process.env.NODE_ENV === "development"
     ? "dev-only-nextauth-secret-change-me"

@@ -106,6 +106,9 @@ function AdminNewOrderFormContent() {
   const addressInputRef = useRef<HTMLInputElement>(null);
   const autocompleteRef = useRef<any>(null);
   const realtorInputRef = useRef<HTMLInputElement>(null);
+  const streetViewContainerRef = useRef<HTMLDivElement>(null);
+  const streetViewPanoramaRef = useRef<any>(null);
+  const streetViewServiceRef = useRef<any>(null);
 
   // Load Google Maps script (prevent duplicates)
   useEffect(() => {
@@ -227,12 +230,70 @@ function AdminNewOrderFormContent() {
   const hasStreetViewAddress =
     mapsLoaded &&
     formData.addressLat !== null &&
-    formData.addressLng !== null &&
-    Boolean(process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY);
+    formData.addressLng !== null;
 
   const streetViewImageUrl = hasStreetViewAddress
     ? `https://maps.googleapis.com/maps/api/streetview?size=1280x720&location=${formData.addressLat},${formData.addressLng}&heading=${streetViewHeading}&pitch=${streetViewPitch}&fov=${streetViewFov}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
     : "";
+
+  useEffect(() => {
+    if (!mapsLoaded || !streetViewContainerRef.current || streetViewPanoramaRef.current) {
+      return;
+    }
+
+    if (!window.google?.maps?.StreetViewPanorama) {
+      return;
+    }
+
+    streetViewPanoramaRef.current = new window.google.maps.StreetViewPanorama(
+      streetViewContainerRef.current,
+      {
+        pov: { heading: streetViewHeading, pitch: streetViewPitch },
+        zoom: 1,
+        addressControl: false,
+        fullscreenControl: true,
+      }
+    );
+
+    streetViewServiceRef.current = new window.google.maps.StreetViewService();
+  }, [mapsLoaded]);
+
+  useEffect(() => {
+    if (!hasStreetViewAddress || !streetViewPanoramaRef.current || !streetViewServiceRef.current) {
+      return;
+    }
+
+    const lat = formData.addressLat as number;
+    const lng = formData.addressLng as number;
+
+    streetViewServiceRef.current.getPanorama(
+      {
+        location: { lat, lng },
+        radius: 80,
+        source: window.google.maps.StreetViewSource.OUTDOOR,
+      },
+      (result: any, status: any) => {
+        if (status === window.google.maps.StreetViewStatus.OK && result?.location?.pano) {
+          streetViewPanoramaRef.current.setPano(result.location.pano);
+          streetViewPanoramaRef.current.setPov({
+            heading: streetViewHeading,
+            pitch: streetViewPitch,
+          });
+          streetViewPanoramaRef.current.setZoom(Math.max(0, Math.round((120 - streetViewFov) / 30)));
+          setStreetViewError("");
+          return;
+        }
+
+        streetViewPanoramaRef.current.setPosition({ lat, lng });
+        streetViewPanoramaRef.current.setPov({
+          heading: streetViewHeading,
+          pitch: streetViewPitch,
+        });
+        streetViewPanoramaRef.current.setZoom(Math.max(0, Math.round((120 - streetViewFov) / 30)));
+        setStreetViewError("Street View imagery is limited here. Try a nearby point or adjust the address.");
+      }
+    );
+  }, [hasStreetViewAddress, formData.addressLat, formData.addressLng, streetViewHeading, streetViewPitch, streetViewFov]);
 
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
   const toDegrees = (radians: number) => (radians * 180) / Math.PI;
@@ -695,15 +756,12 @@ function AdminNewOrderFormContent() {
                 onClick={handleStreetViewClick}
                 title="Click to mark sign placement"
               >
-                <img
-                  src={streetViewImageUrl}
-                  alt="Street View"
-                  className="w-full h-full object-cover"
-                />
+                <div ref={streetViewContainerRef} className="absolute inset-0" />
+                <div className="absolute inset-0 z-10" />
 
                 {streetViewMarker && (
                   <div
-                    className="absolute -translate-x-1/2 -translate-y-1/2"
+                    className="absolute z-20 -translate-x-1/2 -translate-y-1/2"
                     style={{ left: `${streetViewMarker.x}%`, top: `${streetViewMarker.y}%` }}
                   >
                     <div className="h-4 w-4 rounded-full border-2 border-white bg-red-600 shadow" />

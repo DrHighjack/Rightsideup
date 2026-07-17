@@ -1,9 +1,12 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Set worker with a reliable CDN URL
+// Serve the worker from our own /public instead of a CDN: no external
+// network dependency at runtime, and it stays in lockstep with the
+// installed pdfjs-dist version (the worker rejects requests from a
+// mismatched API version, so pinning to an old CDN copy is a live bug
+// waiting to happen whenever pdfjs-dist gets upgraded).
 if (typeof window !== 'undefined') {
-  // Use unpkg CDN which is more reliable
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
 }
 
 interface ExtractedData {

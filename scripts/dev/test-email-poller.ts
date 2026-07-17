@@ -1,4 +1,4 @@
-import { connectAndFetch } from '@/lib/emailPoller';
+import { connectAndFetch } from '../../lib/emailPoller';
 
 async function testEmailPoller() {
   console.log('[TEST] Starting IMAP email fetcher test...\n');

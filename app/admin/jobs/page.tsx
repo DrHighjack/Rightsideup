@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { toast } from 'sonner';
+import { useConfirm } from '@/app/components/ConfirmDialogProvider';
 
 interface FieldTech {
   id: string;
@@ -62,6 +64,7 @@ interface AssignmentModalState {
 }
 
 export default function JobsPage() {
+  const confirm = useConfirm();
   const [unassignedOrders, setUnassignedOrders] = useState<Order[]>([]);
   const [assignedJobs, setAssignedJobs] = useState<JobAssignment[]>([]);
   const [fieldTechs, setFieldTechs] = useState<FieldTech[]>([]);
@@ -155,7 +158,7 @@ export default function JobsPage() {
 
   async function handleAssign() {
     if (!selectedTechId || !selectedDate) {
-      alert('Please select a field tech and date/time');
+      toast.error('Please select a field tech and date/time');
       return;
     }
 
@@ -185,7 +188,7 @@ export default function JobsPage() {
         setAssignedJobs(assignedData);
 
         closeModal();
-        alert('Assignment created successfully!');
+        toast.success('Assignment created successfully!');
       } else if (modal.mode === 'reassign' && modal.jobId) {
         // Update existing assignment
         const res = await fetch(`/api/admin/assignments/${modal.jobId}`, {
@@ -205,10 +208,10 @@ export default function JobsPage() {
         setAssignedJobs(assignedData);
 
         closeModal();
-        alert('Assignment updated successfully!');
+        toast.success('Assignment updated successfully!');
       }
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error submitting assignment');
+      toast.error(err instanceof Error ? err.message : 'Error submitting assignment');
       console.error('Error:', err);
     } finally {
       setSubmitting(false);
@@ -216,7 +219,12 @@ export default function JobsPage() {
   }
 
   async function handleUnassign(jobId: string) {
-    if (!confirm('Are you sure you want to unassign this job?')) return;
+    const ok = await confirm({
+      description: 'Are you sure you want to unassign this job?',
+      confirmLabel: 'Unassign',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/admin/assignments/${jobId}`, {
@@ -227,9 +235,9 @@ export default function JobsPage() {
 
       // Refresh data
       await fetchData();
-      alert('Job unassigned successfully!');
+      toast.success('Job unassigned successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error unassigning job');
+      toast.error(err instanceof Error ? err.message : 'Error unassigning job');
       console.error('Error:', err);
     }
   }

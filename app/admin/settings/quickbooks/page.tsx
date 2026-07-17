@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useConfirm } from '@/app/components/ConfirmDialogProvider';
 
 interface QBOConnection {
   id: string;
@@ -13,6 +14,7 @@ interface QBOConnection {
 
 function QuickBooksSettingsContent() {
   const searchParams = useSearchParams();
+  const confirm = useConfirm();
   const [connection, setConnection] = useState<QBOConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
@@ -65,7 +67,12 @@ function QuickBooksSettingsContent() {
 
   async function handleDisconnect() {
     if (!connection) return;
-    if (!confirm('Are you sure you want to disconnect from QuickBooks?')) return;
+    const ok = await confirm({
+      description: 'Are you sure you want to disconnect from QuickBooks?',
+      confirmLabel: 'Disconnect',
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       setDisconnecting(true);

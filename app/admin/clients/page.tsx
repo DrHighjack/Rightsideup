@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { usePrompt } from "@/app/components/ConfirmDialogProvider";
 
 interface RealtorData {
   id: string;
@@ -17,6 +19,7 @@ interface RealtorData {
 }
 
 export default function AdminClientsPage() {
+  const promptDialog = usePrompt();
   const [realtors, setRealtors] = useState<RealtorData[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -97,7 +100,7 @@ export default function AdminClientsPage() {
 
   const handleExportCSV = () => {
     if (filteredRealtors.length === 0) {
-      alert("No realtors to export");
+      toast.error("No realtors to export");
       return;
     }
 
@@ -144,7 +147,11 @@ export default function AdminClientsPage() {
   };
 
   const handleSendSMS = async (realtorId: string) => {
-    const message = prompt("Enter SMS message to send:");
+    const message = await promptDialog({
+      title: "Send SMS",
+      description: "Enter SMS message to send:",
+      confirmLabel: "Send",
+    });
     if (!message) return;
 
     try {
@@ -156,13 +163,13 @@ export default function AdminClientsPage() {
       });
 
       if (res.ok) {
-        alert("SMS sent successfully!");
+        toast.success("SMS sent successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to send SMS");
+        toast.error(error.error || "Failed to send SMS");
       }
     } catch (error) {
-      alert("Failed to send SMS");
+      toast.error("Failed to send SMS");
       console.error(error);
     } finally {
       setSendingSMSId(null);

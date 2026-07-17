@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
+import { resizeImageFile } from '@/lib/client-image-resize';
 
 interface JobAssignment {
   id: string;
@@ -13,7 +15,7 @@ interface JobAssignment {
   completedAt: string | null;
   techNotes: string | null;
   issue: string | null;
-  images?: Array<{ id: string; data: string; name: string; uploadedAt: string }> | null;
+  images?: Array<{ id: string; url: string; name: string; uploadedAt: string }> | null;
   order: {
     id: string;
     orderNumber: string;
@@ -49,6 +51,7 @@ export default function JobDetailPage() {
   const [completeImages, setCompleteImages] = useState<File[]>([]);
   const [showFlagModal, setShowFlagModal] = useState(false);
   const [flagIssue, setFlagIssue] = useState('');
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
 
   useEffect(() => {
     fetchJob();
@@ -78,9 +81,9 @@ export default function JobDetailPage() {
       if (!res.ok) throw new Error('Failed to start job');
       const updated = await res.json();
       setJob(updated);
-      alert('Job started!');
+      toast.success('Job started!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error starting job');
+      toast.error(err instanceof Error ? err.message : 'Error starting job');
       console.error('Error:', err);
     } finally {
       setSubmitting(false);
@@ -89,39 +92,44 @@ export default function JobDetailPage() {
 
   async function handleCompleteJob() {
     if (!completeNotes.trim()) {
-      alert('Please enter notes before completing');
+      toast.error('Please enter notes before completing');
       return;
     }
 
     if (completeImages.length === 0) {
-      alert('Please upload at least one photo of the sign');
+      toast.error('Please upload at least one photo of the sign');
       return;
     }
 
     try {
       setSubmitting(true);
 
-      // Convert images to base64
-      const imagePromises = completeImages.map((file) => {
-        return new Promise<{ data: string; name: string }>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => {
-            resolve({
-              data: reader.result as string,
-              name: file.name,
-            });
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      });
+      // Resize on-device, then upload each photo to blob storage so we
+      // never ship full-resolution photos or base64 payloads over the wire.
+      const uploadedImages: Array<{ url: string; name: string }> = [];
+      for (let i = 0; i < completeImages.length; i++) {
+        setUploadProgress(`Uploading photo ${i + 1} of ${completeImages.length}...`);
+        const resized = await resizeImageFile(completeImages[i]);
 
-      const images = await Promise.all(imagePromises);
+        const formData = new FormData();
+        formData.append('file', resized);
+
+        const uploadRes = await fetch(`/api/field/jobs/${jobId}/photos`, {
+          method: 'POST',
+          body: formData,
+        });
+        if (!uploadRes.ok) {
+          const body = await uploadRes.json().catch(() => ({}));
+          throw new Error(body.error || `Failed to upload ${completeImages[i].name}`);
+        }
+        uploadedImages.push(await uploadRes.json());
+      }
+      setUploadProgress(null);
 
       const res = await fetch(`/api/field/jobs/${jobId}/complete`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ techNotes: completeNotes, images }),
+        body: JSON.stringify({ techNotes: completeNotes, images: uploadedImages }),
       });
       if (!res.ok) throw new Error('Failed to complete job');
       const updated = await res.json();
@@ -129,18 +137,19 @@ export default function JobDetailPage() {
       setShowCompleteModal(false);
       setCompleteNotes('');
       setCompleteImages([]);
-      alert('Job completed successfully!');
+      toast.success('Job completed successfully!');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error completing job');
+      toast.error(err instanceof Error ? err.message : 'Error completing job');
       console.error('Error:', err);
     } finally {
+      setUploadProgress(null);
       setSubmitting(false);
     }
   }
 
   async function handleFlagIssue() {
     if (!flagIssue.trim()) {
-      alert('Please describe the issue');
+      toast.error('Please describe the issue');
       return;
     }
 
@@ -156,9 +165,9 @@ export default function JobDetailPage() {
       setJob(updated);
       setShowFlagModal(false);
       setFlagIssue('');
-      alert('Issue flagged and admin has been notified');
+      toast.success('Issue flagged and admin has been notified');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error flagging issue');
+      toast.error(err instanceof Error ? err.message : 'Error flagging issue');
       console.error('Error:', err);
     } finally {
       setSubmitting(false);
@@ -366,7 +375,7 @@ export default function JobDetailPage() {
                     {job.images.map((img) => (
                       <div key={img.id}>
                         <img
-                          src={img.data}
+                          src={img.url}
                           alt={img.name}
                           className="w-full h-32 object-cover rounded-lg border border-green-200"
                         />
@@ -414,8 +423,8 @@ export default function JobDetailPage() {
 
       {/* Complete Job Modal */}
       {showCompleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-end z-50 animate-fade-in">
+          <div className="w-full bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto animate-slide-up">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Complete Job</h3>
 
             <div className="mb-4">
@@ -489,7 +498,7 @@ export default function JobDetailPage() {
                 disabled={submitting || !completeNotes.trim() || completeImages.length === 0}
                 className="flex-1 py-3 bg-green-500 text-white font-bold rounded-lg active:bg-green-600 disabled:opacity-50"
               >
-                {submitting ? 'Submitting...' : 'Confirm'}
+                {uploadProgress || (submitting ? 'Submitting...' : 'Confirm')}
               </button>
             </div>
           </div>
@@ -498,8 +507,8 @@ export default function JobDetailPage() {
 
       {/* Flag Issue Modal */}
       {showFlagModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-2xl p-4">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-end z-50 animate-fade-in">
+          <div className="w-full bg-white rounded-t-2xl p-4 animate-slide-up">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Flag Issue</h3>
 
             <div className="mb-4">

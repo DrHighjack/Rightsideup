@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
 
 interface TC {
   id: string;
@@ -36,6 +38,7 @@ interface LinkFormState {
 }
 
 export default function AdminTCsPage() {
+  const confirm = useConfirm();
   const [tcs, setTcs] = useState<TC[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTcId, setExpandedTcId] = useState<string | null>(null);
@@ -138,7 +141,7 @@ export default function AdminTCsPage() {
       });
 
       if (res.ok) {
-        alert("Link created successfully!");
+        toast.success("Link created successfully!");
         setShowLinkModal(false);
         setLinkForm({
           selectedTcId: null,
@@ -162,7 +165,12 @@ export default function AdminTCsPage() {
   };
 
   const handleUnlink = async (linkId: string) => {
-    if (!confirm("Are you sure you want to unlink this agent?")) return;
+    const ok = await confirm({
+      description: "Are you sure you want to unlink this agent?",
+      confirmLabel: "Unlink",
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       setUnlinkingId(linkId);
@@ -173,11 +181,11 @@ export default function AdminTCsPage() {
       if (res.ok) {
         await fetchTCs();
       } else {
-        alert("Failed to unlink agent");
+        toast.error("Failed to unlink agent");
       }
     } catch (err) {
       console.error("Error unlinking:", err);
-      alert("Failed to unlink agent");
+      toast.error("Failed to unlink agent");
     } finally {
       setUnlinkingId(null);
     }
@@ -198,13 +206,13 @@ export default function AdminTCsPage() {
       });
 
       if (res.ok) {
-        alert("Invitation sent successfully!");
+        toast.success("Invitation sent successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to send invitation");
+        toast.error(error.error || "Failed to send invitation");
       }
     } catch (err) {
-      alert("Failed to send invitation");
+      toast.error("Failed to send invitation");
       console.error(err);
     } finally {
       setSendingId(null);

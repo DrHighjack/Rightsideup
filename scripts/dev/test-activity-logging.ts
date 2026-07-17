@@ -1,5 +1,5 @@
 import { PrismaClient, ActivityAction } from '@prisma/client';
-import { logActivity } from './lib/activityLog';
+import { logActivity } from '../../lib/activityLog';
 
 const prisma = new PrismaClient();
 

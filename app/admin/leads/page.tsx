@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface User {
   id: string;
@@ -146,7 +147,7 @@ export default function LeadResponsesPage() {
       });
 
       if (!response.ok) throw new Error('Failed to save changes');
-      alert('Lead updated successfully!');
+      toast.success('Lead updated successfully!');
       await fetchLeads();
       setShowModal(false);
     } catch (err) {
@@ -173,7 +174,7 @@ export default function LeadResponsesPage() {
       if (!response.ok) throw new Error('Failed to convert lead');
       const data = await response.json();
       setConvertForm({ ...convertForm, tempPassword: data.tempPassword, showPassword: true });
-      alert(`Lead converted! Temporary password: ${data.tempPassword}`);
+      toast.success(`Lead converted! Temporary password: ${data.tempPassword}`);
 
       // Send SMS if enabled and phone available
       if (convertForm.sendSMS && selectedLead.phone) {
@@ -183,7 +184,7 @@ export default function LeadResponsesPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ clientId: data.client.id }),
           });
-          alert('Welcome SMS sent!');
+          toast.success('Welcome SMS sent!');
         } catch (err) {
           console.error('Failed to send SMS:', err);
         }

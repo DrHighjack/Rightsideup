@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { pollAndProcess } from './lib/emailPoller';
+import { pollAndProcess } from '../../lib/emailPoller';
 import nodemailer from 'nodemailer';
 
 const prisma = new PrismaClient();

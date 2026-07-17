@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import PayInvoiceModal from "./PayInvoiceModal";
 
 interface Invoice {
   id: string;
@@ -32,6 +33,7 @@ export default function InvoiceDetailPage() {
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
   const [marked, setMarked] = useState(false);
+  const [showPayModal, setShowPayModal] = useState(false);
 
   useEffect(() => {
     fetchInvoice();
@@ -225,17 +227,22 @@ export default function InvoiceDetailPage() {
                 <div className="p-4 bg-green-50 rounded-lg">
                   <p className="text-sm font-medium text-green-900">✓ Paid in full</p>
                 </div>
+              ) : invoice.status === "VOIDED" || invoice.status === "DRAFT" ? (
+                <p className="text-sm text-gray-600">
+                  This invoice is not payable online. Contact us with any questions.
+                </p>
               ) : (
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600">
-                    Contact us to arrange payment for this invoice.
-                  </p>
                   <button
-                    onClick={() => (window.location.href = "mailto:support@example.com")}
-                    className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+                    onClick={() => setShowPayModal(true)}
+                    disabled={balance <= 0}
+                    className="w-full px-4 py-2.5 bg-primary hover:bg-primary-dark text-white font-medium rounded-lg disabled:opacity-50"
                   >
-                    Contact Support
+                    Pay ${(balance / 100).toFixed(2)} Now
                   </button>
+                  <p className="text-xs text-center text-gray-400">
+                    🔒 Secure card payment via FluidPay
+                  </p>
                 </div>
               )}
             </div>
@@ -265,6 +272,19 @@ export default function InvoiceDetailPage() {
           </div>
         </div>
       </div>
+
+      {showPayModal && (
+        <PayInvoiceModal
+          invoiceId={invoice.id}
+          amountCents={Math.round(balance)}
+          invoiceNumber={invoice.invoiceNumber}
+          onClose={() => setShowPayModal(false)}
+          onPaid={() => {
+            setShowPayModal(false);
+            fetchInvoice();
+          }}
+        />
+      )}
     </div>
   );
 }

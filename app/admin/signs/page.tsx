@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 interface Sign {
   id: string;
@@ -119,16 +120,16 @@ export default function AdminSignsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`Successfully created ${data.created} signs!`);
+        toast.success(`Successfully created ${data.created} signs!`);
         setShowBulkAddModal(false);
         setBulkForm({ startNumber: "", type: "Standard", quantity: 10 });
         fetchSigns();
       } else {
         const error = await res.json();
-        alert(`Error: ${error.error}`);
+        toast.error(`Error: ${error.error}`);
       }
     } catch (err) {
-      alert("Failed to create signs");
+      toast.error("Failed to create signs");
     }
   };
 

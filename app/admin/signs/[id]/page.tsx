@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
 
 interface Sign {
   id: string;
@@ -37,6 +39,7 @@ export default function SignDetailPage() {
   const router = useRouter();
   const params = useParams();
   const signId = params.id as string;
+  const confirm = useConfirm();
 
   const [sign, setSign] = useState<Sign | null>(null);
   const [realtors, setRealtors] = useState<Realtor[]>([]);
@@ -164,14 +167,14 @@ export default function SignDetailPage() {
       });
 
       if (res.ok) {
-        alert("Sign updated successfully!");
+        toast.success("Sign updated successfully!");
         await fetchSign();
       } else {
         const error = await res.json();
-        alert(`Error: ${error.error}`);
+        toast.error(`Error: ${error.error}`);
       }
     } catch (err) {
-      alert("Failed to save sign");
+      toast.error("Failed to save sign");
       console.error(err);
     } finally {
       setSaving(false);
@@ -179,7 +182,11 @@ export default function SignDetailPage() {
   };
 
   const handleResolveReport = async (reportId: string) => {
-    if (!confirm("Mark this report as resolved?")) return;
+    const ok = await confirm({
+      description: "Mark this report as resolved?",
+      confirmLabel: "Confirm",
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/admin/sign-reports/${reportId}/resolve`, {
@@ -187,13 +194,13 @@ export default function SignDetailPage() {
       });
 
       if (res.ok) {
-        alert("Report resolved!");
+        toast.success("Report resolved!");
         await fetchSign();
       } else {
-        alert("Failed to resolve report");
+        toast.error("Failed to resolve report");
       }
     } catch (err) {
-      alert("Error resolving report");
+      toast.error("Error resolving report");
     }
   };
 

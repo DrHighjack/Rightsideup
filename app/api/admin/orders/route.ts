@@ -5,6 +5,7 @@ import { adminOrderSchema } from "@/lib/schemas";
 import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { createAuthenticatedCachedResponse } from "@/lib/cache-response";
+import { getAdminOrders } from "@/lib/admin-orders";
 
 // Cache this API response for 60 seconds
 export const revalidate = 60;
@@ -18,65 +19,18 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const type = searchParams.get("type");
-    const realtorId = searchParams.get("realtorId");
-    const search = searchParams.get("search");
-    const dateFrom = searchParams.get("dateFrom");
-    const dateTo = searchParams.get("dateTo");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
-
-    const where: any = {};
-
-    if (status) where.status = status;
-    if (type) where.type = type;
-    if (realtorId) where.realtorId = realtorId;
-
-    // Date range filtering
-    if (dateFrom || dateTo) {
-      where.createdAt = {};
-      if (dateFrom) {
-        where.createdAt.gte = new Date(dateFrom);
-      }
-      if (dateTo) {
-        const endDate = new Date(dateTo);
-        endDate.setHours(23, 59, 59, 999);
-        where.createdAt.lte = endDate;
-      }
-    }
-
-    if (search) {
-      where.OR = [
-        { orderNumber: { contains: search, mode: "insensitive" } },
-        { address: { contains: search, mode: "insensitive" } },
-      ];
-    }
-
-    const orders = await prisma.order.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { createdAt: "desc" },
-      include: {
-        realtor: { select: { id: true, email: true, firstName: true, lastName: true } },
-      },
+    const result = await getAdminOrders({
+      status: searchParams.get("status"),
+      type: searchParams.get("type"),
+      realtorId: searchParams.get("realtorId"),
+      search: searchParams.get("search"),
+      dateFrom: searchParams.get("dateFrom"),
+      dateTo: searchParams.get("dateTo"),
+      page: parseInt(searchParams.get("page") || "1"),
+      limit: parseInt(searchParams.get("limit") || "20"),
     });
 
-    const total = await prisma.order.count({ where });
-
-    return createAuthenticatedCachedResponse(
-      {
-        orders,
-        pagination: {
-          page,
-          limit,
-          total,
-          pages: Math.ceil(total / limit),
-        },
-      },
-      60 // Cache for 60 seconds
-    );
+    return createAuthenticatedCachedResponse(result, 60 /* seconds */);
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { formatDateForFilename } from '@/lib/reports';
 
 interface ReportConfig {
@@ -120,7 +121,7 @@ export default function ReportsPage() {
       URL.revokeObjectURL(url_obj);
     } catch (error) {
       console.error('Error generating report:', error);
-      alert('Failed to generate report');
+      toast.error('Failed to generate report');
     } finally {
       setLoading((prev) => ({ ...prev, [report.id]: false }));
     }

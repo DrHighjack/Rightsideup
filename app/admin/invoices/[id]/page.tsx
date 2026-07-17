@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
 
 interface Invoice {
   id: string;
@@ -35,6 +37,7 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const invoiceId = params.id as string;
+  const confirm = useConfirm();
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +85,7 @@ export default function InvoiceDetailPage() {
       });
 
       if (res.ok) {
-        alert("Invoice sent successfully!");
+        toast.success("Invoice sent successfully!");
         await fetchInvoice();
       } else {
         const data = await res.json();
@@ -114,7 +117,7 @@ export default function InvoiceDetailPage() {
       });
 
       if (res.ok) {
-        alert("Invoice updated successfully!");
+        toast.success("Invoice updated successfully!");
         await fetchInvoice();
         setEditing(false);
       } else {
@@ -130,7 +133,12 @@ export default function InvoiceDetailPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Are you sure? This action cannot be undone.")) return;
+    const ok = await confirm({
+      description: "Are you sure? This action cannot be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       setSubmitting(true);
@@ -139,7 +147,7 @@ export default function InvoiceDetailPage() {
       });
 
       if (res.ok) {
-        alert("Invoice deleted successfully!");
+        toast.success("Invoice deleted successfully!");
         router.push("/admin/invoices");
       } else {
         const data = await res.json();

@@ -1,6 +1,10 @@
+import { put } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+
+const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
+const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export async function GET(
   _request: NextRequest,
@@ -133,13 +137,29 @@ export async function POST(
     }
 
     const { id } = params;
-    const { photos: newPhotosData } = await request.json();
+    const formData = await request.formData();
+    const files = formData.getAll("files").filter((f): f is File => f instanceof File);
 
-    if (!newPhotosData || !Array.isArray(newPhotosData) || newPhotosData.length === 0) {
+    if (files.length === 0) {
       return NextResponse.json(
         { error: "At least one photo is required" },
         { status: 400 }
       );
+    }
+
+    for (const file of files) {
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: `${file.name} exceeds the 8MB limit` },
+          { status: 400 }
+        );
+      }
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        return NextResponse.json(
+          { error: "Only JPG, PNG, and WebP images are allowed" },
+          { status: 400 }
+        );
+      }
     }
 
     // Find the assignment for this order
@@ -162,13 +182,22 @@ export async function POST(
         : [assignment.images]
       : [];
 
-    // Create new photo objects with IDs and timestamps
-    const formattedNewPhotos = newPhotosData.map((photo: any, idx: number) => ({
-      id: `img-${Date.now()}-${idx}`,
-      data: photo.data,
-      name: photo.name,
-      uploadedAt: new Date().toISOString(),
-    }));
+    // Upload each file to blob storage and record just the URL
+    const formattedNewPhotos = await Promise.all(
+      files.map(async (file, idx) => {
+        const bytes = await file.arrayBuffer();
+        const blob = await put(`job-photos/${id}/${Date.now()}-${idx}-${file.name}`, Buffer.from(bytes), {
+          contentType: file.type,
+          access: "public",
+        });
+        return {
+          id: `img-${Date.now()}-${idx}`,
+          url: blob.url,
+          name: file.name,
+          uploadedAt: new Date().toISOString(),
+        };
+      })
+    );
 
     // Combine existing and new photos
     const updatedPhotos = [...currentPhotos, ...formattedNewPhotos];

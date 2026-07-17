@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
 
 interface Agent {
   id: string;
@@ -74,6 +76,7 @@ type SortOrder = "asc" | "desc";
 export default function ManagementPage() {
   const { status } = useSession();
   const router = useRouter();
+  const confirm = useConfirm();
   const [view, setView] = useState<"clients" | "brokerages" | "tcs">("clients");
   const [brokerages, setBrokerages] = useState<Brokerage[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -263,7 +266,7 @@ export default function ManagementPage() {
       });
 
       if (res.ok) {
-        alert("Link created successfully!");
+        toast.success("Link created successfully!");
         setShowLinkModal(false);
         setLinkForm({
           selectedTcId: null,
@@ -287,7 +290,12 @@ export default function ManagementPage() {
   };
 
   const handleUnlink = async (linkId: string) => {
-    if (!confirm("Are you sure you want to unlink this agent?")) return;
+    const ok = await confirm({
+      description: "Are you sure you want to unlink this agent?",
+      confirmLabel: "Unlink",
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       setUnlinkingId(linkId);
@@ -298,11 +306,11 @@ export default function ManagementPage() {
       if (res.ok) {
         await fetchTCs();
       } else {
-        alert("Failed to unlink agent");
+        toast.error("Failed to unlink agent");
       }
     } catch (err) {
       console.error("Error unlinking:", err);
-      alert("Failed to unlink agent");
+      toast.error("Failed to unlink agent");
     } finally {
       setUnlinkingId(null);
     }

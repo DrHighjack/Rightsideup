@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import PDFUploadSection from '../components/PDFUploadSection';
 
 interface UtilityLine {
@@ -125,13 +126,13 @@ export default function Ticket811DetailPage() {
       if (res.ok) {
         const data = await res.json();
         setTicket(data.ticket);
-        alert(`Stage updated to ${selectedStage}${data.ordersReleased ? ` - ${data.ordersReleased}` : ''}`);
+        toast.success(`Stage updated to ${selectedStage}${data.ordersReleased ? ` - ${data.ordersReleased}` : ''}`);
       } else {
-        alert('Failed to update stage');
+        toast.error('Failed to update stage');
       }
     } catch (error) {
       console.error('Failed to update stage:', error);
-      alert('Failed to update stage');
+      toast.error('Failed to update stage');
     } finally {
       setStageUpdating(false);
     }
@@ -139,7 +140,7 @@ export default function Ticket811DetailPage() {
 
   async function handleAddUtilityLine() {
     if (!newUtilityName.trim()) {
-      alert('Please enter utility line name');
+      toast.error('Please enter utility line name');
       return;
     }
 
@@ -162,12 +163,12 @@ export default function Ticket811DetailPage() {
         setNewUtilityStatus('PENDING');
         setShowAddUtilityModal(false);
         if (data.stageUpdated) {
-          alert(`Utility added${data.stageUpdated ? ` - ${data.stageUpdated}` : ''}`);
+          toast.success(`Utility added${data.stageUpdated ? ` - ${data.stageUpdated}` : ''}`);
         }
       }
     } catch (error) {
       console.error('Failed to add utility line:', error);
-      alert('Failed to add utility line');
+      toast.error('Failed to add utility line');
     } finally {
       setUtilityUpdating(false);
     }
@@ -192,7 +193,7 @@ export default function Ticket811DetailPage() {
       }
     } catch (error) {
       console.error('Failed to update utility:', error);
-      alert('Failed to update utility');
+      toast.error('Failed to update utility');
     } finally {
       setUtilityUpdating(false);
     }
@@ -212,13 +213,13 @@ export default function Ticket811DetailPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
+        toast.success(data.message);
         setTicket(data.ticket);
         setEditing(false);
       }
     } catch (error) {
       console.error('Failed to clear ticket:', error);
-      alert('Failed to clear ticket');
+      toast.error('Failed to clear ticket');
     } finally {
       setProcessing(false);
     }
@@ -238,13 +239,13 @@ export default function Ticket811DetailPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
+        toast.success(data.message);
         setTicket(data.ticket);
         setEditing(false);
       }
     } catch (error) {
       console.error('Failed to dismiss ticket:', error);
-      alert('Failed to dismiss ticket');
+      toast.error('Failed to dismiss ticket');
     } finally {
       setProcessing(false);
     }
@@ -267,11 +268,11 @@ export default function Ticket811DetailPage() {
         const data = await res.json();
         setTicket(data);
         setEditing(false);
-        alert('Ticket updated');
+        toast.success('Ticket updated');
       }
     } catch (error) {
       console.error('Failed to update ticket:', error);
-      alert('Failed to update ticket');
+      toast.error('Failed to update ticket');
     } finally {
       setProcessing(false);
     }
@@ -279,7 +280,7 @@ export default function Ticket811DetailPage() {
 
   async function handleUploadPDF() {
     if (!postLat || !postLng) {
-      alert('Please enter both latitude and longitude');
+      toast.error('Please enter both latitude and longitude');
       return;
     }
 
@@ -287,7 +288,7 @@ export default function Ticket811DetailPage() {
     const lng = parseFloat(postLng);
 
     if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      alert('Invalid coordinates. Latitude: -90 to 90, Longitude: -180 to 180');
+      toast.error('Invalid coordinates. Latitude: -90 to 90, Longitude: -180 to 180');
       return;
     }
 
@@ -322,14 +323,14 @@ export default function Ticket811DetailPage() {
         setPostLat('');
         setPostLng('');
         setShowPdfUploadModal(false);
-        alert('PDF and coordinates uploaded successfully');
+        toast.success('PDF and coordinates uploaded successfully');
       } else {
         const error = await res.json();
-        alert(`Error: ${error.error}`);
+        toast.error(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to upload PDF:', error);
-      alert('Failed to upload PDF');
+      toast.error('Failed to upload PDF');
     } finally {
       setPdfSubmitting(false);
     }
@@ -337,7 +338,7 @@ export default function Ticket811DetailPage() {
 
   async function handleAssignOrder(orderId: string) {
     if (!ticket?.pdfUrl && (!ticket?.postAddressLat || !ticket?.postAddressLng)) {
-      alert('Please upload coordinates first');
+      toast.error('Please upload coordinates first');
       return;
     }
 
@@ -352,14 +353,14 @@ export default function Ticket811DetailPage() {
       if (res.ok) {
         const data = await res.json();
         setTicket(data.ticket);
-        alert(`Order assigned and realtor notified!`);
+        toast.success(`Order assigned and realtor notified!`);
       } else {
         const error = await res.json();
-        alert(`Error: ${error.error}`);
+        toast.error(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to assign order:', error);
-      alert('Failed to assign order');
+      toast.error('Failed to assign order');
     } finally {
       setPdfSubmitting(false);
     }

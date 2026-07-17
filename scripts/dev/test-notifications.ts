@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { createNotification } from './lib/notifications';
+import { createNotification } from '../../lib/notifications';
 
 const prisma = new PrismaClient();
 

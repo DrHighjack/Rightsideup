@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
+import { resizeImageFile } from "@/lib/client-image-resize";
 
 interface OrderDetail {
   id: string;
@@ -42,7 +45,8 @@ interface OrderDetail {
 
 interface Photo {
   id: string;
-  data: string;
+  url?: string;
+  data?: string; // legacy base64 photos uploaded before the move to blob storage
   name: string;
   uploadedAt: string;
 }
@@ -57,6 +61,7 @@ interface PhotoData {
 export default function AdminOrderDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const confirm = useConfirm();
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
@@ -150,9 +155,13 @@ export default function AdminOrderDetailPage() {
   }
 
   async function handleDeletePhoto(photoId: string) {
-    if (!confirm("Are you sure you want to delete this photo?")) {
-      return;
-    }
+    const ok = await confirm({
+      title: "Delete photo",
+      description: "Are you sure you want to delete this photo? This can't be undone.",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const response = await fetch(`/api/admin/orders/${id}/photos`, {
@@ -167,56 +176,44 @@ export default function AdminOrderDetailPage() {
 
       const data = await response.json();
       setPhotos(data.photos);
-      alert("Photo deleted successfully!");
+      toast.success("Photo deleted successfully!");
     } catch (error) {
       console.error("Error deleting photo:", error);
-      alert("Failed to delete photo");
+      toast.error("Failed to delete photo");
     }
   }
 
   async function handleUploadPhotos() {
     if (newPhotos.length === 0) {
-      alert("Please select at least one photo to upload");
+      toast.error("Please select at least one photo to upload");
       return;
     }
 
     try {
       setUploadingPhotos(true);
-      
-      // Convert files to base64
-      const photosData = await Promise.all(
-        newPhotos.map(async (file) => {
-          return new Promise<{ data: string; name: string }>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => {
-              resolve({
-                data: reader.result as string,
-                name: file.name,
-              });
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-          });
-        })
-      );
+
+      const resized = await Promise.all(newPhotos.map((file) => resizeImageFile(file)));
+
+      const formData = new FormData();
+      resized.forEach((file) => formData.append("files", file));
 
       const response = await fetch(`/api/admin/orders/${id}/photos`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photos: photosData }),
+        body: formData,
       });
 
       if (!response.ok) {
-        throw new Error("Failed to upload photos");
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to upload photos");
       }
 
       const data = await response.json();
       setPhotos(data.photos);
       setNewPhotos([]);
-      alert("Photos uploaded successfully!");
+      toast.success("Photos uploaded successfully!");
     } catch (error) {
       console.error("Error uploading photos:", error);
-      alert("Failed to upload photos");
+      toast.error(error instanceof Error ? error.message : "Failed to upload photos");
     } finally {
       setUploadingPhotos(false);
     }
@@ -503,7 +500,7 @@ export default function AdminOrderDetailPage() {
                 <div key={photo.id} className="relative group">
                   <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
                     <img
-                      src={photo.data}
+                      src={photo.url || photo.data}
                       alt={photo.name}
                       className="w-full h-full object-cover"
                     />

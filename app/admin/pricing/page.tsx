@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
 
 interface MasterPrice {
   id: string;
@@ -46,6 +48,7 @@ interface Brokerage {
 type OverrideFilter = "all" | "realtors" | "brokerages" | "locked" | "unlocked";
 
 export default function PricingPage() {
+  const confirm = useConfirm();
   const [masterPrices, setMasterPrices] = useState<MasterPrice[]>([]);
   const [overrides, setOverrides] = useState<PriceOverride[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,7 +143,7 @@ export default function PricingPage() {
       setEditingId(null);
       await fetchData();
     } catch (err) {
-      alert("Error saving price: " + (err instanceof Error ? err.message : "Unknown error"));
+      toast.error("Error saving price: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
@@ -155,12 +158,17 @@ export default function PricingPage() {
 
       await fetchData();
     } catch (err) {
-      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+      toast.error("Error: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
   const handleDeleteOverride = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this override?")) return;
+    const ok = await confirm({
+      description: "Are you sure you want to delete this override?",
+      confirmLabel: "Delete",
+      destructive: true,
+    });
+    if (!ok) return;
 
     try {
       const res = await fetch(`/api/admin/pricing/overrides/${id}/delete`, {
@@ -171,13 +179,13 @@ export default function PricingPage() {
 
       await fetchData();
     } catch (err) {
-      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+      toast.error("Error: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
   const handleAddMasterPrice = async () => {
     if (!newServiceType) {
-      alert("Please enter a service type");
+      toast.error("Please enter a service type");
       return;
     }
 
@@ -198,13 +206,13 @@ export default function PricingPage() {
       setNewMasterPrice(0);
       await fetchData();
     } catch (err) {
-      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+      toast.error("Error: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 
   const handleAddOverride = async () => {
     if (!overrideForm.serviceType || !overrideForm.clientId) {
-      alert("Please fill in all required fields");
+      toast.error("Please fill in all required fields");
       return;
     }
 
@@ -240,7 +248,7 @@ export default function PricingPage() {
       setShowClientDropdown(false);
       await fetchData();
     } catch (err) {
-      alert("Error: " + (err instanceof Error ? err.message : "Unknown error"));
+      toast.error("Error: " + (err instanceof Error ? err.message : "Unknown error"));
     }
   };
 

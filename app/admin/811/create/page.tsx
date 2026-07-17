@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { toast } from 'sonner';
 
 export default function CreateTicket811Page() {
   const router = useRouter();
@@ -36,15 +37,15 @@ export default function CreateTicket811Page() {
 
       if (res.ok) {
         const ticket = await res.json();
-        alert('Ticket created successfully');
+        toast.success('Ticket created successfully');
         router.push(`/admin/811/${ticket.id}`);
       } else {
         const error = await res.json();
-        alert(`Error: ${error.error}`);
+        toast.error(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Failed to create ticket:', error);
-      alert('Failed to create ticket');
+      toast.error('Failed to create ticket');
     } finally {
       setLoading(false);
     }

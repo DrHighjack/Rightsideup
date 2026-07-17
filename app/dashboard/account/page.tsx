@@ -2,6 +2,8 @@
 
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { useConfirm } from "@/app/components/ConfirmDialogProvider";
 
 interface TCAgent {
   linkId: string;
@@ -21,6 +23,7 @@ interface PendingInvite {
 
 export default function AccountPage() {
   const { data: session } = useSession();
+  const confirm = useConfirm();
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteError, setInviteError] = useState("");
@@ -103,7 +106,12 @@ export default function AccountPage() {
   };
 
   const handleRevoke = async (linkId: string) => {
-    if (!confirm("Are you sure you want to revoke this TC link?")) {
+    const ok = await confirm({
+      description: "Are you sure you want to revoke this TC link?",
+      confirmLabel: "Revoke",
+      destructive: true,
+    });
+    if (!ok) {
       return;
     }
 
@@ -115,7 +123,7 @@ export default function AccountPage() {
       });
 
       if (!res.ok) {
-        alert("Failed to revoke link");
+        toast.error("Failed to revoke link");
         setRevokeLoading("");
         return;
       }
@@ -124,7 +132,7 @@ export default function AccountPage() {
       setRevokeLoading("");
     } catch (err) {
       console.error("Revoke error:", err);
-      alert("Failed to revoke link");
+      toast.error("Failed to revoke link");
       setRevokeLoading("");
     }
   };

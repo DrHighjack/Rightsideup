@@ -1,81 +1,63 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import Link from "next/link";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import StatusBadge from "@/app/components/StatusBadge";
 
-interface OrderData {
-  id: string;
-  orderNumber: string;
-  address: string;
-  type: string;
-  status: string;
-  scheduledDate?: string;
-  createdAt: string;
+function buildOrdersWhere(userId: string, role: string | undefined) {
+  return role === "REALTOR" ? { realtorId: userId } : {};
 }
 
-interface DashboardStats {
-  active: number;
-  completedThisMonth: number;
-  pending: number;
-  recentOrders: OrderData[];
+async function getDashboardData(userId: string, role: string | undefined) {
+  const where = buildOrdersWhere(userId, role);
+
+  const now = new Date();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const startOfNextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+
+  const [active, completedThisMonth, pending, recentOrders] = await Promise.all([
+    prisma.order.count({
+      where: { ...where, status: { in: ["SCHEDULED", "IN_PROGRESS"] } },
+    }),
+    prisma.order.count({
+      where: {
+        ...where,
+        status: { in: ["COMPLETED", "IN_GROUND"] },
+        createdAt: { gte: startOfMonth, lt: startOfNextMonth },
+      },
+    }),
+    prisma.order.count({
+      where: { ...where, status: "PENDING" },
+    }),
+    prisma.order.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      take: 5,
+      select: {
+        id: true,
+        orderNumber: true,
+        address: true,
+        type: true,
+        status: true,
+        scheduledDate: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  return { active, completedThisMonth, pending, recentOrders };
 }
 
-export default function DashboardPage() {
-  const { data: session } = useSession();
-  const [stats, setStats] = useState<DashboardStats>({
-    active: 0,
-    completedThisMonth: 0,
-    pending: 0,
-    recentOrders: [],
-  });
-  const [loading, setLoading] = useState(true);
+export default async function DashboardPage() {
+  const session = await auth();
+  const userId = session?.user?.id as string;
+  const role = (session?.user as any)?.role as string | undefined;
 
-  useEffect(() => {
-    async function fetchStats() {
-      try {
-        const response = await fetch("/api/orders?limit=5");
-        const data = await response.json();
-
-        if (data.orders) {
-          const active = data.orders.filter(
-            (o: OrderData) => o.status === "SCHEDULED" || o.status === "IN_PROGRESS"
-          ).length;
-          const completedThisMonth = data.orders.filter((o: OrderData) => {
-            if (o.status !== "COMPLETED" && o.status !== "IN_GROUND") return false;
-            const orderDate = new Date(o.createdAt);
-            const now = new Date();
-            return (
-              orderDate.getMonth() === now.getMonth() &&
-              orderDate.getFullYear() === now.getFullYear()
-            );
-          }).length;
-          const pending = data.orders.filter(
-            (o: OrderData) => o.status === "PENDING"
-          ).length;
-
-          setStats({
-            active,
-            completedThisMonth,
-            pending,
-            recentOrders: data.orders,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch stats:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchStats();
-  }, []);
+  const { active, completedThisMonth, pending, recentOrders } = await getDashboardData(
+    userId,
+    role
+  );
 
   const realtorName = session?.user?.name || "Realtor";
-
-  if (loading) {
-    return <div className="text-center text-gray-500">Loading...</div>;
-  }
 
   return (
     <div className="space-y-8">
@@ -88,18 +70,21 @@ export default function DashboardPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Active Orders</p>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.active}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Completed This Month</p>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.completedThisMonth}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Pending</p>
-          <p className="text-3xl font-bold text-primary mt-2">{stats.pending}</p>
-        </div>
+        {[
+          { label: "Active Orders", value: active },
+          { label: "Completed This Month", value: completedThisMonth },
+          { label: "Pending", value: pending },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white rounded-xl border border-slate-200 p-6 shadow-card hover:shadow-card-hover transition-shadow"
+          >
+            <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+            <p className="text-3xl font-semibold tracking-tight text-slate-900 mt-2">
+              {stat.value}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Recent orders */}
@@ -129,7 +114,7 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody>
-              {stats.recentOrders.map((order) => (
+              {recentOrders.map((order) => (
                 <tr key={order.id} className="border-b border-gray-200 hover:bg-gray-50">
                   <td className="px-6 py-4 text-sm text-gray-900">
                     <Link
@@ -144,27 +129,20 @@ export default function DashboardPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                        order.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : order.status === "IN_GROUND"
-                          ? "bg-blue-100 text-blue-800"
-                          : order.status === "COMPLETED"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "CANCELLED"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+                    <StatusBadge status={order.status} />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {new Date(order.createdAt).toLocaleDateString()}
                   </td>
                 </tr>
               ))}
+              {recentOrders.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-sm text-gray-500">
+                    No orders yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface Invoice {
   id: string;
@@ -95,7 +96,7 @@ export default function AdminInvoicesPage() {
       });
 
       if (res.ok) {
-        alert("Invoice created successfully!");
+        toast.success("Invoice created successfully!");
         setCreateForm({
           userId: "",
           amount: "",
@@ -124,14 +125,14 @@ export default function AdminInvoicesPage() {
       });
 
       if (res.ok) {
-        alert("Invoice sent successfully!");
+        toast.success("Invoice sent successfully!");
         await fetchInvoices();
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to send invoice");
+        toast.error(error.error || "Failed to send invoice");
       }
     } catch (error) {
-      alert("Failed to send invoice");
+      toast.error("Failed to send invoice");
       console.error(error);
     } finally {
       setSendingId(null);

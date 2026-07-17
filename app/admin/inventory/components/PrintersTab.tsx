@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { PrinterModal } from './PrinterModal';
+import { useConfirm } from '@/app/components/ConfirmDialogProvider';
 
 interface Printer {
   id: string;
@@ -15,6 +16,7 @@ interface Printer {
 }
 
 export function PrintersTab() {
+  const confirm = useConfirm();
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -40,7 +42,12 @@ export function PrintersTab() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this printer?')) return;
+    const ok = await confirm({
+      description: 'Delete this printer?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/admin/printers/${id}`, { method: 'DELETE' });
       if (res.ok) {

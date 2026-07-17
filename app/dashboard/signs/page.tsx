@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 
 interface Sign {
   id: string;
@@ -106,7 +107,7 @@ export default function DashboardSignsPage() {
       });
 
       if (res.ok) {
-        alert("Report submitted successfully! Admin has been notified.");
+        toast.success("Report submitted successfully! Admin has been notified.");
         // Clear form after successful submission
         setReportForm(initialReportForm);
         setShowReportModal(false);
@@ -147,7 +148,7 @@ export default function DashboardSignsPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(data.message);
+        toast.success(data.message);
         setReorderForm({ quantity: 1, type: "", notes: "" });
         setShowReorderModal(false);
       } else {
@@ -188,7 +189,7 @@ export default function DashboardSignsPage() {
       });
 
       if (res.ok) {
-        alert("Pickup scheduled successfully! We'll contact you to confirm.");
+        toast.success("Pickup scheduled successfully! We'll contact you to confirm.");
         setPickupForm(initialPickupForm);
         setShowPickupModal(false);
         // Refresh signs list

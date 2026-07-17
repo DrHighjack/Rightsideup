@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { usePrompt } from "@/app/components/ConfirmDialogProvider";
 
 interface RealtorData {
   id: string;
@@ -18,6 +19,7 @@ interface RealtorData {
 }
 
 export default function AdminClientsPage() {
+  const promptDialog = usePrompt();
   const [realtors, setRealtors] = useState<RealtorData[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -145,7 +147,11 @@ export default function AdminClientsPage() {
   };
 
   const handleSendSMS = async (realtorId: string) => {
-    const message = prompt("Enter SMS message to send:");
+    const message = await promptDialog({
+      title: "Send SMS",
+      description: "Enter SMS message to send:",
+      confirmLabel: "Send",
+    });
     if (!message) return;
 
     try {

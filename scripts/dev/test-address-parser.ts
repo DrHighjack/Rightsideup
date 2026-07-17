@@ -1,4 +1,4 @@
-import { parseAddress } from '@/lib/emailPoller';
+import { parseAddress } from '../../lib/emailPoller';
 
 const sampleEmailBody = `
 Ticket Number: 2026-05-24-789456

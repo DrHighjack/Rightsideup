@@ -1,5 +1,5 @@
-import { prisma } from './lib/prisma';
-import { encryptToken, decryptToken } from './lib/encryption';
+import { prisma } from '../../lib/prisma';
+import { encryptToken, decryptToken } from '../../lib/encryption';
 
 async function testStep14() {
   try {

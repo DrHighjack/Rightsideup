@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import GoogleMapReact from "google-map-react";
+import { APIProvider, Map, AdvancedMarker } from "@vis.gl/react-google-maps";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface OrderLocation {
   id: string;
@@ -44,28 +45,39 @@ const getMarkerColor = (order: OrderLocation): string => {
   }
 };
 
-const OrderMarker = (props: { order: OrderLocation; isSelected: boolean; onClick: () => void; [key: string]: any }) => {
-  const { order, isSelected, onClick } = props;
+const OrderMarker = ({
+  order,
+  isSelected,
+  onClick,
+}: {
+  order: OrderLocation;
+  isSelected: boolean;
+  onClick: () => void;
+}) => {
   return (
-  <div
-    onClick={onClick}
-    className="cursor-pointer transition-transform hover:scale-125"
-    title={`${order.orderNumber} - ${order.address}`}
-  >
-    <div
-      style={{
-        width: 28,
-        height: 28,
-        backgroundColor: getMarkerColor(order),
-        border: isSelected ? "3px solid white" : "2px solid rgba(0,0,0,0.3)",
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        boxShadow: isSelected ? "0 0 0 3px rgba(0,0,0,0.4)" : "0 2px 4px rgba(0,0,0,0.3)",
+    <AdvancedMarker
+      position={{
+        lat: parseFloat(String(order.addressLat)),
+        lng: parseFloat(String(order.addressLng)),
       }}
-    />
-  </div>
+      onClick={onClick}
+      title={`${order.orderNumber} - ${order.address}`}
+    >
+      <div
+        className="cursor-pointer transition-transform hover:scale-125"
+        style={{
+          width: 28,
+          height: 28,
+          backgroundColor: getMarkerColor(order),
+          border: isSelected ? "3px solid white" : "2px solid rgba(0,0,0,0.3)",
+          borderRadius: "50%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: isSelected ? "0 0 0 3px rgba(0,0,0,0.4)" : "0 2px 4px rgba(0,0,0,0.3)",
+        }}
+      />
+    </AdvancedMarker>
   );
 };
 
@@ -178,7 +190,7 @@ export default function OrdersMapPage() {
 
   const handleScheduleRemoval = async () => {
     if (!removalModal.orderId || !removalDate) {
-      alert("Please select a removal date");
+      toast.error("Please select a removal date");
       return;
     }
 
@@ -196,7 +208,7 @@ export default function OrdersMapPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`Removal scheduled successfully! Order: ${data.removalOrder.orderNumber}`);
+        toast.success(`Removal scheduled successfully! Order: ${data.removalOrder.orderNumber}`);
         setRemovalModal({ isOpen: false, orderId: null });
         setRemovalDate("");
         setRemovalNotes("");
@@ -205,10 +217,10 @@ export default function OrdersMapPage() {
         fetchOrders();
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to schedule removal");
+        toast.error(error.error || "Failed to schedule removal");
       }
     } catch (error) {
-      alert("Failed to schedule removal");
+      toast.error("Failed to schedule removal");
       console.error(error);
     } finally {
       setSchedulingRemoval(false);
@@ -403,26 +415,25 @@ export default function OrdersMapPage() {
         </div>
       ) : (
         <div className="flex-1 relative overflow-hidden">
-          <GoogleMapReact
-            bootstrapURLKeys={{ key: mapKey }}
-            defaultCenter={mapCenter}
-            defaultZoom={8}
-            margin={[50, 50, 50, 50]}
-            yesIWantToUseGoogleMapApiInternals
-          >
-            {filteredOrders.map((order) =>
-              order.addressLat && order.addressLng ? (
-                <OrderMarker
-                  key={order.id}
-                  lat={parseFloat(String(order.addressLat))}
-                  lng={parseFloat(String(order.addressLng))}
-                  order={order}
-                  isSelected={selectedMarker === order.id}
-                  onClick={() => setSelectedMarker(selectedMarker === order.id ? null : order.id)}
-                />
-              ) : null
-            )}
-          </GoogleMapReact>
+          <APIProvider apiKey={mapKey}>
+            <Map
+              defaultCenter={mapCenter}
+              defaultZoom={8}
+              style={{ width: "100%", height: "100%" }}
+              mapId="orders-map"
+            >
+              {filteredOrders.map((order) =>
+                order.addressLat && order.addressLng ? (
+                  <OrderMarker
+                    key={order.id}
+                    order={order}
+                    isSelected={selectedMarker === order.id}
+                    onClick={() => setSelectedMarker(selectedMarker === order.id ? null : order.id)}
+                  />
+                ) : null
+              )}
+            </Map>
+          </APIProvider>
 
           {/* Info Panel */}
           {selectedMarker && (

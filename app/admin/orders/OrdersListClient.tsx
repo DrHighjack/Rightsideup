@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import StatusBadge from "@/app/components/StatusBadge";
 import { toast } from "sonner";
 import { usePrompt } from "@/app/components/ConfirmDialogProvider";
 
@@ -97,19 +98,6 @@ export default function OrdersListClient({
     fetchOrders();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filter, page, search, dateFrom, dateTo]);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "COMPLETED":
-        return "bg-green-100 text-green-800";
-      case "CANCELLED":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-blue-100 text-blue-800";
-    }
-  };
 
   async function handleExportCSV() {
     setExporting(true);
@@ -369,9 +357,7 @@ export default function OrdersListClient({
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
+                      <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}
@@ -439,8 +425,8 @@ export default function OrdersListClient({
 
       {/* Schedule Removal Modal */}
       {removalModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-modal animate-scale-in">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Schedule Removal</h2>
 
             <div className="space-y-4">

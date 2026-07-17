@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import StatusBadge from "@/app/components/StatusBadge";
 
 function buildOrdersWhere(userId: string, role: string | undefined) {
   return role === "REALTOR" ? { realtorId: userId } : {};
@@ -69,18 +70,21 @@ export default async function DashboardPage() {
 
       {/* Summary cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Active Orders</p>
-          <p className="text-3xl font-bold text-primary mt-2">{active}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Completed This Month</p>
-          <p className="text-3xl font-bold text-primary mt-2">{completedThisMonth}</p>
-        </div>
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <p className="text-sm font-medium text-gray-600">Pending</p>
-          <p className="text-3xl font-bold text-primary mt-2">{pending}</p>
-        </div>
+        {[
+          { label: "Active Orders", value: active },
+          { label: "Completed This Month", value: completedThisMonth },
+          { label: "Pending", value: pending },
+        ].map((stat) => (
+          <div
+            key={stat.label}
+            className="bg-white rounded-xl border border-slate-200 p-6 shadow-card hover:shadow-card-hover transition-shadow"
+          >
+            <p className="text-sm font-medium text-slate-500">{stat.label}</p>
+            <p className="text-3xl font-semibold tracking-tight text-slate-900 mt-2">
+              {stat.value}
+            </p>
+          </div>
+        ))}
       </div>
 
       {/* Recent orders */}
@@ -125,21 +129,7 @@ export default async function DashboardPage() {
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
                   <td className="px-6 py-4 text-sm">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                        order.status === "PENDING"
-                          ? "bg-yellow-100 text-yellow-800"
-                          : order.status === "IN_GROUND"
-                          ? "bg-blue-100 text-blue-800"
-                          : order.status === "COMPLETED"
-                          ? "bg-green-100 text-green-800"
-                          : order.status === "CANCELLED"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
+                    <StatusBadge status={order.status} />
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">
                     {new Date(order.createdAt).toLocaleDateString()}

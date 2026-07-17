@@ -131,7 +131,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg z-50 border border-gray-200">
+        <div className="absolute right-0 mt-2 w-96 origin-top-right bg-white rounded-xl shadow-modal z-50 border border-slate-200 animate-scale-in">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>

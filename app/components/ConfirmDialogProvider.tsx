@@ -85,7 +85,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
         {confirmOptions && (
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px] px-4 animate-fade-in"
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
@@ -93,7 +93,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
               if (e.key === "Escape") closeConfirm(false);
             }}
           >
-            <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-modal animate-scale-in">
               {confirmOptions.title && (
                 <h2 id="confirm-dialog-title" className="text-lg font-semibold text-gray-900">
                   {confirmOptions.title}
@@ -129,7 +129,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
 
         {promptOptions && (
           <div
-            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 px-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/50 backdrop-blur-[2px] px-4 animate-fade-in"
             role="dialog"
             aria-modal="true"
             aria-labelledby="prompt-dialog-title"
@@ -138,7 +138,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
               if (e.key === "Enter") closePrompt(promptValue);
             }}
           >
-            <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl">
+            <div className="w-full max-w-sm rounded-xl bg-white p-6 shadow-modal animate-scale-in">
               {promptOptions.title && (
                 <h2 id="prompt-dialog-title" className="text-lg font-semibold text-gray-900">
                   {promptOptions.title}

@@ -74,14 +74,26 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-8">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-primary mb-2">SignPost Field</h1>
-          <p className="text-gray-600">Create your realtor account</p>
+    <div className="relative flex min-h-screen items-center justify-center bg-ink px-4 py-8 overflow-hidden">
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.35]"
+        style={{
+          backgroundImage:
+            "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)",
+          backgroundSize: "36px 36px",
+        }}
+      />
+      <div className="pointer-events-none absolute -top-32 left-1/2 h-96 w-[42rem] -translate-x-1/2 rounded-full bg-primary-500/15 blur-3xl" />
+
+      <div className="relative w-full max-w-md animate-scale-in">
+        <div className="mb-8 text-center">
+          <h1 className="text-3xl font-semibold tracking-tight text-white mb-2">
+            SignPost <span className="text-primary-400">Field</span>
+          </h1>
+          <p className="text-slate-400">Create your realtor account</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-white/10 bg-white p-8 shadow-modal">
           {error && (
             <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">
               {error}
@@ -202,9 +214,9 @@ export default function RegisterPage() {
           </button>
         </form>
 
-        <p className="text-center text-sm text-gray-600">
+        <p className="mt-6 text-center text-sm text-slate-400">
           Already have an account?{" "}
-          <Link href="/login" className="font-medium text-primary hover:text-primary-dark">
+          <Link href="/login" className="font-medium text-primary-400 hover:text-primary-300">
             Sign in
           </Link>
         </p>

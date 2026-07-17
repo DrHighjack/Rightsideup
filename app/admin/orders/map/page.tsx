@@ -527,8 +527,8 @@ export default function OrdersMapPage() {
 
       {/* Schedule Removal Modal */}
       {removalModal.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-modal animate-scale-in">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Schedule Removal</h2>
             
             <div className="space-y-4">

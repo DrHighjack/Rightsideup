@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import StatusBadge from "@/app/components/StatusBadge";
 
 interface OrderData {
   id: string;
@@ -66,19 +67,6 @@ export default function OrdersListClient({
           o.address.toLowerCase().includes(search.toLowerCase())
       )
     : orders;
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "COMPLETED":
-        return "bg-green-100 text-green-800";
-      case "CANCELLED":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-blue-100 text-blue-800";
-    }
-  };
 
   return (
     <div className="space-y-6">
@@ -178,9 +166,7 @@ export default function OrdersListClient({
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
+                      <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}

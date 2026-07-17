@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ItemCard } from './ItemCard';
 import { ItemModal } from './ItemModal';
+import { useConfirm } from '@/app/components/ConfirmDialogProvider';
 
 interface InventoryItem {
   id: string;
@@ -21,6 +22,7 @@ interface InventoryItem {
 }
 
 export function InventoryItemsTab() {
+  const confirm = useConfirm();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('ALL');
@@ -48,7 +50,12 @@ export function InventoryItemsTab() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this item?')) return;
+    const ok = await confirm({
+      description: 'Delete this item?',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       const res = await fetch(`/api/admin/inventory/${id}`, { method: 'DELETE' });
       if (res.ok) {

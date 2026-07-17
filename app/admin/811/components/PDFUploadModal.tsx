@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 interface PDFUploadModalProps {
   isOpen: boolean;
@@ -42,7 +43,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
       if (file.type === 'application/pdf') {
         handlePdfFile(file);
       } else {
-        alert('Please drop a PDF file');
+        toast.error('Please drop a PDF file');
       }
     }
   };
@@ -92,7 +93,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
       if (file.type === 'application/pdf') {
         handlePdfFile(file);
       } else {
-        alert('Please select a PDF file');
+        toast.error('Please select a PDF file');
       }
     }
   };
@@ -100,7 +101,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
   const handleSubmit = async () => {
     // Allow submit if: PDF uploaded (we'll auto-generate ticket number) OR manual fields filled
     if (!pdfFile && (!formData.ticketNumber || !formData.sourceEmail)) {
-      alert('Please either:\n1. Upload a PDF, OR\n2. Fill in Ticket Number and Source Email manually');
+      toast.error('Please either:\n1. Upload a PDF, OR\n2. Fill in Ticket Number and Source Email manually');
       return;
     }
 
@@ -123,7 +124,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
       }
     } catch (error) {
       console.error('Failed to create ticket:', error);
-      alert('Failed to create ticket');
+      toast.error('Failed to create ticket');
     } finally {
       setUploading(false);
     }
@@ -147,7 +148,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
 
     if (res.ok) {
       const ticket = await res.json();
-      alert('Ticket created successfully');
+      toast.success('Ticket created successfully');
       // Reset form
       setPdfFile(null);
       setPreview('');
@@ -162,7 +163,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
       router.push(`/admin/811/${ticket.id}`);
     } else {
       const error = await res.json();
-      alert(`Error: ${error.error}`);
+      toast.error(`Error: ${error.error}`);
     }
   };
 

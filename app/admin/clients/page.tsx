@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 interface RealtorData {
   id: string;
@@ -97,7 +98,7 @@ export default function AdminClientsPage() {
 
   const handleExportCSV = () => {
     if (filteredRealtors.length === 0) {
-      alert("No realtors to export");
+      toast.error("No realtors to export");
       return;
     }
 
@@ -156,13 +157,13 @@ export default function AdminClientsPage() {
       });
 
       if (res.ok) {
-        alert("SMS sent successfully!");
+        toast.success("SMS sent successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to send SMS");
+        toast.error(error.error || "Failed to send SMS");
       }
     } catch (error) {
-      alert("Failed to send SMS");
+      toast.error("Failed to send SMS");
       console.error(error);
     } finally {
       setSendingSMSId(null);

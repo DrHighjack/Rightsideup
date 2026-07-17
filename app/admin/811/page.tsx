@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import PDFUploadModal from './components/PDFUploadModal';
 
 interface Ticket811 {
@@ -92,12 +93,12 @@ export default function Ticket811ListPage() {
       });
 
       if (res.ok) {
-        alert('Poll cycle completed. Refreshing tickets...');
+        toast.success('Poll cycle completed. Refreshing tickets...');
         await fetchTickets();
       }
     } catch (error) {
       console.error('Poll failed:', error);
-      alert('Poll failed');
+      toast.error('Poll failed');
     } finally {
       setPolling(false);
     }
@@ -108,7 +109,7 @@ export default function Ticket811ListPage() {
     const userId = ""; // This would come from the order matched to this ticket
     
     if (!userId) {
-      alert("Customer information not available. Please view ticket details to send email.");
+      toast.error("Customer information not available. Please view ticket details to send email.");
       return;
     }
 
@@ -121,13 +122,13 @@ export default function Ticket811ListPage() {
       });
 
       if (res.ok) {
-        alert("Clearance email sent successfully!");
+        toast.success("Clearance email sent successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to send email");
+        toast.error(error.error || "Failed to send email");
       }
     } catch (error) {
-      alert("Failed to send email");
+      toast.error("Failed to send email");
       console.error(error);
     } finally {
       setSendingId(null);

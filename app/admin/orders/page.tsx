@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 
 interface OrderData {
   id: string;
@@ -170,13 +171,13 @@ export default function AdminOrdersPage() {
       });
 
       if (res.ok) {
-        alert("Completion email sent successfully!");
+        toast.success("Completion email sent successfully!");
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to send email");
+        toast.error(error.error || "Failed to send email");
       }
     } catch (error) {
-      alert("Failed to send email");
+      toast.error("Failed to send email");
       console.error(error);
     } finally {
       setSendingId(null);
@@ -185,7 +186,7 @@ export default function AdminOrdersPage() {
 
   async function handleScheduleRemoval() {
     if (!removalModal.orderId || !removalDate) {
-      alert("Please select a removal date");
+      toast.error("Please select a removal date");
       return;
     }
 
@@ -203,7 +204,7 @@ export default function AdminOrdersPage() {
 
       if (res.ok) {
         const data = await res.json();
-        alert(`Removal scheduled successfully! Order: ${data.removalOrder.orderNumber}`);
+        toast.success(`Removal scheduled successfully! Order: ${data.removalOrder.orderNumber}`);
         setRemovalModal({ isOpen: false, orderId: null });
         setRemovalDate("");
         setRemovalNotes("");
@@ -212,10 +213,10 @@ export default function AdminOrdersPage() {
         setPage(1);
       } else {
         const error = await res.json();
-        alert(error.error || "Failed to schedule removal");
+        toast.error(error.error || "Failed to schedule removal");
       }
     } catch (error) {
-      alert("Failed to schedule removal");
+      toast.error("Failed to schedule removal");
       console.error(error);
     } finally {
       setSchedulingRemoval(false);

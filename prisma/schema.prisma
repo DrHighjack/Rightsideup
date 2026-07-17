@@ -67,6 +67,15 @@ enum NotificationStatus {
   READ
 }
 
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  SETTLED
+  FAILED
+  REFUNDED
+  VOIDED
+}
+
 enum ActivityAction {
   ORDER_CREATED
   ORDER_STATUS_CHANGED
@@ -204,12 +213,36 @@ model Invoice {
   updatedAt         DateTime         @updatedAt
   lastReminderSentAt DateTime?
   reminderCount     Int              @default(0)
-  
+
+  payments          Payment[]
+
   @@map("invoices")
   @@index([userId])
   @@index([status])
   @@index([dueDate])
   @@index([qboInvoiceId])
+}
+
+model Payment {
+  id                    String        @id @default(cuid())
+  invoiceId             String
+  invoice               Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  userId                String        // who initiated the payment
+  provider              String        @default("FLUIDPAY")
+  providerTransactionId String?       @unique // FluidPay transaction id
+  amountCents           Int
+  status                PaymentStatus @default(PENDING)
+  cardLast4             String?
+  cardType              String?
+  failureReason         String?
+  rawResponse           Json?         // gateway response snapshot for audit
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  @@map("payments")
+  @@index([invoiceId])
+  @@index([userId])
+  @@index([status])
 }
 
 model Sign {

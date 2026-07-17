@@ -17,6 +17,7 @@ export async function GET(_request: Request) {
   try {
     const realtors = await prisma.user.findMany({
       where: { role: "REALTOR" },
+      take: 2000,
       select: {
         id: true,
         firstName: true,

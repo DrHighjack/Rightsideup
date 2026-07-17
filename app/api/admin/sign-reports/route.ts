@@ -28,6 +28,7 @@ export async function GET(request: Request) {
 
     const reports = await prisma.signReport.findMany({
       where,
+      take: 500,
       include: {
         sign: {
           select: {

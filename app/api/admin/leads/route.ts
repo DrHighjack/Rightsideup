@@ -25,8 +25,9 @@ export async function GET() {
       );
     }
 
-    // Fetch all leads, sorted by newest first
+    // Fetch leads, sorted by newest first
     const leads = await prisma.instaads.findMany({
+      take: 2000,
       orderBy: {
         createdAt: 'desc',
       },

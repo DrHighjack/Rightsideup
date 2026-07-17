@@ -12,12 +12,11 @@ function Ticket811Badge() {
   useEffect(() => {
     async function fetchCount() {
       try {
-        const res = await fetch("/api/admin/811?status=ACTIVE");
-        const activeTickets = await res.json();
+        const [activeTickets, reviewTickets] = await Promise.all([
+          fetch("/api/admin/811?status=ACTIVE").then((r) => r.json()),
+          fetch("/api/admin/811?status=NEEDS_REVIEW").then((r) => r.json()),
+        ]);
         const activeCount = Array.isArray(activeTickets) ? activeTickets.length : 0;
-
-        const res2 = await fetch("/api/admin/811?status=NEEDS_REVIEW");
-        const reviewTickets = await res2.json();
         const reviewCount = Array.isArray(reviewTickets) ? reviewTickets.length : 0;
 
         setCount(activeCount + reviewCount);
@@ -34,6 +33,28 @@ function Ticket811Badge() {
     <span className="inline-block ml-2 bg-red-600 text-white text-xs font-semibold px-2 py-1 rounded">
       {count}
     </span>
+  );
+}
+
+function NavSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="pt-3 first:pt-0">
+      <p className="px-4 pb-1 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        {title}
+      </p>
+      {children}
+    </div>
+  );
+}
+
+function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+    >
+      {children}
+    </Link>
   );
 }
 
@@ -89,111 +110,43 @@ export default function AdminLayout({
           {/* Admin: Full Access */}
           {isAdmin && (
             <>
-              <Link
-                href="/admin/orders"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                All Orders
-              </Link>
-              <Link
-                href="/admin/orders/map"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                Orders Map
-              </Link>
-              <Link
-                href="/admin/orders/new"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                Create Order
-              </Link>
-              <Link
-                href="/admin/coupons"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                Coupons
-              </Link>
-              <Link
-                href="/admin/brokerages"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                Client Management
-              </Link>
-              <Link
-                href="/admin/811"
-                className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                811 Tickets
-                <Ticket811Badge />
-              </Link>
-              <Link
-                href="/admin/jobs"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                Jobs
-              </Link>
-              <Link
-                href="/admin/activity"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                📋 Activity Log
-              </Link>
-              <Link
-                href="/admin/login-tracking"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                🔐 Login Tracking
-              </Link>
-              <Link
-                href="/admin/pricing"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                💰 Pricing
-              </Link>
-              <Link
-                href="/admin/analytics"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                📈 Analytics
-              </Link>
-              <Link
-                href="/admin/reports"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                📊 Reports
-              </Link>
-              <Link
-                href="/admin/leads"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                🎁 Lead Responses
-              </Link>
-              <Link
-                href="/admin/inventory"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                📦 Inventory
-              </Link>
-              <Link
-                href="/admin/invoices"
-                className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-              >
-                📄 Invoices
-              </Link>
-              <div className="pt-4 mt-4 border-t border-gray-200">
+              <NavSection title="Orders & Jobs">
+                <NavLink href="/admin/orders">All Orders</NavLink>
+                <NavLink href="/admin/orders/map">Orders Map</NavLink>
+                <NavLink href="/admin/orders/new">Create Order</NavLink>
+                <NavLink href="/admin/jobs">Jobs</NavLink>
                 <Link
-                  href="/admin/salesmen"
-                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
+                  href="/admin/811"
+                  className="flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
                 >
-                  👥 Salesmen
+                  811 Tickets
+                  <Ticket811Badge />
                 </Link>
-                <Link
-                  href="/admin/settings"
-                  className="block px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary"
-                >
-                  ⚙️ Settings
-                </Link>
-              </div>
+              </NavSection>
+
+              <NavSection title="Clients & Sales">
+                <NavLink href="/admin/brokerages">Client Management</NavLink>
+                <NavLink href="/admin/leads">Lead Responses</NavLink>
+                <NavLink href="/admin/salesmen">Salesmen</NavLink>
+                <NavLink href="/admin/coupons">Coupons</NavLink>
+              </NavSection>
+
+              <NavSection title="Finance">
+                <NavLink href="/admin/invoices">Invoices</NavLink>
+                <NavLink href="/admin/pricing">Pricing</NavLink>
+              </NavSection>
+
+              <NavSection title="Operations">
+                <NavLink href="/admin/inventory">Inventory</NavLink>
+                <NavLink href="/admin/analytics">Analytics</NavLink>
+                <NavLink href="/admin/reports">Reports</NavLink>
+              </NavSection>
+
+              <NavSection title="System">
+                <NavLink href="/admin/activity">Activity Log</NavLink>
+                <NavLink href="/admin/login-tracking">Login Tracking</NavLink>
+                <NavLink href="/admin/settings">Settings</NavLink>
+              </NavSection>
             </>
           )}
         </nav>

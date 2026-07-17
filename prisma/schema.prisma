@@ -463,7 +463,7 @@ model JobAssignment {
   completedAt     DateTime?
   techNotes       String?
   issue           String?    // issue flagged by tech, triggers admin alert
-  images          Json?      // array of { id, url, uploadedAt } - store base64 or file URLs
+  images          Json?      // array of { id, url, name, uploadedAt } - Vercel Blob URLs
   createdAt       DateTime   @default(now())
   
   @@map("job_assignments")

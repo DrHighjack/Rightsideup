@@ -6,7 +6,7 @@ import { z } from 'zod';
 const completeJobSchema = z.object({
   techNotes: z.string().min(1),
   images: z.array(z.object({
-    data: z.string(),
+    url: z.string(),
     name: z.string(),
   })).min(1, 'At least one image is required'),
 });

@@ -93,7 +93,9 @@ export async function GET() {
           if (images && Array.isArray(images) && images.length > 0) {
             const firstImage = images[0];
             if (firstImage && typeof firstImage === 'object') {
-              photoData = (firstImage as any).data || null;
+              // New photos store a Vercel Blob URL; older records (before the
+              // move off base64 storage) still have the raw data URI — support both.
+              photoData = (firstImage as any).url || (firstImage as any).data || null;
               photoName = (firstImage as any).name || null;
             }
           }

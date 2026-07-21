@@ -68,9 +68,9 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className="flex h-screen flex-col md:flex-row bg-slate-50">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-50 overflow-hidden">
       {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col bg-ink border-r border-ink-border">
+      <div className="hidden md:flex md:w-64 md:flex-shrink-0 md:flex-col bg-ink border-r border-ink-border">
         <div className="flex items-center gap-2.5 h-16 border-b border-ink-border px-5">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/15 text-primary-400">
             <SignpostIcon className="w-5 h-5" />
@@ -111,7 +111,7 @@ export default function DashboardLayout({
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Top header with notification bell */}
         <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-4 md:px-8 py-2.5 flex justify-end">
           <NotificationBell />

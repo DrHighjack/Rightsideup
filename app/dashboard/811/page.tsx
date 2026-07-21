@@ -45,6 +45,7 @@ export default function ElevenPage() {
   const userRole = (session?.user as any)?.role;
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
+  const [showTicketModal, setShowTicketModal] = useState(false);
   const [properties, setProperties] = useState<PropertyOption[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<string>('');
   const [newTicketNumber, setNewTicketNumber] = useState<string>('');
@@ -318,7 +319,12 @@ export default function ElevenPage() {
         {tickets.map((ticket) => (
           <button
             key={ticket.id}
-            onClick={() => setSelectedTicketId(ticket.id)}
+            onClick={() => {
+              setSelectedTicketId(ticket.id);
+              if (isTC) {
+                setShowTicketModal(true);
+              }
+            }}
             className={`w-full rounded-lg border px-4 py-3 text-left transition ${
               selectedTicketId === ticket.id
                 ? 'border-blue-500 bg-blue-50'
@@ -453,14 +459,8 @@ export default function ElevenPage() {
     return styles[status] || styles.PENDING;
   };
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {isTC && addTicketCard}
-
-      {isTC && ticketListCard}
-
-      {!isTC && tickets.length > 1 && ticketListCard}
-
+  const ticketDetailsContent = (
+    <>
       {/* Conflict warning banner */}
       {hasConflict && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded">
@@ -664,7 +664,44 @@ export default function ElevenPage() {
           <p className="text-gray-600">No activity yet</p>
         </div>
       )}
+    </>
+  );
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-6">
+      {isTC && addTicketCard}
+
+      {isTC && ticketListCard}
+
+      {!isTC && tickets.length > 1 && ticketListCard}
+
+      {!isTC && ticketDetailsContent}
+
       {!isTC && addTicketCard}
+
+      {isTC && showTicketModal && currentTicket && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowTicketModal(false)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-lg bg-gray-50 p-6 shadow-xl space-y-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setShowTicketModal(false)}
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-200 hover:text-gray-700"
+                aria-label="Close ticket details"
+              >
+                ✕
+              </button>
+            </div>
+            {ticketDetailsContent}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

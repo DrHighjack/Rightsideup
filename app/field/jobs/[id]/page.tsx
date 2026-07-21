@@ -414,8 +414,8 @@ export default function JobDetailPage() {
 
       {/* Complete Job Modal */}
       {showCompleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-end z-50 animate-fade-in">
+          <div className="w-full bg-white rounded-t-2xl p-4 max-h-[80vh] overflow-y-auto animate-slide-up">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Complete Job</h3>
 
             <div className="mb-4">
@@ -498,8 +498,8 @@ export default function JobDetailPage() {
 
       {/* Flag Issue Modal */}
       {showFlagModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end z-50">
-          <div className="w-full bg-white rounded-t-2xl p-4">
+        <div className="fixed inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-end z-50 animate-fade-in">
+          <div className="w-full bg-white rounded-t-2xl p-4 animate-slide-up">
             <h3 className="text-xl font-bold mb-4 text-gray-900">Flag Issue</h3>
 
             <div className="mb-4">

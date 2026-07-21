@@ -1,11 +1,51 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import NotificationBell from "@/app/components/NotificationBell";
+import {
+  HomeIcon,
+  OrdersIcon,
+  PlusCircleIcon,
+  SignpostIcon,
+  PackageIcon,
+  ShieldIcon,
+  CreditCardIcon,
+  UserIcon,
+  DocumentIcon,
+  UsersIcon,
+  LogoutIcon,
+} from "@/app/components/icons";
+
+const NAV_ITEMS = [
+  { href: "/dashboard", label: "Dashboard", short: "Home", icon: HomeIcon },
+  { href: "/dashboard/orders", label: "My Orders", short: "Orders", icon: OrdersIcon },
+  { href: "/dashboard/orders/new", label: "New Order", short: "New", icon: PlusCircleIcon },
+  { href: "/dashboard/signs", label: "My Signs", short: "Signs", icon: SignpostIcon },
+  { href: "/dashboard/inventory", label: "Inventory", short: "Inv", icon: PackageIcon },
+  { href: "/dashboard/811", label: "811 Tracker", short: "811", icon: ShieldIcon },
+  { href: "/dashboard/invoices", label: "Invoices", short: "Bills", icon: CreditCardIcon },
+  { href: "/dashboard/account", label: "Account", short: "Account", icon: UserIcon },
+  { href: "/dashboard/tutorials", label: "Tutorials", short: "Help", icon: DocumentIcon },
+];
+
+const MY_AGENTS_ITEM = { href: "/dashboard/my-agents", label: "My Agents", short: "Agents", icon: UsersIcon };
+
+// Highlight only the nav item whose href is the longest prefix of the
+// current path, so /dashboard/orders/new lights up "New Order" and not
+// also "My Orders" and "Dashboard".
+function useActiveHref(items: { href: string }[]): string | undefined {
+  const pathname = usePathname() || "";
+  let best: string | undefined;
+  for (const item of items) {
+    if (pathname === item.href || pathname.startsWith(item.href + "/")) {
+      if (!best || item.href.length > best.length) best = item.href;
+    }
+  }
+  return best;
+}
 
 export default function DashboardLayout({
   children,
@@ -16,137 +56,64 @@ export default function DashboardLayout({
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role as string | undefined;
   const isTC = userRole === "TC";
-  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
-  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  const navItems = isTC
+    ? [...NAV_ITEMS.slice(0, 2), MY_AGENTS_ITEM, ...NAV_ITEMS.slice(2)]
+    : NAV_ITEMS;
+  const activeHref = useActiveHref(navItems);
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
     router.push("/login");
   };
 
-  useEffect(() => {
-    const onClickOutside = (event: MouseEvent) => {
-      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target as Node)) {
-        setAccountMenuOpen(false);
-      }
-    };
-
-    document.addEventListener("mousedown", onClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", onClickOutside);
-    };
-  }, []);
-
   return (
-    <div className="flex min-h-screen flex-col md:flex-row bg-navy-50">
+    <div className="flex h-screen flex-col md:flex-row bg-slate-50">
       {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:bg-white md:border-r md:border-slate-200">
-        <div className="flex items-center justify-center h-16 border-b border-slate-200 px-4">
-          <h1 className="font-display text-lg font-semibold tracking-tight text-navy-900">SignPost Field</h1>
+      <div className="hidden md:flex md:w-64 md:flex-col bg-ink border-r border-ink-border">
+        <div className="flex items-center gap-2.5 h-16 border-b border-ink-border px-5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary-500/15 text-primary-400">
+            <SignpostIcon className="w-5 h-5" />
+          </span>
+          <h1 className="text-[15px] font-semibold tracking-tight text-white">
+            SignPost <span className="text-primary-400">Field</span>
+          </h1>
         </div>
-        <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-2">
-          <Link
-            href="/dashboard/orders/new"
-            className="block rounded-lg border border-green-300 bg-green-50 px-4 py-2.5 text-sm font-semibold text-green-700 transition-colors hover:bg-green-100"
-          >
-            + New Order
-          </Link>
-          <Link
-            href="/dashboard"
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/dashboard/orders"
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            My Orders
-          </Link>
-          {isTC && (
-            <Link
-              href="/dashboard/my-agents"
-              className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-            >
-              My Agents
-            </Link>
-          )}
-          <Link
-            href="/dashboard/inventory"
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = '/dashboard/inventory';
-            }}
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            Inventory
-          </Link>
-          <Link
-            href="/dashboard/811"
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            811 Tracker
-          </Link>
-          <Link
-            href="/dashboard/invoices"
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            💳 Invoices
-          </Link>
-          <Link
-            href="/dashboard/account"
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            Account
-          </Link>
-          <Link
-            href="/dashboard/tutorials"
-            className="block rounded-lg px-4 py-2.5 text-sm font-medium text-slate-600 transition-colors hover:bg-navy-50 hover:text-navy-900"
-          >
-            Tutorials
-          </Link>
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-0.5">
+          {navItems.map(({ href, label, icon: Icon }) => {
+            const active = href === activeHref;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  active
+                    ? "bg-primary-500/15 text-white"
+                    : "text-ink-muted hover:bg-ink-hover hover:text-white"
+                }`}
+              >
+                <Icon className={`w-5 h-5 shrink-0 ${active ? "text-primary-400" : ""}`} />
+                {label}
+                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-primary-400" />}
+              </Link>
+            );
+          })}
         </nav>
+        <div className="border-t border-ink-border p-3">
+          <button
+            onClick={handleSignOut}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-ink-muted hover:bg-ink-hover hover:text-white transition-colors"
+          >
+            <LogoutIcon className="w-5 h-5" />
+            Sign Out
+          </button>
+        </div>
       </div>
 
       {/* Main content */}
       <div className="flex-1 flex flex-col">
         {/* Top header with notification bell */}
-        <div className="bg-white border-b border-slate-200 px-4 md:px-8 py-3 flex justify-end items-center gap-3">
-          <div className="relative" ref={accountMenuRef}>
-            <button
-              type="button"
-              onClick={() => setAccountMenuOpen((prev) => !prev)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50"
-            >
-              Account
-            </button>
-
-            {accountMenuOpen && (
-              <div className="absolute right-0 mt-2 w-44 rounded-lg border border-slate-200 bg-white shadow-lg z-50">
-                <Link
-                  href="/dashboard/account"
-                  onClick={() => setAccountMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Settings
-                </Link>
-                <Link
-                  href="/dashboard/tutorials"
-                  onClick={() => setAccountMenuOpen(false)}
-                  className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
-                >
-                  Tutorials
-                </Link>
-                <button
-                  type="button"
-                  onClick={handleSignOut}
-                  className="w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                >
-                  Sign Out
-                </button>
-              </div>
-            )}
-          </div>
+        <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-4 md:px-8 py-2.5 flex justify-end">
           <NotificationBell />
         </div>
         <div className="flex-1 p-4 md:p-8">
@@ -154,61 +121,22 @@ export default function DashboardLayout({
         </div>
 
         {/* Mobile bottom nav */}
-        <nav className="md:hidden border-t border-slate-200 bg-white flex gap-1 px-1 pt-1 pb-[max(0.25rem,env(safe-area-inset-bottom))] overflow-x-auto">
-          <Link
-            href="/dashboard"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            Home
-          </Link>
-          <Link
-            href="/dashboard/orders"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            Orders
-          </Link>
-          {isTC && (
-            <Link
-              href="/dashboard/my-agents"
-              className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-            >
-              Agents
-            </Link>
-          )}
-          <Link
-            href="/dashboard/inventory"
-            onClick={(e) => {
-              e.preventDefault();
-              window.location.href = '/dashboard/inventory';
-            }}
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            📦 Inv
-          </Link>
-          <Link
-            href="/dashboard/811"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            811
-          </Link>
-          <Link
-            href="/dashboard/invoices"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            💳 Inv
-          </Link>
-          <Link
-            href="/dashboard/account"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            Account
-          </Link>
-          <Link
-            href="/dashboard/tutorials"
-            className="flex min-h-12 flex-1 items-center justify-center rounded-lg px-3 text-center text-xs font-medium text-slate-500 whitespace-nowrap transition-colors hover:text-navy-900"
-          >
-            Tutorials
-          </Link>
+        <nav className="md:hidden border-t border-slate-200 bg-white flex px-1 py-1.5 overflow-x-auto">
+          {navItems.map(({ href, short, icon: Icon }) => {
+            const active = href === activeHref;
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
+                  active ? "text-primary-600" : "text-slate-500 hover:text-slate-900"
+                }`}
+              >
+                <Icon className="w-5 h-5" />
+                {short}
+              </Link>
+            );
+          })}
         </nav>
 
         {/* Compliance Footer */}

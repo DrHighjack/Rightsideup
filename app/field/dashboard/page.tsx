@@ -190,19 +190,19 @@ export default function FieldDashboard() {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-4 sticky top-0 z-10">
-        <div className="flex justify-between items-center mb-4">
-          <h1 className="text-2xl font-bold text-gray-900">
+      <div className="bg-ink text-white p-4 sticky top-0 z-10">
+        <div className="flex justify-between items-center mb-1.5">
+          <h1 className="text-2xl font-semibold tracking-tight">
             {getGreeting()}, {firstName}
           </h1>
           <button
             onClick={handleSignOut}
-            className="px-4 py-2 text-sm font-medium bg-red-500 text-white rounded-lg active:bg-red-600 transition-colors"
+            className="px-3.5 py-2 text-sm font-medium text-ink-muted border border-ink-border rounded-lg active:bg-ink-hover hover:text-white transition-colors"
           >
             Sign Out
           </button>
         </div>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-ink-muted">
           {new Date().toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'long',

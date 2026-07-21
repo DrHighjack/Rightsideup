@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 import Link from "next/link";
+import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
 
 interface RealtorData {
   id: string;
@@ -13,6 +13,8 @@ interface RealtorData {
   phone?: string;
   tags: string[];
   createdAt: string;
+  hasOutstandingBalance?: boolean;
+  outstandingBalance?: number;
   _count: {
     orders: number;
   };
@@ -21,6 +23,7 @@ interface RealtorData {
 export default function AdminClientsPage() {
   const [realtors, setRealtors] = useState<RealtorData[]>([]);
   const [search, setSearch] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -28,9 +31,19 @@ export default function AdminClientsPage() {
   const [balanceFilter, setBalanceFilter] = useState<"all" | "has-balance" | "no-balance">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
   const [allTags, setAllTags] = useState<string[]>([]);
-  const [clientsWithInvoices, setClientsWithInvoices] = useState<Map<string, boolean>>(new Map());
   const [sendingSMSId, setSendingSMSId] = useState<string | null>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setSearch(searchInput.trim());
+      setPage(1);
+    }, 250);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, [searchInput]);
 
   useEffect(() => {
     async function fetchRealtors() {
@@ -44,34 +57,16 @@ export default function AdminClientsPage() {
         const response = await fetch(url);
         const data = await response.json();
 
-        setRealtors(data.users);
-        setTotalPages(data.pagination.pages);
+        setRealtors(data.users || []);
+        setTotalPages(data.pagination?.pages || 1);
 
-        // Extract all unique tags
         const tags = new Set<string>();
-        data.users.forEach((user: RealtorData) => {
-          if (user.tags && Array.isArray(user.tags)) {
-            user.tags.forEach(tag => tags.add(tag));
+        (data.users || []).forEach((user: RealtorData) => {
+          if (Array.isArray(user.tags)) {
+            user.tags.forEach((tag) => tags.add(tag));
           }
         });
         setAllTags(Array.from(tags).sort());
-
-        // Fetch invoice data for balance filtering
-        const invoiceMap = new Map<string, boolean>();
-        for (const user of data.users) {
-          try {
-            const invRes = await fetch(`/api/admin/invoices?realtorId=${user.id}`);
-            if (invRes.ok) {
-              const invData = await invRes.json();
-              const invoices = invData.invoices || [];
-              const hasBalance = invoices.some((inv: any) => inv.total - inv.paid > 0);
-              invoiceMap.set(user.id, hasBalance);
-            }
-          } catch (err) {
-            console.error("Failed to fetch invoices for user:", user.id);
-          }
-        }
-        setClientsWithInvoices(invoiceMap);
       } catch (error) {
         console.error("Failed to fetch realtors:", error);
       } finally {
@@ -85,25 +80,11 @@ export default function AdminClientsPage() {
   const filteredRealtors = realtors.filter((realtor) => {
     const isInactive = Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE");
 
-    if (statusFilter === "active" && isInactive) {
-      return false;
-    }
-    if (statusFilter === "inactive" && !isInactive) {
-      return false;
-    }
-
-    // Tag filter
-    if (selectedTag && (!realtor.tags || !realtor.tags.includes(selectedTag))) {
-      return false;
-    }
-
-    // Balance filter
-    if (balanceFilter === "has-balance" && !clientsWithInvoices.get(realtor.id)) {
-      return false;
-    }
-    if (balanceFilter === "no-balance" && clientsWithInvoices.get(realtor.id)) {
-      return false;
-    }
+    if (statusFilter === "active" && isInactive) return false;
+    if (statusFilter === "inactive" && !isInactive) return false;
+    if (selectedTag && (!realtor.tags || !realtor.tags.includes(selectedTag))) return false;
+    if (balanceFilter === "has-balance" && !realtor.hasOutstandingBalance) return false;
+    if (balanceFilter === "no-balance" && realtor.hasOutstandingBalance) return false;
 
     return true;
   });
@@ -114,7 +95,6 @@ export default function AdminClientsPage() {
       return;
     }
 
-    // Prepare CSV data
     const headers = ["First Name", "Last Name", "Email", "Brokerage", "Phone", "Orders", "Tags", "Joined"];
     const rows = filteredRealtors.map((realtor) => [
       realtor.firstName,
@@ -127,13 +107,11 @@ export default function AdminClientsPage() {
       new Date(realtor.createdAt).toLocaleDateString(),
     ]);
 
-    // Create CSV content
     const csv = [
       headers.join(","),
       ...rows.map((row) =>
         row
           .map((cell) => {
-            // Escape quotes and wrap in quotes if contains comma
             const str = String(cell);
             if (str.includes(",") || str.includes('"') || str.includes("\n")) {
               return `"${str.replace(/"/g, '""')}"`;
@@ -144,7 +122,6 @@ export default function AdminClientsPage() {
       ),
     ].join("\n");
 
-    // Download CSV
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     const url = URL.createObjectURL(blob);
@@ -199,11 +176,7 @@ export default function AdminClientsPage() {
     const nextIsActive = isInactive;
     const actionLabel = nextIsActive ? "reactivate" : "deactivate";
 
-    if (
-      !confirm(
-        `${nextIsActive ? "Reactivate" : "Deactivate"} ${realtor.firstName} ${realtor.lastName}?`
-      )
-    ) {
+    if (!confirm(`${nextIsActive ? "Reactivate" : "Deactivate"} ${realtor.firstName} ${realtor.lastName}?`)) {
       return;
     }
 
@@ -243,34 +216,28 @@ export default function AdminClientsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Realtor Accounts</h1>
-        <p className="text-gray-600">Manage realtor accounts and view their order history</p>
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-slate-900 md:text-3xl">Realtor Accounts</h1>
+        <p className="mt-1 text-slate-600">Manage realtor accounts and view their order history</p>
       </div>
 
-      {/* Search and Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 space-y-4">
-        {/* Search */}
+      <div className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
         <div>
-          <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="search" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
             Search
           </label>
           <input
             type="text"
             id="search"
-            value={search}
-            onChange={(e) => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             placeholder="Search by name, email, brokerage, or tags..."
-            className="w-full rounded-md border border-gray-300 px-4 py-2"
+            className="h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
           />
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label htmlFor="status-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="status-filter" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
               Account Status
             </label>
             <select
@@ -280,7 +247,7 @@ export default function AdminClientsPage() {
                 setStatusFilter(e.target.value as "all" | "active" | "inactive");
                 setPage(1);
               }}
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             >
               <option value="all">All Accounts</option>
               <option value="active">!inactive (Active)</option>
@@ -288,9 +255,8 @@ export default function AdminClientsPage() {
             </select>
           </div>
 
-          {/* Tag Filter */}
           <div>
-            <label htmlFor="tag-filter" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="tag-filter" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
               Filter by Tag
             </label>
             <select
@@ -300,7 +266,7 @@ export default function AdminClientsPage() {
                 setSelectedTag(e.target.value);
                 setPage(1);
               }}
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             >
               <option value="">All Tags</option>
               {allTags.map((tag) => (
@@ -311,19 +277,18 @@ export default function AdminClientsPage() {
             </select>
           </div>
 
-          {/* Balance Filter */}
           <div>
-            <label htmlFor="balance-filter" className="block text-sm font-medium text-gray-700 mb-1">
-              Filter by Outstanding Balance
+            <label htmlFor="balance-filter" className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Outstanding Balance
             </label>
             <select
               id="balance-filter"
               value={balanceFilter}
               onChange={(e) => {
-                setBalanceFilter(e.target.value as any);
+                setBalanceFilter(e.target.value as "all" | "has-balance" | "no-balance");
                 setPage(1);
               }}
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             >
               <option value="all">All Clients</option>
               <option value="has-balance">Has Outstanding Balance</option>
@@ -332,94 +297,84 @@ export default function AdminClientsPage() {
           </div>
         </div>
 
-        {/* Export Button */}
         <div>
           <button
             onClick={handleExportCSV}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+            className="inline-flex h-11 items-center rounded-lg bg-navy-900 px-4 font-medium text-white transition-colors hover:bg-navy-700"
           >
             Export to CSV
           </button>
         </div>
       </div>
 
-      {/* Realtors table */}
       {loading ? (
-        <div className="text-center text-gray-500 py-8">Loading realtors...</div>
+        <div className="rounded-xl border border-slate-200 bg-white py-10 text-center text-slate-500 shadow-sm">Loading realtors...</div>
       ) : filteredRealtors.length === 0 ? (
-        <div className="text-center text-gray-500 py-8">No realtors found</div>
+        <div className="rounded-xl border border-slate-200 bg-white py-10 text-center text-slate-500 shadow-sm">No realtors found</div>
       ) : (
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead className="border-b border-slate-200 bg-slate-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Name
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Email
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Brokerage
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Tags
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Orders
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Joined
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-700">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Brokerage</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Tags</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Balance</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Orders</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRealtors.map((realtor) => (
                   <tr
                     key={realtor.id}
-                    className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer"
-                    onClick={() => (window.location.href = `/admin/clients/${realtor.id}`)}
+                    className="cursor-pointer border-b border-slate-200 hover:bg-slate-50"
+                    onClick={() => {
+                      window.location.href = `/admin/clients/${realtor.id}`;
+                    }}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-900 font-medium">
+                    <td className="px-6 py-4 text-sm font-medium text-slate-900">
                       {realtor.firstName} {realtor.lastName}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {realtor.email}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {realtor.brokerageName || "—"}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{realtor.email}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{realtor.brokerageName || "-"}</td>
                     <td className="px-6 py-4 text-sm">
                       <div className="flex flex-wrap gap-1">
                         {realtor.tags && realtor.tags.length > 0 ? (
                           realtor.tags.map((tag) => (
                             <span
                               key={tag}
-                              className="inline-block bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs"
+                              className="inline-flex rounded-full bg-navy-100 px-2.5 py-1 text-xs font-medium text-navy-900"
                             >
                               {tag}
                             </span>
                           ))
                         ) : (
-                          <span className="text-gray-400">—</span>
+                          <span className="text-slate-400">-</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {realtor._count.orders}
+                    <td className="px-6 py-4 text-sm">
+                      {realtor.hasOutstandingBalance ? (
+                        <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
+                          Outstanding
+                        </span>
+                      ) : (
+                        <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                          Clear
+                        </span>
+                      )}
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-600">
-                      {new Date(realtor.createdAt).toLocaleDateString()}
-                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{realtor._count.orders}</td>
+                    <td className="px-6 py-4 text-sm text-slate-600">{new Date(realtor.createdAt).toLocaleDateString()}</td>
                     <td className="px-6 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleSendPasswordReset(realtor.email)}
-                          className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
+                          className="text-sm font-medium text-navy-900 hover:text-navy-700"
                         >
                           Reset
                         </button>
@@ -427,21 +382,21 @@ export default function AdminClientsPage() {
                           <button
                             onClick={() => handleSendSMS(realtor.id)}
                             disabled={sendingSMSId === realtor.id}
-                            className="text-blue-600 hover:text-blue-900 font-medium text-sm disabled:opacity-50"
+                            className="text-sm font-medium text-sky-700 hover:text-sky-900 disabled:opacity-50"
                           >
                             {sendingSMSId === realtor.id ? "Sending..." : "SMS"}
                           </button>
                         )}
                         <Link
                           href={`/admin/clients/${realtor.id}`}
-                          className="text-blue-600 hover:text-blue-900 font-medium text-sm"
+                          className="text-sm font-medium text-sky-700 hover:text-sky-900"
                         >
                           Profile
                         </Link>
                         <button
                           onClick={() => handleToggleActive(realtor)}
                           disabled={updatingStatusId === realtor.id}
-                          className={`font-medium text-sm disabled:opacity-50 ${
+                          className={`text-sm font-medium disabled:opacity-50 ${
                             Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE")
                               ? "text-green-700 hover:text-green-900"
                               : "text-red-600 hover:text-red-900"
@@ -450,8 +405,8 @@ export default function AdminClientsPage() {
                           {updatingStatusId === realtor.id
                             ? "Saving..."
                             : Array.isArray(realtor.tags) && realtor.tags.includes("INACTIVE")
-                            ? "Reactivate"
-                            : "Deactivate"}
+                              ? "Reactivate"
+                              : "Deactivate"}
                         </button>
                       </div>
                     </td>
@@ -461,22 +416,19 @@ export default function AdminClientsPage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-slate-200 px-6 py-4">
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium disabled:opacity-50"
+              className="h-10 rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 disabled:opacity-50"
             >
               Previous
             </button>
-            <span className="text-sm text-gray-600">
-              Page {page} of {totalPages}
-            </span>
+            <span className="text-sm text-slate-600">Page {page} of {totalPages}</span>
             <button
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium disabled:opacity-50"
+              className="h-10 rounded-lg border border-slate-300 px-4 text-sm font-medium text-slate-700 disabled:opacity-50"
             >
               Next
             </button>

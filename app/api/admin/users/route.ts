@@ -56,33 +56,71 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    const users = await prisma.user.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        email: true,
-        role: true,
-        brokerageId: true,
-        brokerageName: true,
-        phone: true,
-        paymentMethod: true,
-        freeInstallGivenBy: true,
-        tags: true,
-        createdAt: true,
-        _count: {
-          select: { orders: true },
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+          brokerageId: true,
+          brokerageName: true,
+          phone: true,
+          paymentMethod: true,
+          freeInstallGivenBy: true,
+          tags: true,
+          createdAt: true,
+          _count: {
+            select: { orders: true },
+          },
         },
-      },
+      }),
+      prisma.user.count({ where }),
+    ]);
+
+    const userIds = users.map((user) => user.id);
+    let outstandingByUserId = new Map<string, number>();
+
+    if (userIds.length > 0) {
+      const invoiceTotals = await prisma.invoice.groupBy({
+        by: ["userId"],
+        where: {
+          userId: { in: userIds },
+          status: { in: ["SENT", "VIEWED", "OVERDUE"] },
+        },
+        _sum: {
+          amount: true,
+          discountAmount: true,
+          paidAmount: true,
+        },
+      });
+
+      outstandingByUserId = new Map(
+        invoiceTotals.map((row) => {
+          const amount = row._sum.amount || 0;
+          const discountAmount = row._sum.discountAmount || 0;
+          const paidAmount = row._sum.paidAmount || 0;
+          const outstanding = Math.max(0, amount - discountAmount - paidAmount);
+          return [row.userId, outstanding] as const;
+        })
+      );
+    }
+
+    const usersWithBalances = users.map((user) => {
+      const outstandingBalance = outstandingByUserId.get(user.id) || 0;
+      return {
+        ...user,
+        outstandingBalance,
+        hasOutstandingBalance: outstandingBalance > 0,
+      };
     });
 
-    const total = await prisma.user.count({ where });
-
     return NextResponse.json({
-      users,
+      users: usersWithBalances,
       pagination: {
         page,
         limit,

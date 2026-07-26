@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { notifyOrderUpdate } from "@/lib/notifications";
+import { sendNewOrderDiscordWebhook } from "@/lib/discord";
 
 function isMissingEmailVerifiedColumn(error: unknown): boolean {
   return (
@@ -379,6 +380,17 @@ export async function POST(request: NextRequest) {
       });
 
       if (realtor) {
+        await sendNewOrderDiscordWebhook({
+          orderId: order.id,
+          orderNumber,
+          type,
+          address,
+          realtorName: `${realtor.firstName} ${realtor.lastName}`,
+          realtorEmail: realtor.email,
+          scheduledDate,
+          placedByRole: sessionUser.role,
+        }).catch((error) => console.error('Failed to send Discord order webhook:', error));
+
         await sendOrderConfirmationEmail(
           realtor.email,
           `${realtor.firstName} ${realtor.lastName}`,

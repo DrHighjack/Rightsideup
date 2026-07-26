@@ -21,6 +21,9 @@ interface OrderDetail {
     firstName: string;
     lastName: string;
   };
+  ticket811?: { id: string } | null;
+  self811Accepted: boolean;
+  photos: Array<{ id: string; name: string; uploadedAt: string; url: string }>;
 }
 
 export default function OrderDetailPage() {
@@ -37,6 +40,8 @@ export default function OrderDetailPage() {
   const [cancelling, setCancelling] = useState(false);
   const [cancelled, setCancelled] = useState(false);
   const [cancelError, setCancelError] = useState("");
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState("");
 
   useEffect(() => {
     async function fetchOrder() {
@@ -126,6 +131,27 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function handlePhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setPhotoUploading(true);
+    setPhotoError("");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch(`/api/orders/${id}/photos`, { method: "POST", body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to upload photo");
+      setOrder((current) => current ? { ...current, photos: [...current.photos, data.photo] } : current);
+      event.target.value = "";
+    } catch (error) {
+      setPhotoError(error instanceof Error ? error.message : "Failed to upload photo");
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
+
   if (loading) {
     return <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">Loading...</div>;
   }
@@ -147,6 +173,34 @@ export default function OrderDetailPage() {
         >
           Back to Orders
         </Link>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Listing Photos</h2>
+          <label className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-navy-900 px-4 text-sm font-medium text-white hover:bg-navy-800">
+            {photoUploading ? "Uploading..." : "Add Photo"}
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoUpload}
+              disabled={photoUploading}
+              className="hidden"
+            />
+          </label>
+        </div>
+        {photoError && <p className="text-sm text-red-700">{photoError}</p>}
+        {order.photos.length > 0 ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {order.photos.map((photo) => (
+              <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-slate-200">
+                <img src={photo.url} alt={photo.name} className="aspect-square w-full object-cover" />
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-slate-600">No photos attached to this order.</p>
+        )}
       </div>
 
       {/* Status badge */}
@@ -244,12 +298,22 @@ export default function OrderDetailPage() {
 
       {/* Cancel button */}
       {order.status === "PENDING" && !cancelled && (
-        <button
-          onClick={() => setShowCancelModal(true)}
-          className="flex h-12 w-full items-center justify-center rounded-lg border border-red-300 bg-white px-4 font-medium text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
-        >
-          Cancel Order
-        </button>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            onClick={() => setShowCancelModal(true)}
+            className="flex h-12 w-full items-center justify-center rounded-lg border border-red-300 bg-white px-4 font-medium text-red-700 transition-colors hover:bg-red-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-600/40 focus-visible:ring-offset-2"
+          >
+            Cancel Order
+          </button>
+          {!order.ticket811 && !order.self811Accepted && (
+            <Link
+              href={`/dashboard/811?orderId=${encodeURIComponent(order.id)}`}
+              className="flex h-12 w-full items-center justify-center rounded-lg bg-navy-900 px-4 font-medium text-white transition-colors hover:bg-navy-800"
+            >
+              Create 811 Ticket
+            </Link>
+          )}
+        </div>
       )}
 
       {/* Cancel modal */}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { pollAndProcess } from '@/lib/emailPoller';
 import { get811ManualTicketCreatedAlertEmail, sendEmail } from '@/lib/email';
+import { auth } from '@/lib/auth';
 
 // GET /api/admin/811 - List tickets with optional filters
 // Query params: status (ACTIVE, NEEDS_REVIEW, CLEARED, DISMISSED, NEW)
@@ -9,7 +10,33 @@ import { get811ManualTicketCreatedAlertEmail, sendEmail } from '@/lib/email';
 //               orderBy (createdAt, ticketNumber)
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
+    if (searchParams.get('availableOrders') === '1') {
+      const orders = await prisma.order.findMany({
+        where: {
+          status: { in: ['PENDING', 'SCHEDULED', 'ON_HOLD'] },
+          self811Accepted: false,
+          ticket811: null,
+        },
+        select: {
+          id: true,
+          orderNumber: true,
+          address: true,
+          realtor: {
+            select: { firstName: true, lastName: true, email: true },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return NextResponse.json({ orders });
+    }
+
     const status = searchParams.get('status');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -69,6 +96,11 @@ export async function GET(request: NextRequest) {
 // For 'poll': no additional params needed
 export async function POST(request: NextRequest) {
   try {
+    const session = await auth();
+    if (!session?.user?.id || (session.user as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const body = await request.json();
     const { action } = body;
 
@@ -80,26 +112,45 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'create') {
-      const { ticketNumber, sourceEmail, emailSubject, emailBody, parsedAddress, workStartDate } =
-        body;
+      const { ticketNumber, emailSubject, emailBody, workStartDate, orderId } = body;
 
-      if (!ticketNumber || !sourceEmail || !emailSubject || !emailBody) {
+      if (!ticketNumber || !emailSubject || !emailBody || !orderId) {
         return NextResponse.json(
-          { error: 'Missing required fields: ticketNumber, sourceEmail, emailSubject, emailBody' },
+          { error: 'Ticket number and pending listing are required' },
           { status: 400 }
         );
       }
 
-      // Create ticket
+      const order = await prisma.order.findFirst({
+        where: {
+          id: orderId,
+          status: { in: ['PENDING', 'SCHEDULED', 'ON_HOLD'] },
+          self811Accepted: false,
+          ticket811: null,
+        },
+        select: { id: true, address: true, realtorId: true },
+      });
+
+      if (!order) {
+        return NextResponse.json(
+          { error: 'The selected listing is no longer eligible for an 811 ticket' },
+          { status: 409 }
+        );
+      }
+
+      const sourceEmail = 'admin-entry@rightsignup.local';
       const ticket = await prisma.ticket811.create({
         data: {
-          ticketNumber,
+          ticketNumber: String(ticketNumber).trim(),
           sourceEmail,
           emailSubject,
           emailBody,
-          parsedAddress: parsedAddress || undefined,
+          parsedAddress: order.address,
           workStartDate: workStartDate ? new Date(workStartDate) : undefined,
-          status: 'NEEDS_REVIEW', // manually created tickets start as NEEDS_REVIEW
+          status: 'ACTIVE',
+          orderId: order.id,
+          realtorId: order.realtorId,
+          matchedOrderIds: [order.id],
         },
       });
 
@@ -111,7 +162,7 @@ export async function POST(request: NextRequest) {
             ticketNumber,
             sourceEmail,
             emailSubject,
-            parsedAddress || 'Not parsed',
+            order.address,
             `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/admin/811/${ticket.id}`
           );
 

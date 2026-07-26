@@ -15,7 +15,10 @@ export async function GET(
 
     const order = await prisma.order.findUnique({
       where: { id: params.id },
-      include: { realtor: { select: { id: true, email: true, firstName: true, lastName: true } } },
+      include: {
+        realtor: { select: { id: true, email: true, firstName: true, lastName: true } },
+        ticket811: { select: { id: true } },
+      },
     });
 
     if (!order) {
@@ -30,7 +33,32 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(order);
+    if ((session.user as any).role === "TC") {
+      const link = await prisma.tCAgentLink.findUnique({
+        where: {
+          tcUserId_agentUserId: {
+            tcUserId: session.user.id,
+            agentUserId: order.realtorId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!link) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
+    const photos = Array.isArray(order.photos) ? order.photos : [];
+    return NextResponse.json({
+      ...order,
+      photos: photos.map((photo: any) => ({
+        id: photo.id,
+        name: photo.name,
+        uploadedAt: photo.uploadedAt,
+        url: `/api/orders/${order.id}/photos?photoId=${encodeURIComponent(photo.id)}`,
+      })),
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },

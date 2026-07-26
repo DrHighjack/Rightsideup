@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { adminOrderSchema } from "@/lib/schemas";
 import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
+import { sendNewOrderDiscordWebhook } from "@/lib/discord";
 
 /**
  * POST /api/salesmen/orders
@@ -97,6 +98,17 @@ export async function POST(request: NextRequest) {
         },
       },
     });
+
+    await sendNewOrderDiscordWebhook({
+      orderId: order.id,
+      orderNumber,
+      type,
+      address,
+      realtorName: `${realtor.firstName} ${realtor.lastName}`,
+      realtorEmail: realtor.email,
+      scheduledDate,
+      placedByRole: userRole,
+    }).catch((error) => console.error('Failed to send Discord order webhook:', error));
 
     // Send confirmation email
     try {

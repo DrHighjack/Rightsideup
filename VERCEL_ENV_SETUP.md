@@ -36,6 +36,9 @@ To fix the 500 error on Vercel login, ensure these environment variables are set
 8. **TWILIO_ACCOUNT_SID**, **TWILIO_AUTH_TOKEN**, **TWILIO_PHONE_NUMBER**
    - For SMS notifications - [Values from .env.local]
 
+9. **DISCORD_ORDER_WEBHOOK_URL**
+   - Discord channel webhook URL used for new listing order alerts
+
 ## Steps to Fix Vercel Login:
 
 1. Go to **Vercel Dashboard** → Your Project → **Settings** → **Environment Variables**

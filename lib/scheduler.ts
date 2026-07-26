@@ -1,6 +1,80 @@
 import cron from 'node-cron';
 import * as Sentry from '@sentry/nextjs';
 
+interface NotifiableUtilityLine {
+  name: string;
+  status: string;
+  responseEmailPendingAt?: string;
+  responseEmailSentAt?: string;
+  [key: string]: unknown;
+}
+
+async function sendPending811LineResponseEmails() {
+  const { prisma } = await import('./prisma');
+  const { get811LinesRespondedEmail, sendEmail } = await import('./email');
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000);
+
+  const tickets = await prisma.ticket811.findMany({
+    where: { updatedAt: { lte: cutoff }, realtorId: { not: null } },
+    include: {
+      realtor: {
+        select: {
+          id: true,
+          email: true,
+          firstName: true,
+          tcAgentLinks: {
+            select: { tcUser: { select: { email: true, firstName: true } } },
+          },
+        },
+      },
+      order: { select: { address: true } },
+    },
+  });
+
+  for (const ticket of tickets) {
+    const utilityLines = Array.isArray(ticket.utilityLines)
+      ? (ticket.utilityLines as unknown as NotifiableUtilityLine[])
+      : [];
+    const pendingLines = utilityLines.filter((line) => {
+      if (!line.responseEmailPendingAt || line.responseEmailSentAt) return false;
+      return new Date(line.responseEmailPendingAt) <= cutoff;
+    });
+
+    if (pendingLines.length === 0 || !ticket.realtor) continue;
+
+    const recipients = new Map<string, string>();
+    recipients.set(ticket.realtor.email, ticket.realtor.firstName || 'there');
+    ticket.realtor.tcAgentLinks.forEach((link) => {
+      recipients.set(link.tcUser.email, link.tcUser.firstName || 'there');
+    });
+
+    const ticketLink = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://app.northshoresignco.com'}/dashboard/811`;
+    await Promise.all(Array.from(recipients.entries()).map(async ([email, firstName]) => {
+      const message = get811LinesRespondedEmail(
+        firstName,
+        ticket.ticketNumber || 'Pending',
+        ticket.order?.address || ticket.parsedAddress || 'Listing address unavailable',
+        pendingLines.map((line) => ({ name: line.name, status: line.status })),
+        ticketLink
+      );
+      await sendEmail({ to: email, subject: message.subject, html: message.html });
+    }));
+
+    const sentAt = new Date().toISOString();
+    const pendingNames = new Set(pendingLines.map((line) => line.name));
+    await prisma.ticket811.update({
+      where: { id: ticket.id },
+      data: {
+        utilityLines: utilityLines.map((line) =>
+          pendingNames.has(line.name)
+            ? { ...line, responseEmailSentAt: sentAt }
+            : line
+        ) as any,
+      },
+    });
+  }
+}
+
 async function checkInvoiceAging() {
   try {
     // Dynamically import at runtime to avoid webpack bundling issues
@@ -188,6 +262,15 @@ export async function startScheduler() {
           },
         },
       });
+    }
+  });
+
+  cron.schedule('* * * * *', async () => {
+    try {
+      await sendPending811LineResponseEmails();
+    } catch (err) {
+      console.error('[SCHEDULER] 811 line response email error:', err);
+      Sentry.captureException(err);
     }
   });
 

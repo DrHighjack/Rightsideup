@@ -186,6 +186,7 @@ model Order {
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   self811Accepted Boolean      @default(false) // true if realtor opted out of 811 service and accepted policy
+  photos         Json?         // array of { id, pathname, name, uploadedAt, uploadedByUserId }
   
   items          OrderItem[]
   discounts      OrderDiscount[]

@@ -14,6 +14,11 @@ interface UtilityLine {
   name: string;
   status: 'PENDING' | 'RESPONDED' | 'CLEAR' | 'CONFLICT';
   respondedAt?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  responseEmailPendingAt?: string;
+  responseEmailSentAt?: string;
 }
 
 export async function PUT(
@@ -63,18 +68,23 @@ export async function PUT(
     const lineIndex = utilityLines.findIndex((line) => line.name === lineName);
 
     if (lineIndex >= 0) {
-      // Update existing line
+      const existingLine = utilityLines[lineIndex];
+      const isNewResponse = existingLine.status === 'PENDING' && status !== 'PENDING';
       utilityLines[lineIndex] = {
-        name: lineName,
+        ...existingLine,
         status,
-        respondedAt: respondedAt || utilityLines[lineIndex].respondedAt,
+        respondedAt: status === 'PENDING' ? undefined : respondedAt || existingLine.respondedAt || new Date().toISOString(),
+        responseEmailPendingAt: isNewResponse ? new Date().toISOString() : existingLine.responseEmailPendingAt,
+        responseEmailSentAt: isNewResponse ? undefined : existingLine.responseEmailSentAt,
       };
     } else {
+      const isResponse = status !== 'PENDING';
       // Add new line
       utilityLines.push({
         name: lineName,
         status,
-        respondedAt: respondedAt || undefined,
+        respondedAt: isResponse ? respondedAt || new Date().toISOString() : undefined,
+        responseEmailPendingAt: isResponse ? new Date().toISOString() : undefined,
       });
     }
 

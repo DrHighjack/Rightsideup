@@ -42,6 +42,7 @@ interface PropertyOption {
 export default function ElevenPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [requestedOrderId, setRequestedOrderId] = useState<string | null>(null);
   const userRole = (session?.user as any)?.role;
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
@@ -52,6 +53,10 @@ export default function ElevenPage() {
   const [submitting, setSubmitting] = useState(false);
   const [addError, setAddError] = useState('');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setRequestedOrderId(new URLSearchParams(window.location.search).get('orderId'));
+  }, []);
 
   // Fetch all 811 tickets for this realtor
   useEffect(() => {
@@ -136,7 +141,8 @@ export default function ElevenPage() {
           setProperties(propertyOptions);
 
           if (propertyOptions.length > 0) {
-            setSelectedOrderId(propertyOptions[0].id);
+            const requestedOrder = propertyOptions.find((property) => property.id === requestedOrderId && property.needs811);
+            setSelectedOrderId(requestedOrder?.id || propertyOptions[0].id);
           }
         }
       } catch (error) {
@@ -147,7 +153,7 @@ export default function ElevenPage() {
     }
 
     fetchTickets();
-  }, [status, router, userRole]);
+  }, [status, router, userRole, requestedOrderId]);
 
   const handleAddTicket = async (e: React.FormEvent) => {
     e.preventDefault();

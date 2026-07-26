@@ -1,11 +1,18 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 interface PDFUploadModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface PendingOrder {
+  id: string;
+  orderNumber: string;
+  address: string;
+  realtor: { firstName: string; lastName: string; email: string };
 }
 
 export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps) {
@@ -15,13 +22,35 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
   const [preview, setPreview] = useState('');
   const [uploading, setUploading] = useState(false);
   const [parsing, setParsing] = useState(false);
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState('');
   const [formData, setFormData] = useState({
     ticketNumber: '',
-    sourceEmail: '',
     emailSubject: '',
-    parsedAddress: '',
     workStartDate: '',
   });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    async function loadPendingOrders() {
+      setOrdersLoading(true);
+      try {
+        const response = await fetch('/api/admin/811?availableOrders=1');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Failed to load pending listings');
+        setPendingOrders(Array.isArray(data.orders) ? data.orders : []);
+      } catch (error) {
+        console.error('Failed to load pending listings:', error);
+        setPendingOrders([]);
+      } finally {
+        setOrdersLoading(false);
+      }
+    }
+
+    loadPendingOrders();
+  }, [isOpen]);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -67,9 +96,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
       if (result.data) {
         setFormData({
           ticketNumber: result.data.ticketNumber || '',
-          sourceEmail: result.data.sourceEmail || '',
           emailSubject: result.data.emailSubject || '',
-          parsedAddress: result.data.parsedAddress || '',
           workStartDate: result.data.workStartDate || '',
         });
         console.log('PDF parsed successfully:', result.data);
@@ -99,8 +126,8 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
 
   const handleSubmit = async () => {
     // Allow submit if: PDF uploaded (we'll auto-generate ticket number) OR manual fields filled
-    if (!pdfFile && (!formData.ticketNumber || !formData.sourceEmail)) {
-      alert('Please either:\n1. Upload a PDF, OR\n2. Fill in Ticket Number and Source Email manually');
+    if (!selectedOrderId || (!pdfFile && !formData.ticketNumber)) {
+      alert('Select a pending listing and either upload a PDF or enter a ticket number.');
       return;
     }
 
@@ -109,17 +136,16 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
 
       // If no manual ticket number but we have a PDF, generate one
       const ticketNumber = formData.ticketNumber || `AUTO-${Date.now()}`;
-      const sourceEmail = formData.sourceEmail || 'pdf-upload@system.local';
 
       if (pdfFile) {
         const reader = new FileReader();
         reader.onload = async (e) => {
           const pdfData = (e.target?.result as string) || null;
-          await submitTicket(ticketNumber, sourceEmail, pdfData);
+          await submitTicket(ticketNumber, pdfData);
         };
         reader.readAsDataURL(pdfFile);
       } else {
-        await submitTicket(ticketNumber, sourceEmail, null);
+        await submitTicket(ticketNumber, null);
       }
     } catch (error) {
       console.error('Failed to create ticket:', error);
@@ -129,17 +155,16 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
     }
   };
 
-  const submitTicket = async (ticketNumber: string, sourceEmail: string, pdfData: string | null) => {
+  const submitTicket = async (ticketNumber: string, pdfData: string | null) => {
     const res = await fetch('/api/admin/811', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         action: 'create',
         ticketNumber: ticketNumber,
-        sourceEmail: sourceEmail,
+        orderId: selectedOrderId,
         emailSubject: formData.emailSubject || 'PDF Uploaded 811 Ticket',
         emailBody: pdfFile ? `PDF attached: ${pdfFile.name}` : 'Created manually via admin panel',
-        parsedAddress: formData.parsedAddress || undefined,
         workStartDate: formData.workStartDate || undefined,
         pdfData: pdfData,
       }),
@@ -153,11 +178,10 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
       setPreview('');
       setFormData({
         ticketNumber: '',
-        sourceEmail: '',
         emailSubject: '',
-        parsedAddress: '',
         workStartDate: '',
       });
+      setSelectedOrderId('');
       onClose();
       router.push(`/admin/811/${ticket.id}`);
     } else {
@@ -220,9 +244,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
                       setPreview('');
                       setFormData({
                         ticketNumber: '',
-                        sourceEmail: '',
                         emailSubject: '',
-                        parsedAddress: '',
                         workStartDate: '',
                       });
                     }}
@@ -262,19 +284,6 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Source Email <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                value={formData.sourceEmail}
-                onChange={(e) => setFormData({ ...formData, sourceEmail: e.target.value })}
-                placeholder="ticket@811center.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
                 Email Subject
               </label>
               <input
@@ -288,15 +297,26 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Parsed Address
+                Pending Listing <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
-                value={formData.parsedAddress}
-                onChange={(e) => setFormData({ ...formData, parsedAddress: e.target.value })}
-                placeholder="123 Main St, Anytown, CA 12345"
+              <select
+                value={selectedOrderId}
+                onChange={(e) => setSelectedOrderId(e.target.value)}
+                disabled={ordersLoading}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              >
+                <option value="">
+                  {ordersLoading ? 'Loading pending listings...' : 'Select a pending listing'}
+                </option>
+                {pendingOrders.map((order) => (
+                  <option key={order.id} value={order.id}>
+                    {order.orderNumber} - {order.address} - {order.realtor.firstName} {order.realtor.lastName}
+                  </option>
+                ))}
+              </select>
+              {!ordersLoading && pendingOrders.length === 0 && (
+                <p className="mt-1 text-sm text-gray-500">No pending listings without an 811 ticket.</p>
+              )}
             </div>
 
             <div>
@@ -315,7 +335,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
           {/* Info Box */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
             <p className="text-sm text-blue-900">
-              <strong>📄 Submit:</strong> Just upload a PDF and click Create (we'll auto-generate a ticket number), OR fill in Ticket # and Email, then click Create.
+              Select the pending listing this ticket belongs to. Upload a PDF or enter the ticket number manually.
             </p>
           </div>
 
@@ -330,7 +350,7 @@ export default function PDFUploadModal({ isOpen, onClose }: PDFUploadModalProps)
             </button>
             <button
               onClick={handleSubmit}
-              disabled={uploading || parsing || (!pdfFile && (!formData.ticketNumber || !formData.sourceEmail))}
+              disabled={uploading || parsing || ordersLoading || !selectedOrderId || (!pdfFile && !formData.ticketNumber)}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {uploading ? 'Creating...' : parsing ? 'Analyzing PDF...' : 'Create Ticket'}

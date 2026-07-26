@@ -3551,6 +3551,33 @@ export function get811HoldReleasedEmail(
     };
 }
 
+export function get811LinesRespondedEmail(
+    recipientName: string,
+    ticketNumber: string,
+    address: string,
+    lines: Array<{ name: string; status: string }>,
+    ticketLink: string
+) {
+    return {
+        subject: `811 Line Update: ${ticketNumber} - ${lines.length} response${lines.length === 1 ? "" : "s"}`,
+        html: buildAlertEmail({
+            title: "811 Utility Line Update",
+            subtitle: `${lines.length} utility line${lines.length === 1 ? " has" : "s have"} responded`,
+            intro: `Hi ${escapeHtml(recipientName)}, utility companies have responded to the 811 ticket for your listing.`,
+            fields: [
+                { label: "Ticket", value: escapeHtml(ticketNumber) },
+                { label: "Listing", value: escapeHtml(address) },
+            ],
+            listTitle: "Line Responses",
+            listItems: lines.map((line) => `${escapeHtml(line.name)} - ${escapeHtml(line.status)}`),
+            ctaLabel: "Check 811 Ticket",
+            ctaLink: ticketLink,
+            note: "Responses received within five minutes are grouped into this email.",
+            theme: ALERT_THEMES.info,
+        }),
+    };
+}
+
 export function get811TicketClearedAdminEmail(
     ticketNumber: string,
     orderNumbers: string[],

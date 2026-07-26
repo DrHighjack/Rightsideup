@@ -110,8 +110,7 @@ export default function RealtorDetailPage() {
   const [sendingCredit, setSendingCredit] = useState(false);
   const [closers, setClosers] = useState<Closer[]>([]);
   const [updatingActivation, setUpdatingActivation] = useState(false);
-  const [generatingLoginLink, setGeneratingLoginLink] = useState(false);
-  const [clientLoginLink, setClientLoginLink] = useState("");
+  const [loggingInAsRealtor, setLoggingInAsRealtor] = useState(false);
   const [pendingActivationState, setPendingActivationState] = useState<boolean | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
@@ -391,9 +390,6 @@ export default function RealtorDetailPage() {
       const data = await response.json();
       setRealtor(data.user);
       setEditData(data.user);
-      if (!isActive) {
-        setClientLoginLink("");
-      }
     } catch (err) {
       setError((err as Error).message || "Failed to update account status");
     } finally {
@@ -416,9 +412,9 @@ export default function RealtorDetailPage() {
     await handleSetAccountActive(targetState);
   };
 
-  const handleGenerateClientLoginLink = async () => {
+  const handleLoginAsRealtor = async () => {
     try {
-      setGeneratingLoginLink(true);
+      setLoggingInAsRealtor(true);
       setError("");
 
       const response = await fetch(`/api/admin/users/${realtorId}/impersonate`, {
@@ -430,17 +426,20 @@ export default function RealtorDetailPage() {
         throw new Error(data.error || "Failed to generate login link");
       }
 
-      setClientLoginLink(data.loginUrl);
-
       try {
         await navigator.clipboard.writeText(data.loginUrl);
       } catch {
-        // Keep the link visible even if clipboard write fails.
+        // Keep going even if clipboard access is denied.
+      }
+
+      const newWindow = window.open(data.loginUrl, "_blank", "noopener,noreferrer");
+      if (!newWindow) {
+        window.location.href = data.loginUrl;
       }
     } catch (err) {
-      setError((err as Error).message || "Failed to generate login link");
+      setError((err as Error).message || "Failed to log in as realtor");
     } finally {
-      setGeneratingLoginLink(false);
+      setLoggingInAsRealtor(false);
     }
   };
 
@@ -661,11 +660,11 @@ export default function RealtorDetailPage() {
                       )}
                       {isAdmin && (
                         <button
-                          onClick={handleGenerateClientLoginLink}
-                          disabled={generatingLoginLink || isInactive}
+                          onClick={handleLoginAsRealtor}
+                          disabled={loggingInAsRealtor || isInactive}
                           className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
                         >
-                          {generatingLoginLink ? "Generating..." : "Generate Login Link"}
+                          {loggingInAsRealtor ? "Opening..." : "Log In As"}
                         </button>
                       )}
                     {isAdmin && isInactive && (
@@ -687,22 +686,6 @@ export default function RealtorDetailPage() {
                 )}
               </div>
             </div>
-
-            {clientLoginLink && isAdmin && (
-              <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4">
-                <p className="mb-2 text-sm font-medium text-amber-900">
-                  Admin login-as-client link (expires in 10 minutes)
-                </p>
-                <a
-                  href={clientLoginLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="break-all text-sm text-amber-800 underline"
-                >
-                  {clientLoginLink}
-                </a>
-              </div>
-            )}
 
             {pendingActivationState !== null && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">

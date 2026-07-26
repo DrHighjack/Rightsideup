@@ -34,11 +34,20 @@ export async function GET() {
     let tickets;
 
     if (userRole === 'REALTOR') {
+      const realtorOrders = await prisma.order.findMany({
+        where: { realtorId: userId },
+        select: { id: true },
+      });
+      const realtorOrderIds = realtorOrders.map((order) => order.id);
+
       tickets = await prisma.ticket811.findMany({
         where: {
           OR: [
             { realtorId: userId },
             { order: { is: { realtorId: userId } } },
+            ...(realtorOrderIds.length > 0
+              ? [{ matchedOrderIds: { hasSome: realtorOrderIds } }]
+              : []),
           ],
         },
         include: ticketInclude,
@@ -52,12 +61,20 @@ export async function GET() {
       });
 
       const agentIds = linkedAgents.map((link) => link.agentUserId);
+      const linkedAgentOrders = await prisma.order.findMany({
+        where: { realtorId: { in: agentIds } },
+        select: { id: true },
+      });
+      const linkedAgentOrderIds = linkedAgentOrders.map((order) => order.id);
 
       tickets = await prisma.ticket811.findMany({
         where: {
           OR: [
             { realtorId: { in: agentIds } },
             { order: { is: { realtorId: { in: agentIds } } } },
+            ...(linkedAgentOrderIds.length > 0
+              ? [{ matchedOrderIds: { hasSome: linkedAgentOrderIds } }]
+              : []),
           ],
         },
         include: ticketInclude,

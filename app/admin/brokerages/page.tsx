@@ -1390,7 +1390,7 @@ export default function ManagementPage() {
                       </button>
                     </th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Payment</th>
-                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Closed By</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Profile</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Status</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Actions</th>
                   </tr>
@@ -1421,24 +1421,13 @@ export default function ManagementPage() {
                           <option value="SELF">Agent Pays</option>
                         </select>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-600">
-                        <select
-                          value={agent.freeInstallGivenBy || ""}
-                          onChange={(e) =>
-                            handleQuickUpdateAgent(agent.id, {
-                              closedByUserId: e.target.value || null,
-                            })
-                          }
-                          disabled={agentUpdatingId === agent.id}
-                          className="px-2 py-1 border border-gray-300 rounded-md bg-white text-sm min-w-[220px]"
+                      <td className="px-6 py-4 text-sm">
+                        <Link
+                          href={`/admin/clients/${agent.id}`}
+                          className="font-medium text-green-600 transition-colors hover:text-green-700"
                         >
-                          <option value="">Not Assigned</option>
-                          {closers.map((closer) => (
-                            <option key={closer.id} value={closer.id}>
-                              {closer.firstName} {closer.lastName} ({closer.role})
-                            </option>
-                          ))}
-                        </select>
+                          View Profile
+                        </Link>
                       </td>
                       <td className="px-6 py-4 text-sm">
                         {Array.isArray(agent.tags) && agent.tags.includes("INACTIVE") ? (
@@ -1453,12 +1442,6 @@ export default function ManagementPage() {
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="flex items-center gap-4">
-                          <Link
-                            href={`/admin/clients/${agent.id}`}
-                            className="text-green-600 hover:text-green-700 font-medium transition-colors"
-                          >
-                            View Profile
-                          </Link>
                           <button
                             onClick={() => handleToggleAgentActive(agent)}
                             disabled={agentUpdatingId === agent.id}

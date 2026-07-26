@@ -562,8 +562,8 @@ export default function RealtorDetailPage() {
             )}
 
             {/* Profile Section */}
-            <div className="flex justify-between items-start mb-6">
-              <div>
+            <div className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+              <div className="min-w-0">
                 {isEditing ? (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
@@ -592,13 +592,13 @@ export default function RealtorDetailPage() {
                   </div>
                 ) : (
                   <div>
-                    <h1 className="text-3xl font-bold text-gray-900">
+                    <h1 className="text-2xl font-bold leading-tight text-gray-900 md:text-3xl">
                       {realtor.firstName} {realtor.lastName}
                     </h1>
-                    <div className="flex items-center gap-2">
-                      <p className="text-gray-600">{realtor.email}</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <p className="break-all text-sm text-gray-600 md:text-base">{realtor.email}</p>
                       {isInactive && (
-                        <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800">
+                        <span className="inline-flex items-center rounded-full bg-red-100 px-2.5 py-1 text-xs font-semibold text-red-800">
                           Inactive
                         </span>
                       )}
@@ -607,13 +607,13 @@ export default function RealtorDetailPage() {
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-2 xl:max-w-3xl xl:justify-end">
                 {isEditing ? (
                   <>
                     <button
                       onClick={handleSave}
                       disabled={isSaving}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
                     >
                       {isSaving ? "Saving..." : "Save"}
                     </button>
@@ -622,7 +622,7 @@ export default function RealtorDetailPage() {
                         setIsEditing(false);
                         setEditData(realtor);
                       }}
-                      className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg font-medium hover:bg-gray-400 transition-colors"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-400"
                     >
                       Cancel
                     </button>
@@ -631,13 +631,13 @@ export default function RealtorDetailPage() {
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-blue-700"
                     >
                       Edit
                     </button>
                       <button
                         onClick={() => handleSendPasswordReset(realtor.email)}
-                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
                       >
                         Reset Password
                       </button>
@@ -645,7 +645,7 @@ export default function RealtorDetailPage() {
                         <button
                           onClick={() => requestActivationChange(isInactive)}
                           disabled={updatingActivation}
-                          className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 ${
+                          className={`inline-flex min-h-11 items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
                             isInactive
                               ? "bg-emerald-600 text-white hover:bg-emerald-700"
                               : "bg-red-600 text-white hover:bg-red-700"
@@ -662,7 +662,7 @@ export default function RealtorDetailPage() {
                         <button
                           onClick={handleLoginAsRealtor}
                           disabled={loggingInAsRealtor || isInactive}
-                          className="bg-amber-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                          className="inline-flex min-h-11 items-center justify-center rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-amber-700 disabled:opacity-50"
                         >
                           {loggingInAsRealtor ? "Opening..." : "Log In As"}
                         </button>
@@ -671,14 +671,14 @@ export default function RealtorDetailPage() {
                       <button
                         onClick={handlePermanentDelete}
                         disabled={deletingAccount}
-                        className="bg-red-700 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-800 disabled:opacity-50 transition-colors"
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-800 disabled:opacity-50"
                       >
                         {deletingAccount ? "Deleting..." : "Delete Permanently"}
                       </button>
                     )}
                     <Link
                       href={`/admin/orders/new?realtorId=${realtorId}`}
-                      className="bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 transition-colors"
+                      className="inline-flex min-h-11 items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-700"
                     >
                       Book Order
                     </Link>
@@ -719,9 +719,9 @@ export default function RealtorDetailPage() {
             )}
 
             {/* Editable Fields */}
-            <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="mb-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
-                <p className="text-gray-600 text-sm">Phone</p>
+                <p className="text-sm font-medium text-gray-600">Phone</p>
                 {isEditing ? (
                   <input
                     type="tel"
@@ -731,11 +731,11 @@ export default function RealtorDetailPage() {
                     className="w-full border border-gray-300 rounded px-3 py-2"
                   />
                 ) : (
-                  <p className="text-gray-900 font-medium">{realtor.phone || "—"}</p>
+                  <p className="mt-1 text-base font-medium text-gray-900">{realtor.phone || "—"}</p>
                 )}
               </div>
               <div>
-                <p className="text-gray-600 text-sm">Payment Method</p>
+                <p className="text-sm font-medium text-gray-600">Payment Method</p>
                 {isEditing ? (
                   <select
                     value={editData.paymentMethod || "OFFICE"}
@@ -746,13 +746,13 @@ export default function RealtorDetailPage() {
                     <option value="SELF">Agent Pays</option>
                   </select>
                 ) : (
-                  <p className="text-gray-900 font-medium">
+                  <p className="mt-1 text-base font-medium text-gray-900">
                     {realtor.paymentMethod === "OFFICE" ? "Office Pays" : "Agent Pays"}
                   </p>
                 )}
               </div>
               <div>
-                <p className="text-gray-600 text-sm">Closed By</p>
+                <p className="text-sm font-medium text-gray-600">Closed By</p>
                 {isEditing ? (
                   <select
                     value={editData.freeInstallGivenBy || ""}

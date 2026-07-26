@@ -322,9 +322,9 @@ export async function pollAndProcess(): Promise<void> {
         const parsed = parseAddress(email.body);
         console.log(`[811POLL] Processing: "${email.subject}" (confidence: ${parsed.confidence})`);
 
-        // Step 3: Handle low confidence or missing address
-        if (parsed.confidence === 'low' || !parsed.address) {
-          console.log('[811POLL] Low confidence - creating NEEDS_REVIEW ticket');
+        // Step 3: An address is required for order matching.
+        if (!parsed.address) {
+          console.log('[811POLL] Missing address - creating NEEDS_REVIEW ticket');
 
           const ticket = await prisma.ticket811.create({
             data: {
@@ -336,7 +336,7 @@ export async function pollAndProcess(): Promise<void> {
               workStartDate: parsed.workStartDate ? new Date(parsed.workStartDate) : null,
               status: 'NEEDS_REVIEW',
               matchedOrderIds: [],
-              adminNotes: `Auto-flagged for review: low confidence address extraction`,
+              adminNotes: `Auto-flagged for review: address not extracted`,
             },
           });
 
@@ -360,18 +360,22 @@ export async function pollAndProcess(): Promise<void> {
         }
 
         // Step 4: High confidence - fuzzy match orders
-        console.log(`[811POLL] High confidence - matching against PENDING/SCHEDULED orders`);
+        console.log(`[811POLL] Matching extracted address against PENDING/SCHEDULED orders`);
 
         const orders = await prisma.order.findMany({
           where: {
             status: {
               in: ['PENDING', 'SCHEDULED'],
             },
+            ticket811: {
+              is: null,
+            },
           },
           select: {
             id: true,
             orderNumber: true,
             address: true,
+            realtorId: true,
           },
         });
 
@@ -397,6 +401,10 @@ export async function pollAndProcess(): Promise<void> {
         }
 
         // Step 5: Create Ticket811 record
+        const matchedOrders = orders.filter((order) => matchedOrderIds.includes(order.id));
+        const matchedRealtorIds = Array.from(
+          new Set(matchedOrders.map((order) => order.realtorId))
+        );
         const ticketStatus = matchedOrderIds.length > 0 ? 'ACTIVE' : 'NEEDS_REVIEW';
         const ticket = await prisma.ticket811.create({
           data: {
@@ -408,7 +416,9 @@ export async function pollAndProcess(): Promise<void> {
             workStartDate: parsed.workStartDate ? new Date(parsed.workStartDate) : null,
             status: ticketStatus,
             matchedOrderIds: matchedOrderIds,
-            adminNotes: `Auto-matched ${matchedOrderIds.length} orders`,
+            orderId: matchedOrders.length === 1 ? matchedOrders[0].id : null,
+            realtorId: matchedRealtorIds.length === 1 ? matchedRealtorIds[0] : null,
+            adminNotes: `${parsed.confidence === 'low' ? 'Low-confidence extraction; ' : ''}auto-matched ${matchedOrderIds.length} orders`,
           },
         });
 
@@ -420,8 +430,7 @@ export async function pollAndProcess(): Promise<void> {
           parsed.workStartDate || '(not extracted)',
           email.from,
           ticketStatus,
-          orders
-            .filter((o) => matchedOrderIds.includes(o.id))
+          matchedOrders
             .map((o) => ({ orderNumber: o.orderNumber, address: o.address })),
           `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/admin/811/${ticket.id}`
         );

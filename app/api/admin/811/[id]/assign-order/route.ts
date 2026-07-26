@@ -58,7 +58,9 @@ export async function POST(
     const updated = await prisma.ticket811.update({
       where: { id },
       data: {
-        orderId: orderId,
+        orderId,
+        realtorId: order.realtorId,
+        matchedOrderIds: Array.from(new Set([...ticket.matchedOrderIds, orderId])),
         status: "ACTIVE",
       },
       include: {
@@ -68,9 +70,9 @@ export async function POST(
     });
 
     // Send notifications to realtor about location confirmation
-    if (ticket.realtorId) {
+    if (order.realtorId) {
       await notifyRealtorAbout811Confirmed(
-        ticket.realtorId,
+        order.realtorId,
         ticket.ticketNumber || "Unknown",
         order.address
       );

@@ -32,6 +32,9 @@ export async function GET(
         realtor: {
           select: { id: true, firstName: true, lastName: true, email: true },
         },
+        order: {
+          select: { id: true, realtorId: true },
+        },
         clearedByUser: {
           select: { id: true, firstName: true, lastName: true },
         },
@@ -46,30 +49,45 @@ export async function GET(
     }
 
     // Auth check: realtor can only see their own tickets, TC can see their linked agents' tickets
-    if (userRole === 'REALTOR' && ticket.realtorId !== userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 403 }
-      );
+    if (userRole === 'REALTOR') {
+      const hasMatchedOrder = ticket.matchedOrderIds.length > 0
+        ? await prisma.order.findFirst({
+            where: { id: { in: ticket.matchedOrderIds }, realtorId: userId },
+            select: { id: true },
+          })
+        : null;
+      const ownsTicket =
+        ticket.realtorId === userId ||
+        ticket.order?.realtorId === userId ||
+        Boolean(hasMatchedOrder);
+
+      if (!ownsTicket) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+      }
     }
 
     if (userRole === 'TC') {
-      if (!ticket.realtorId) {
-        return NextResponse.json(
-          { error: 'Unauthorized - ticket has no realtor assigned' },
-          { status: 403 }
-        );
-      }
-
-      const isLinked = await prisma.tCAgentLink.findUnique({
-        where: { tcUserId_agentUserId: { tcUserId: userId, agentUserId: ticket.realtorId } },
+      const linkedAgents = await prisma.tCAgentLink.findMany({
+        where: { tcUserId: userId },
+        select: { agentUserId: true },
       });
+      const linkedAgentIds = linkedAgents.map((link) => link.agentUserId);
+      const hasMatchedOrder = ticket.matchedOrderIds.length > 0
+        ? await prisma.order.findFirst({
+            where: {
+              id: { in: ticket.matchedOrderIds },
+              realtorId: { in: linkedAgentIds },
+            },
+            select: { id: true },
+          })
+        : null;
+      const canAccessTicket =
+        (ticket.realtorId ? linkedAgentIds.includes(ticket.realtorId) : false) ||
+        (ticket.order?.realtorId ? linkedAgentIds.includes(ticket.order.realtorId) : false) ||
+        Boolean(hasMatchedOrder);
 
-      if (!isLinked && ticket.realtorId !== userId) {
-        return NextResponse.json(
-          { error: 'Unauthorized' },
-          { status: 403 }
-        );
+      if (!canAccessTicket) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
       }
     }
 

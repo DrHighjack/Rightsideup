@@ -189,6 +189,7 @@ export async function POST(request: NextRequest) {
     `;
 
     let emailSent = false;
+    let emailSkipped = false;
     let emailStatusCodes: Array<number | null> = [];
     let emailMessageIds: Array<string | null> = [];
     try {
@@ -200,12 +201,18 @@ export async function POST(request: NextRequest) {
           html: welcomeHtml,
         }),
       ]);
-      emailSent = true;
+
+      emailSent = sendResults.every((result) => Boolean(result?.success));
+      emailSkipped = sendResults.some((result) => Boolean((result as any)?.skipped));
       emailStatusCodes = sendResults.map((result) => result?.statusCode ?? null);
       emailMessageIds = sendResults.map((result) => result?.messageId ?? null);
-      console.log(
-        `[TC_REALTOR_INVITE] Emails accepted for ${email} (statuses=${emailStatusCodes.map((code) => code ?? "unknown").join(",")}, messageIds=${emailMessageIds.map((id) => id ?? "n/a").join(",")})`
-      );
+      if (emailSent) {
+        console.log(
+          `[TC_REALTOR_INVITE] Emails accepted for ${email} (statuses=${emailStatusCodes.map((code) => code ?? "unknown").join(",")}, messageIds=${emailMessageIds.map((id) => id ?? "n/a").join(",")})`
+        );
+      } else if (emailSkipped) {
+        console.warn(`[TC_REALTOR_INVITE] One or more emails skipped for ${email} (SendGrid not configured).`);
+      }
     } catch (error) {
       console.warn("Failed to send one or more realtor invitation emails:", error);
     }
@@ -214,6 +221,7 @@ export async function POST(request: NextRequest) {
       linked: false,
       invited: true,
       emailSent,
+      emailSkipped,
       emailStatusCodes,
       emailMessageIds,
       ...(emailSent

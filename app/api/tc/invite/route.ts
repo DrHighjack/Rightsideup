@@ -60,6 +60,7 @@ export async function POST(request: Request) {
     const tcInviteeName = normalizedEmail.split("@")[0]; // best guess; they'll set their real name on signup
 
     let emailSent = false;
+    let emailSkipped = false;
     let emailStatusCode: number | null = null;
     let emailMessageId: string | null = null;
     try {
@@ -75,12 +76,19 @@ export async function POST(request: Request) {
         subject: emailTemplate.subject,
         html: emailTemplate.html,
       });
-      emailSent = true;
-      emailStatusCode = sendResult?.statusCode ?? null;
-      emailMessageId = sendResult?.messageId ?? null;
-      console.log(
-        `[TC_INVITE] Email accepted for ${normalizedEmail} (status=${emailStatusCode ?? "unknown"}, messageId=${emailMessageId ?? "n/a"})`
-      );
+
+      emailSent = Boolean(sendResult?.success);
+      emailSkipped = Boolean((sendResult as any)?.skipped);
+      emailStatusCode = (sendResult as any)?.statusCode ?? null;
+      emailMessageId = (sendResult as any)?.messageId ?? null;
+
+      if (emailSent) {
+        console.log(
+          `[TC_INVITE] Email accepted for ${normalizedEmail} (status=${emailStatusCode ?? "unknown"}, messageId=${emailMessageId ?? "n/a"})`
+        );
+      } else if (emailSkipped) {
+        console.warn(`[TC_INVITE] Email skipped for ${normalizedEmail} (SendGrid not configured).`);
+      }
     } catch (emailError) {
       console.error("Failed to send TC invite email:", emailError);
       // Non-fatal — the invite record exists; inviter can share the link manually
@@ -94,6 +102,7 @@ export async function POST(request: Request) {
         expiresAt: invite.expiresAt,
         createdAt: invite.createdAt,
         emailSent,
+        emailSkipped,
         emailStatusCode,
         emailMessageId,
         ...(emailSent

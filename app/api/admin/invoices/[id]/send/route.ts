@@ -13,6 +13,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "https://app.northshoresignco.com";
+
     const session = await auth();
     if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -120,7 +125,7 @@ export async function POST(
         updated.dueDate ? new Date(updated.dueDate).toLocaleDateString() : "Not specified",
         "Service provided",
         ((updated.amount || 0) / 100).toFixed(2),
-        `${process.env.NEXTAUTH_URL}/admin/invoices/${updated.id}`
+        `${appUrl}/admin/invoices/${updated.id}`
       );
 
       await sendEmail({

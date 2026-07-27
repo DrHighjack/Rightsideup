@@ -3,7 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
 import { sendEmail, getRealtorInvitesTCEmail } from "@/lib/email";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://app.northshoresignco.com";
 
 // POST /api/tc/invite - Create a TC invite
 export async function POST(request: Request) {

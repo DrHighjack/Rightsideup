@@ -116,7 +116,7 @@ export async function POST(
       emailSent,
       message: emailSent
         ? "Credit notification email sent successfully"
-        : "Credit created, but email delivery failed. Please verify your SendGrid sender/template settings.",
+        : "Credit created, but email delivery failed. Please verify your Brevo sender/domain settings.",
       emailError: emailErrorMessage,
       user: { firstName: user.firstName, email: user.email },
       credit: {

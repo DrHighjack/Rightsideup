@@ -12,6 +12,11 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "https://app.northshoresignco.com";
+
     const session = await auth();
     if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -48,8 +53,8 @@ export async function POST(
       order.address,
       new Date(order.updatedAt || new Date()).toLocaleDateString(),
       installationImageUrl,
-      `${process.env.NEXTAUTH_URL}/admin/orders/${order.id}`,
-      reviewLink || `${process.env.NEXTAUTH_URL}/reviews/${order.id}`
+      `${appUrl}/admin/orders/${order.id}`,
+      reviewLink || `${appUrl}/reviews/${order.id}`
     );
 
     await sendEmail({

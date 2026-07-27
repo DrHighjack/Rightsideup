@@ -4,7 +4,10 @@ import { Prisma } from "@prisma/client";
 import crypto from "crypto";
 import { sendEmail, getAccountVerificationEmail } from "@/lib/email";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://app.northshoresignco.com";
 
 export async function POST(request: Request) {
   try {
@@ -128,12 +131,17 @@ export async function POST(request: Request) {
     const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
     const verificationEmail = getAccountVerificationEmail(firstName.trim(), verificationLink);
 
+    let verificationEmailSent = false;
     try {
-      await sendEmail({
+      const verificationResult = await sendEmail({
         to: normalizedEmail,
         subject: verificationEmail.subject,
         html: verificationEmail.html,
       });
+      verificationEmailSent = Boolean(verificationResult?.success);
+      if (!verificationEmailSent) {
+        console.warn(`[REGISTER_TC] Verification email skipped for ${normalizedEmail}`);
+      }
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
     }
@@ -149,6 +157,13 @@ export async function POST(request: Request) {
           role: newUser.role,
         },
         verificationRequired: true,
+        verificationEmailSent,
+        ...(verificationEmailSent
+          ? {}
+          : {
+              warning:
+                "TC account was created, but verification email was not delivered. Use password reset if needed.",
+            }),
       },
       { status: 201 }
     );

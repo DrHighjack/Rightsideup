@@ -6,7 +6,10 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { sendEmail, getAccountVerificationEmail, getWelcomeEmail } from "@/lib/email";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001";
+const appUrl =
+  process.env.NEXT_PUBLIC_APP_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://app.northshoresignco.com";
 
 export async function POST(request: NextRequest) {
   try {
@@ -184,28 +187,53 @@ export async function POST(request: NextRequest) {
     const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
     const verificationEmail = getAccountVerificationEmail(firstName, verificationLink);
 
+    let verificationEmailSent = false;
+    let welcomeEmailSent = false;
+
     try {
-      await sendEmail({
+      const verificationResult = await sendEmail({
         to: normalizedEmail,
         subject: verificationEmail.subject,
         html: verificationEmail.html,
       });
+      verificationEmailSent = Boolean(verificationResult?.success);
+      if (!verificationEmailSent) {
+        console.warn(`[REGISTER] Verification email skipped for ${normalizedEmail}`);
+      }
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError);
     }
 
     try {
       const welcomeEmail = getWelcomeEmail(firstName, `${appUrl}/login`);
-      await sendEmail({
+      const welcomeResult = await sendEmail({
         to: normalizedEmail,
         subject: welcomeEmail.subject,
         html: welcomeEmail.html,
       });
+      welcomeEmailSent = Boolean(welcomeResult?.success);
+      if (!welcomeEmailSent) {
+        console.warn(`[REGISTER] Welcome email skipped for ${normalizedEmail}`);
+      }
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError);
     }
 
-    return NextResponse.json({ ...user, verificationRequired: true }, { status: 201 });
+    return NextResponse.json(
+      {
+        ...user,
+        verificationRequired: true,
+        verificationEmailSent,
+        welcomeEmailSent,
+        ...(verificationEmailSent && welcomeEmailSent
+          ? {}
+          : {
+              warning:
+                "Your account was created, but one or more emails were not delivered. Please use password reset if needed.",
+            }),
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       return NextResponse.json(

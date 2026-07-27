@@ -3,6 +3,7 @@ import { sendEmail, getPasswordResetEmail } from "@/lib/email";
 import { sendSMS, getPasswordResetSMS } from "@/lib/sms";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
+import { hash } from "bcryptjs";
 
 // Store password reset tokens (in production, use database)
 const resetTokens = new Map<
@@ -127,6 +128,60 @@ export async function GET(request: NextRequest) {
     console.error("Token verification error:", error);
     return NextResponse.json(
       { error: "Failed to verify token" },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT endpoint to set a new password using a reset token
+export async function PUT(request: NextRequest) {
+  try {
+    const { token, password } = await request.json();
+
+    if (!token || typeof token !== "string") {
+      return NextResponse.json(
+        { error: "Token is required" },
+        { status: 400 }
+      );
+    }
+
+    if (!password || typeof password !== "string" || password.length < 8) {
+      return NextResponse.json(
+        { error: "Password must be at least 8 characters" },
+        { status: 400 }
+      );
+    }
+
+    const resetData = resetTokens.get(token);
+    if (!resetData) {
+      return NextResponse.json(
+        { error: "Invalid or expired token" },
+        { status: 400 }
+      );
+    }
+
+    if (resetData.expiresAt < Date.now()) {
+      resetTokens.delete(token);
+      return NextResponse.json(
+        { error: "Token has expired" },
+        { status: 400 }
+      );
+    }
+
+    const passwordHash = await hash(password, 12);
+
+    await prisma.user.update({
+      where: { id: resetData.userId },
+      data: { passwordHash },
+    });
+
+    resetTokens.delete(token);
+
+    return NextResponse.json({ success: true, message: "Password reset successful" });
+  } catch (error) {
+    console.error("Password reset update error:", error);
+    return NextResponse.json(
+      { error: "Failed to reset password" },
       { status: 500 }
     );
   }

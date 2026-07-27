@@ -24,8 +24,8 @@ export async function POST(request: NextRequest) {
     const configuredAppUrl =
       process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
 
-    // Normalize and prefer explicit configuration; otherwise use request origin.
-    const appUrl = (configuredAppUrl || requestOrigin || "https://app.northshoresignco.com").replace(/\/$/, "");
+    // Prefer the live request origin to avoid mismatched domain links.
+    const appUrl = (requestOrigin || configuredAppUrl || "https://app.northshoresignco.com").replace(/\/$/, "");
 
     if (!email) {
       return NextResponse.json(
@@ -49,7 +49,9 @@ export async function POST(request: NextRequest) {
 
     // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
-    const resetLink = `${appUrl}/reset-password?token=${token}`;
+    const resetUrl = new URL("/reset-password", appUrl);
+    resetUrl.searchParams.set("token", token);
+    const resetLink = resetUrl.toString();
 
     // Store token (expires in 24 hours)
     resetTokens.set(token, {

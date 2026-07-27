@@ -1,5 +1,12 @@
-﻿const brevoApiKey = process.env.BREVO_API_KEY || "";
-const isBrevoConfigured = brevoApiKey.length > 0;
+﻿import nodemailer from "nodemailer";
+
+const brevoApiKey = process.env.BREVO_API_KEY || "";
+const brevoSmtpHost = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
+const brevoSmtpPort = Number(process.env.BREVO_SMTP_PORT || 587);
+const brevoSmtpUser = process.env.BREVO_SMTP_USER || process.env.BREVO_SMTP_LOGIN || "";
+const brevoSmtpPass = process.env.BREVO_SMTP_PASS || process.env.BREVO_SMTP_KEY || "";
+const isBrevoApiConfigured = brevoApiKey.length > 0;
+const isBrevoSmtpConfigured = brevoSmtpUser.length > 0 && brevoSmtpPass.length > 0;
 const NORTH_SHORE_SIGN_CO = "North Shore Sign Co";
 const NORTH_SHORE_BILLING_EMAIL = "billing@northshoresignco.com";
 const NORTH_SHORE_SENDER_EMAIL = "noreply@northshoresignco.com";
@@ -9,8 +16,30 @@ const STANDARD_FOOTER_HTML = `
             <div class="footer-text">${NORTH_SHORE_SIGN_CO} | Seattle, WA | (206) 659-6323 | <a href="mailto:${NORTH_SHORE_BILLING_EMAIL}">${NORTH_SHORE_BILLING_EMAIL}</a></div>
         </div>`;
 
-if (!isBrevoConfigured) {
-    console.warn("[EMAIL] BREVO_API_KEY missing; email sending disabled.");
+if (!isBrevoSmtpConfigured && !isBrevoApiConfigured) {
+    console.warn("[EMAIL] Brevo not configured. Set SMTP creds or BREVO_API_KEY.");
+}
+
+let smtpTransporter: nodemailer.Transporter | null = null;
+
+function getSmtpTransporter() {
+    if (!isBrevoSmtpConfigured) {
+        return null;
+    }
+
+    if (!smtpTransporter) {
+        smtpTransporter = nodemailer.createTransport({
+            host: brevoSmtpHost,
+            port: brevoSmtpPort,
+            secure: brevoSmtpPort === 465,
+            auth: {
+                user: brevoSmtpUser,
+                pass: brevoSmtpPass,
+            },
+        });
+    }
+
+    return smtpTransporter;
 }
 
 export interface EmailOptions {
@@ -23,11 +52,6 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions) {
   try {
-        if (!isBrevoConfigured) {
-            console.warn("[EMAIL] Skipping send; Brevo not configured.");
-            return { success: false, skipped: true };
-        }
-
     const {
       to,
       subject,
@@ -37,9 +61,40 @@ export async function sendEmail(options: EmailOptions) {
     } = options;
 
         const normalizedRecipients = Array.isArray(to) ? to : [to];
+        const fromAddress = from.includes("<")
+            ? from
+            : `${NORTH_SHORE_SIGN_CO} <${from.trim()}>`;
         const senderEmail = from.includes("<") && from.includes(">")
             ? from.slice(from.indexOf("<") + 1, from.indexOf(">")).trim()
             : from.trim();
+
+        if (!isBrevoSmtpConfigured && !isBrevoApiConfigured) {
+            console.warn("[EMAIL] Skipping send; no Brevo transport configured.");
+            return { success: false, skipped: true };
+        }
+
+        const smtp = getSmtpTransporter();
+        if (smtp) {
+            try {
+                const smtpResult = await smtp.sendMail({
+                    from: fromAddress,
+                    to: normalizedRecipients.join(", "),
+                    subject,
+                    html,
+                    text: text || html.replace(/<[^>]*>/g, ""),
+                });
+
+                const smtpMessageId = smtpResult.messageId || null;
+                console.log(`Email sent to ${to}: ${subject} (provider=brevo-smtp, messageId=${smtpMessageId || "n/a"})`);
+                return { success: true, statusCode: 250, messageId: smtpMessageId, provider: "brevo-smtp" };
+            } catch (smtpError) {
+                console.error("Brevo SMTP send failed:", smtpError);
+                if (!isBrevoApiConfigured) {
+                    throw smtpError;
+                }
+                console.warn("[EMAIL] Falling back to Brevo API transport.");
+            }
+        }
 
         const payload = {
             sender: {
@@ -72,8 +127,8 @@ export async function sendEmail(options: EmailOptions) {
 
         const messageId = parsedBody?.messageId || null;
         const statusCode = response.status || null;
-        console.log(`Email sent to ${to}: ${subject} (status=${statusCode || "unknown"}, messageId=${messageId || "n/a"})`);
-        return { success: true, statusCode, messageId };
+                console.log(`Email sent to ${to}: ${subject} (provider=brevo-api, status=${statusCode || "unknown"}, messageId=${messageId || "n/a"})`);
+                return { success: true, statusCode, messageId, provider: "brevo-api" };
   } catch (error) {
     console.error("Brevo error:", error);
     throw error;

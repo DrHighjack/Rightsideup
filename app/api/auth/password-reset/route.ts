@@ -13,6 +13,10 @@ const resetTokens = new Map<
 export async function POST(request: NextRequest) {
   try {
     const { email, sendViaSMS } = await request.json();
+    const appUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "https://app.northshoresignco.com";
 
     if (!email) {
       return NextResponse.json(
@@ -36,7 +40,7 @@ export async function POST(request: NextRequest) {
 
     // Generate reset token
     const token = crypto.randomBytes(32).toString("hex");
-    const resetLink = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`;
+    const resetLink = `${appUrl}/reset-password?token=${token}`;
 
     // Store token (expires in 24 hours)
     resetTokens.set(token, {

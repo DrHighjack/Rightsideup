@@ -6,7 +6,7 @@ const NORTH_SHORE_SENDER_EMAIL = "noreply@northshoresignco.com";
 const NORTH_SHORE_APP_URL = process.env.NEXT_PUBLIC_APP_URL || "https://app.northshoresignco.com";
 const STANDARD_FOOTER_HTML = `
         <div class="footer">
-            <div class="footer-text">${NORTH_SHORE_SIGN_CO} Â· Seattle, WA Â· (206) 659-6323 Â· <a href="mailto:${NORTH_SHORE_BILLING_EMAIL}">${NORTH_SHORE_BILLING_EMAIL}</a></div>
+            <div class="footer-text">${NORTH_SHORE_SIGN_CO} | Seattle, WA | (206) 659-6323 | <a href="mailto:${NORTH_SHORE_BILLING_EMAIL}">${NORTH_SHORE_BILLING_EMAIL}</a></div>
         </div>`;
 
 if (!isBrevoConfigured) {
@@ -320,7 +320,7 @@ export function getPasswordResetEmail(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>ðŸ” Reset Your Password</h1>
+            <h1>Reset Your Password</h1>
             <p>Secure access to your North Shore Sign Co account</p>
         </div>
         
@@ -333,7 +333,7 @@ export function getPasswordResetEmail(
             
             <!-- Security Notice -->
             <div class="security-notice">
-                <div class="security-notice-title">âš ï¸ Didn't request this?</div>
+                <div class="security-notice-title">Warning: Didn't request this?</div>
                 <div class="security-notice-text">
                     If you didn't request a password reset, you can ignore this email. Your account remains secure.
                 </div>
@@ -351,7 +351,7 @@ export function getPasswordResetEmail(
             <!-- Expiration Warning -->
             <div class="expiration">
                 <div class="expiration-text">
-                    <strong>â±ï¸ This link expires in 24 hours</strong><br>
+                    <strong>Note: This link expires in 24 hours</strong><br>
                     If you don't reset your password within 24 hours, you'll need to request a new reset link.
                 </div>
             </div>
@@ -382,7 +382,7 @@ ${STANDARD_FOOTER_HTML}
 </html>`;
 
   return {
-    subject: "ðŸ” Reset Your Password",
+    subject: "Reset Your Password",
     html,
   };
 }
@@ -433,7 +433,7 @@ export function getAccountVerificationEmail(
 <body>
     <div class="container">
         <div class="header"> 
-            <h1>âœ… Verify Your Email</h1>
+            <h1>Verify Your Email</h1>
             <p>Confirm your North Shore Sign Co account before placing orders</p>
         </div>
         <div class="content">
@@ -509,7 +509,7 @@ export function getWelcomeEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>ðŸŽ‰ Welcome to North Shore Sign Co!</h1>
+            <h1>Welcome to North Shore Sign Co!</h1>
             <p>Your account is ready to use</p>
         </div>
         <div class="content">
@@ -557,7 +557,7 @@ export function getOrderStatusUpdateEmail(
     <div style="max-width:600px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f3f4f6;padding:24px;">
         <div style="background:#fff;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;">
             <div style="background:linear-gradient(135deg,#059669 0%,#047857 100%);color:#fff;padding:32px;text-align:center;">
-                <h1 style="margin:0;font-size:28px;">âœ… Installation Complete</h1>
+                <h1 style="margin:0;font-size:28px;">Installation Complete</h1>
                 <p style="margin-top:8px;opacity:0.95;">Your North Shore Sign Co order is complete</p>
             </div>
             <div style="padding:32px;">
@@ -851,7 +851,7 @@ export function getWelcomeEmailWithMagicLink(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>ðŸŽ‰ Welcome to North Shore Sign Co!</h1>
+            <h1>Welcome to North Shore Sign Co!</h1>
             <p>Your account is ready to use</p>
         </div>
         
@@ -880,7 +880,7 @@ export function getWelcomeEmailWithMagicLink(
             <!-- Warning -->
             <div class="warning">
                 <div style="display: flex;">
-                    <span class="warning-icon">âš ï¸</span>
+                    <span class="warning-icon">Warning</span>
                     <div class="warning-text">
                         <strong>Important:</strong> Please change your password immediately after your first login for security.
                     </div>
@@ -923,7 +923,7 @@ export function getWelcomeEmailWithMagicLink(
 </html>`;
 
   return {
-    subject: "Welcome to North Shore Sign Co! ðŸŽ‰",
+    subject: "Welcome to North Shore Sign Co!",
     html,
   };
 }
@@ -1151,7 +1151,7 @@ export function getTCInvitationEmail(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>ðŸ“‹ You're Invited!</h1>
+            <h1>You're Invited!</h1>
             <p>Your Transaction Coordinator invited you to North Shore Sign Co</p>
         </div>
         
@@ -1273,7 +1273,7 @@ export function getRealtorInvitesTCEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>ðŸ¤ You're Invited!</h1>
+            <h1>You're Invited!</h1>
             <p>A realtor has invited you to be their Transaction Coordinator</p>
         </div>
         <div class="content">
@@ -1310,7 +1310,7 @@ export function getRealtorInvitesTCEmail(
                 <div class="link-text">${signupLink}</div>
             </div>
             <div class="expiry">
-                â±ï¸ <strong>This invite expires in 48 hours.</strong> Ask ${realtorName} to resend if it expires.
+                <strong>Note: This invite expires in 48 hours.</strong> Ask ${realtorName} to resend if it expires.
             </div>
             <div class="steps">
                 <div class="steps-title">How it works</div>
@@ -1589,7 +1589,7 @@ export function getBrokerageInvitationEmail(
     <div class="container">
         <!-- Header -->
         <div class="header">
-            <h1>ðŸ¢ Welcome to ${brokerageName}!</h1>
+            <h1>Welcome to ${brokerageName}!</h1>
             <p>Join your brokerage on North Shore Sign Co</p>
         </div>
         
@@ -1612,7 +1612,7 @@ export function getBrokerageInvitationEmail(
             <!-- Highlight -->
             <div class="highlight">
                 <div class="highlight-text">
-                    âœ¨ Once you create your account, you'll be part of ${brokerageName}'s team on North Shore Sign Co with full access to collaboration tools and resources.
+                    Once you create your account, you'll be part of ${brokerageName}'s team on North Shore Sign Co with full access to collaboration tools and resources.
                 </div>
             </div>
             
@@ -1620,11 +1620,11 @@ export function getBrokerageInvitationEmail(
             <div class="benefits">
                 <div class="benefits-title">What You'll Get Access To:</div>
                 <ul class="benefits-list">
-                    <li>ðŸ“Š Listing management and tracking</li>
-                    <li>ðŸ‘¥ Team collaboration tools</li>
-                    <li>ðŸ“§ Automated communications</li>
-                    <li>ðŸ“± Mobile-friendly interface</li>
-                    <li>ðŸ“ˆ Performance analytics</li>
+                    <li>Listing management and tracking</li>
+                    <li>Team collaboration tools</li>
+                    <li>Automated communications</li>
+                    <li>Mobile-friendly interface</li>
+                    <li>Performance analytics</li>
                 </ul>
             </div>
             
@@ -1659,7 +1659,7 @@ export function getBrokerageInvitationEmail(
 </html>`;
 
   return {
-    subject: `You're invited to join ${brokerageName} on North Shore Sign Co! ðŸ¢`,
+    subject: `You're invited to join ${brokerageName} on North Shore Sign Co!`,
     html,
   };
 }
@@ -1937,7 +1937,7 @@ export function getNewInvoiceEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>ðŸ“‹ New Invoice</h1>
+            <h1>New Invoice</h1>
             <p>Your invoice is ready to view</p>
         </div>
         
@@ -1976,7 +1976,7 @@ export function getNewInvoiceEmail(
             
             <div class="highlight">
                 <div class="highlight-text">
-                    ðŸ’¡ Please review this invoice carefully. If you have any questions, contact us at <a href="mailto:billing@northshoresignco.com" style="color: #1e40af; font-weight: 600;">billing@northshoresignco.com</a>
+                    Note: Please review this invoice carefully. If you have any questions, contact us at <a href="mailto:billing@northshoresignco.com" style="color: #1e40af; font-weight: 600;">billing@northshoresignco.com</a>
                 </div>
             </div>
             
@@ -1997,7 +1997,7 @@ export function getNewInvoiceEmail(
 </html>`;
 
   return {
-    subject: "ðŸ“‹ New Invoice",
+    subject: "New Invoice",
     html,
   };
 }
@@ -2219,7 +2219,7 @@ export function get811ClearedEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>âœ… 811 Clearance Approved</h1>
+            <h1>811 Clearance Approved</h1>
             <p>Your utility clearance has been granted</p>
         </div>
         
@@ -2230,7 +2230,7 @@ export function get811ClearedEmail(
             </div>
             
             <div class="success-box">
-                <div class="success-icon">âœ¨</div>
+                <div class="success-icon">Success</div>
                 <div class="success-title">Clearance Fully Approved</div>
                 <div class="success-text">You are now approved for installation to begin on your property.</div>
             </div>
@@ -2253,7 +2253,7 @@ export function get811ClearedEmail(
             </div>
             
             <div class="next-steps">
-                <div class="next-steps-title">ðŸ“… What's Next?</div>
+                <div class="next-steps-title">Next: What's Next?</div>
                 <div class="next-steps-text">
                     Your installation crew will contact you within 24 hours to schedule a specific time for installation. Make sure someone is available at the property during the scheduled time.
                 </div>
@@ -2276,7 +2276,7 @@ export function get811ClearedEmail(
 </html>`;
 
   return {
-    subject: "âœ… 811 Clearance Approved",
+    subject: "811 Clearance Approved",
     html,
   };
 }
@@ -2504,7 +2504,7 @@ export function getPastDueInvoiceEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>âš ï¸ Invoice Past Due</h1>
+            <h1>Invoice Past Due</h1>
             <p>Action required: Payment is overdue</p>
         </div>
         
@@ -2515,7 +2515,7 @@ export function getPastDueInvoiceEmail(
             </div>
             
             <div class="warning-box">
-                <div class="warning-title">ðŸš¨ Immediate Action Required</div>
+                <div class="warning-title">Urgent: Immediate Action Required</div>
                 <div class="warning-text">
                     Your payment is overdue. Please remit payment immediately to avoid service interruption or additional fees.
                 </div>
@@ -2566,7 +2566,7 @@ export function getPastDueInvoiceEmail(
 </html>`;
 
   return {
-    subject: "âš ï¸ Invoice Past Due - Immediate Action Required",
+    subject: "Invoice Past Due - Immediate Action Required",
     html,
   };
 }
@@ -2831,7 +2831,7 @@ export function getFreeInstallCreditEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>ðŸŽ‰ Great News!</h1>
+            <h1>Great News!</h1>
             <p>A credit has been added to your account</p>
         </div>
         
@@ -2842,7 +2842,7 @@ export function getFreeInstallCreditEmail(
             </div>
             
             <div class="bonus-box">
-                <div class="bonus-icon">ðŸŽ</div>
+                <div class="bonus-icon">Bonus</div>
                 <div class="bonus-title">Account Credit</div>
                 <div class="bonus-value">${creditValue}</div>
             </div>
@@ -2866,7 +2866,7 @@ export function getFreeInstallCreditEmail(
             
             <div class="highlight">
                 <div class="highlight-text">
-                    ðŸ’¡ This credit can be applied to future orders. Enter the credit code during checkout or mention it when placing an order, and any unused balance remains available for later.
+                    Note: This credit can be applied to future orders. Enter the credit code during checkout or mention it when placing an order, and any unused balance remains available for later.
                 </div>
             </div>
             
@@ -2891,7 +2891,7 @@ export function getFreeInstallCreditEmail(
 </html>`;
 
   return {
-        subject: "ðŸŽ‰ Credit Added to Your Account!",
+        subject: "Credit Added to Your Account!",
     html,
   };
 }
@@ -3156,7 +3156,7 @@ export function getPostInstalledEmail(
 <body>
     <div class="container">
         <div class="header">
-            <h1>âœ… Installation Complete!</h1>
+            <h1>Installation Complete!</h1>
             <p>Your sign is now installed and looking great</p>
         </div>
         
@@ -3167,7 +3167,7 @@ export function getPostInstalledEmail(
             </div>
             
             <div class="success-banner">
-                <div class="success-text">ðŸŽ‰ Installation Successfully Completed</div>
+                <div class="success-text">Installation Successfully Completed</div>
             </div>
             
             <div class="image-section">
@@ -3195,7 +3195,7 @@ export function getPostInstalledEmail(
             <a href="${orderLink}" class="cta-button">View Full Order Details</a>
             
             <div class="next-steps">
-                <div class="next-steps-title">ðŸ“‹ What's Next?</div>
+                <div class="next-steps-title">Next: What's Next?</div>
                 <ul class="next-steps-list">
                     <li><strong>Maintenance:</strong> Your sign will require periodic maintenance. We offer maintenance packages if interested.</li>
                     <li><strong>Support:</strong> If you notice any issues, contact us right away for support.</li>
@@ -3205,7 +3205,7 @@ export function getPostInstalledEmail(
             
             <div class="rating-box">
                 <div class="rating-text">How was your experience with us?</div>
-                <a href="${reviewLink}" class="rating-link">Leave a Review â­</a>
+                <a href="${reviewLink}" class="rating-link">Leave a Review</a>
             </div>
             
             <div class="support-section">
@@ -3223,7 +3223,7 @@ export function getPostInstalledEmail(
 </html>`;
 
   return {
-    subject: "âœ… Your Installation is Complete!",
+    subject: "Your Installation is Complete!",
     html,
   };
 }
@@ -3455,7 +3455,7 @@ function buildAlertEmail({
                 </div>
 
                 <div class="footer">
-                        Â© 2026 North Shore Sign Co. Automated system alert.
+                        (c) 2026 North Shore Sign Co. Automated system alert.
                 </div>
         </div>
 </body>

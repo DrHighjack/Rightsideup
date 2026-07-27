@@ -17,6 +17,12 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.id || (session.user as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { id } = params;
     console.log('[811API GET] Fetching ticket:', id);
 
@@ -59,6 +65,11 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
+
+    if (!session?.user?.id || (session.user as any).role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
     const { id } = params;
     const body = await request.json();
     const { action } = body;

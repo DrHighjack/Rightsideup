@@ -50,9 +50,11 @@ export async function sendEmail(options: EmailOptions) {
       text: text || html.replace(/<[^>]*>/g, ""),
     };
 
-    await sgMail.send(msg);
-    console.log(`Email sent to ${to}: ${subject}`);
-    return { success: true };
+        const [response] = await sgMail.send(msg);
+        const messageId = response?.headers?.["x-message-id"] || null;
+        const statusCode = response?.statusCode || null;
+        console.log(`Email sent to ${to}: ${subject} (status=${statusCode || "unknown"}, messageId=${messageId || "n/a"})`);
+        return { success: true, statusCode, messageId };
   } catch (error) {
     console.error("SendGrid error:", error);
     throw error;

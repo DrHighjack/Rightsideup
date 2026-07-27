@@ -64,6 +64,9 @@ const STATUS_FILTER_ORDER = [
 
 const formatStatusLabel = (status: string): string => status.replace(/_/g, " ");
 
+const formatCalendarDate = (value: string): string =>
+  new Intl.DateTimeFormat(undefined, { timeZone: "UTC" }).format(new Date(value));
+
 const OrderMarker = (props: {
   order: OrderData;
   selected: boolean;
@@ -468,7 +471,7 @@ export default function DashboardPage() {
                 </p>
                 {selectedOrder.scheduledDate && (
                   <p className="text-sm text-slate-600 mt-1">
-                    Scheduled: {new Date(selectedOrder.scheduledDate).toLocaleDateString()}
+                    Scheduled: {formatCalendarDate(selectedOrder.scheduledDate)}
                   </p>
                 )}
                 {resolvePhotoSrc(selectedOrder.mapPhotoData) && (

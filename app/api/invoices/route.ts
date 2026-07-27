@@ -18,14 +18,36 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(50, parseInt(searchParams.get("limit") || "20", 10));
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
+    const sessionUser = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+    if (!sessionUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    let invoiceUserIds = [session.user.id];
+    if (sessionUser.role === "TC") {
+      const links = await prisma.tCAgentLink.findMany({
+        where: { tcUserId: session.user.id },
+        select: { agentUserId: true },
+      });
+      invoiceUserIds = links.map((link) => link.agentUserId);
+    }
+
     const where: any = {
-      userId: session.user.id,
+      userId: { in: invoiceUserIds },
     };
     if (status) where.status = status;
 
     const [invoices, total, availableCredits] = await Promise.all([
       prisma.invoice.findMany({
         where,
+        include: {
+          user: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
         orderBy: { createdAt: "desc" },
         skip: offset,
         take: limit,
@@ -33,7 +55,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.count({ where }),
       prisma.coupon.findMany({
         where: {
-          assignedUserId: session.user.id,
+          assignedUserId: { in: invoiceUserIds },
           isCredit: true,
           isActive: true,
         },

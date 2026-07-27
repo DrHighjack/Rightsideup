@@ -99,6 +99,12 @@ export default function AccountPage() {
       }
 
       const data = await res.json();
+      if (res.ok && data?.emailSent === false) {
+        setInviteError(
+          data?.warning ||
+            "Invite was created but email delivery failed. Share the invite link manually from the pending invite."
+        );
+      }
       setPendingInvites([data, ...pendingInvites]);
       setInviteEmail("");
       setInviteLoading(false);
@@ -180,6 +186,8 @@ export default function AccountPage() {
       ? "Admin"
       : user.role || "Realtor";
   const businessName = user.brokerageName || "Not set";
+  const [firstName = "N/A", ...lastNameParts] = (user.name || "").trim().split(/\s+/);
+  const lastName = lastNameParts.join(" ") || "N/A";
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -195,11 +203,11 @@ export default function AccountPage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">First Name</p>
-            <p className="mt-1 text-base font-medium text-slate-900">{user.name?.split(" ")[0] || "N/A"}</p>
+            <p className="mt-1 text-base font-medium text-slate-900">{firstName}</p>
           </div>
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Last Name</p>
-            <p className="mt-1 text-base font-medium text-slate-900">{user.name?.split(" ")[1] || "N/A"}</p>
+            <p className="mt-1 text-base font-medium text-slate-900">{lastName}</p>
           </div>
         </div>
 

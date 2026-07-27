@@ -43,7 +43,7 @@ const initialPickupForm: PickupForm = {
 };
 
 export default function DashboardSignsPage() {
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   const userRole = (session?.user as any)?.role as string | undefined;
   const isTC = userRole === "TC";
   const [signs, setSigns] = useState<Sign[]>([]);
@@ -95,6 +95,8 @@ export default function DashboardSignsPage() {
   }, [isTC]);
 
   useEffect(() => {
+    if (sessionStatus === "loading") return;
+
     if (isTC && !activeAgent) {
       setSigns([]);
       setLoading(false);
@@ -102,7 +104,7 @@ export default function DashboardSignsPage() {
     }
 
     fetchSigns();
-  }, [isTC, activeAgent]);
+  }, [isTC, activeAgent, sessionStatus]);
 
   const fetchSigns = async () => {
     try {

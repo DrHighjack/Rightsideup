@@ -19,6 +19,7 @@ interface Order {
   status: string;
   address: string;
   createdAt: string;
+  scheduledDate?: string | null;
   realtor: {
     firstName: string;
     lastName: string;
@@ -141,7 +142,7 @@ export default function TCDashboardPage() {
           <div className="bg-white rounded-lg shadow p-6">
             <p className="text-gray-500 text-sm mb-2">Confirmed</p>
             <p className="text-3xl font-bold text-blue-600">
-              {orders.filter((o) => o.status === "CONFIRMED").length}
+              {orders.filter((o) => o.status === "SCHEDULED").length}
             </p>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
@@ -203,7 +204,7 @@ export default function TCDashboardPage() {
                           className={`inline-flex px-3 py-1 text-xs font-medium rounded-full ${
                             order.status === "PENDING"
                               ? "bg-amber-100 text-amber-700"
-                              : order.status === "CONFIRMED"
+                              : order.status === "SCHEDULED"
                               ? "bg-blue-100 text-blue-700"
                               : order.status === "COMPLETED" || order.status === "IN_GROUND"
                               ? "bg-green-100 text-green-700"
@@ -217,11 +218,13 @@ export default function TCDashboardPage() {
                         {order.address}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(order.createdAt).toLocaleDateString()}
+                        {new Intl.DateTimeFormat(undefined, { timeZone: "UTC" }).format(
+                          new Date(order.scheduledDate || order.createdAt)
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <Link
-                          href={`/orders/${order.id}`}
+                          href={`/dashboard/orders/${order.id}`}
                           className="text-indigo-600 hover:text-indigo-900 font-medium"
                         >
                           View

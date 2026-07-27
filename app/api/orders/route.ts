@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const type = searchParams.get("type");
+    const requestedRealtorId = searchParams.get("realtorId");
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
@@ -54,7 +55,14 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      where.realtorId = { in: linkedAgentIds };
+      if (requestedRealtorId) {
+        if (!linkedAgentIds.includes(requestedRealtorId)) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        where.realtorId = requestedRealtorId;
+      } else {
+        where.realtorId = { in: linkedAgentIds };
+      }
     } else if (role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -166,6 +174,10 @@ export async function POST(request: NextRequest) {
 
     if (!sessionUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    if (!["REALTOR", "TC"].includes(sessionUser.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 
 interface Invoice {
   id: string;
@@ -13,6 +14,12 @@ interface Invoice {
   paidAt: string | null;
   paidAmount: number | null;
   createdAt: string;
+  user?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+  };
 }
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -25,12 +32,15 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 };
 
 export default function InvoicesPage() {
+  const { data: session } = useSession();
+  const isTC = (session?.user as any)?.role === "TC";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [availableCreditAmount, setAvailableCreditAmount] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [offset, setOffset] = useState(0);
+  const [error, setError] = useState("");
 
   const limit = 20;
 
@@ -41,18 +51,24 @@ export default function InvoicesPage() {
   const fetchInvoices = async () => {
     try {
       setLoading(true);
+      setError("");
       let url = `/api/invoices?limit=${limit}&offset=${offset}`;
       if (statusFilter) url += `&status=${statusFilter}`;
 
       const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setInvoices(data.invoices);
-        setTotalCount(data.total);
-        setAvailableCreditAmount(data.availableCreditAmount || 0);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to load invoices");
       }
+      setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
+      setTotalCount(data.total || 0);
+      setAvailableCreditAmount(data.availableCreditAmount || 0);
     } catch (error) {
       console.error("Failed to fetch invoices:", error);
+      setInvoices([]);
+      setTotalCount(0);
+      setAvailableCreditAmount(0);
+      setError(error instanceof Error ? error.message : "Failed to load invoices");
     } finally {
       setLoading(false);
     }
@@ -141,6 +157,17 @@ export default function InvoicesPage() {
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-gray-500">Loading invoices...</div>
+          ) : error ? (
+            <div className="p-8 text-center">
+              <p className="font-medium text-red-700">{error}</p>
+              <button
+                type="button"
+                onClick={fetchInvoices}
+                className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+              >
+                Try Again
+              </button>
+            </div>
           ) : invoices.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <p>No invoices yet</p>
@@ -156,6 +183,11 @@ export default function InvoicesPage() {
                     <th className="text-right px-6 py-3 font-semibold text-gray-900 text-sm">
                       Amount
                     </th>
+                    {isTC && (
+                      <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
+                        Agent
+                      </th>
+                    )}
                     <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
                       Due Date
                     </th>
@@ -187,6 +219,13 @@ export default function InvoicesPage() {
                         <td className="px-6 py-4 text-right font-semibold text-gray-900">
                           {formatCurrency(invoice.amount * 100)}
                         </td>
+                        {isTC && (
+                          <td className="px-6 py-4 text-gray-700">
+                            {invoice.user
+                              ? `${invoice.user.firstName} ${invoice.user.lastName}`.trim()
+                              : "Unknown agent"}
+                          </td>
+                        )}
                         <td className="px-6 py-4 text-gray-700">
                           {formatDate(invoice.dueDate)}
                         </td>

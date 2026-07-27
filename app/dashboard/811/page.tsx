@@ -97,6 +97,9 @@ export default function ElevenPage() {
           const uniqueMap = new Map<string, PropertyOption>();
 
           orderList.forEach((order: any) => {
+            if (!['PENDING', 'SCHEDULED', 'ON_HOLD'].includes(order?.status)) return;
+            if (!['INSTALL', 'CHANGE'].includes(order?.type)) return;
+
             const address = typeof order?.address === 'string' ? order.address.trim() : '';
             if (!address) return;
 
@@ -125,7 +128,9 @@ export default function ElevenPage() {
             }
           });
 
-          const propertyOptions: PropertyOption[] = Array.from(uniqueMap.values()).sort((a, b) => {
+          const propertyOptions: PropertyOption[] = Array.from(uniqueMap.values())
+            .filter((property) => property.needs811)
+            .sort((a, b) => {
             if (isTC) {
               const agentCompare = (a.agentName || '').localeCompare(b.agentName || '');
               if (agentCompare !== 0) return agentCompare;
@@ -136,7 +141,7 @@ export default function ElevenPage() {
             }
 
             return a.address.localeCompare(b.address);
-          });
+            });
 
           setProperties(propertyOptions);
 
@@ -190,6 +195,12 @@ export default function ElevenPage() {
         setTickets((prev) => [data.ticket, ...prev]);
         setSelectedTicketId(data.ticket.id);
       }
+
+      setProperties((current) => {
+        const remaining = current.filter((property) => property.id !== selectedOrderId);
+        setSelectedOrderId(remaining[0]?.id || '');
+        return remaining;
+      });
 
       setNewTicketNumber('');
     } catch (error) {
@@ -303,7 +314,7 @@ export default function ElevenPage() {
           <span className="inline-flex items-center px-2 py-1 text-xs font-medium bg-red-100 text-red-800 border border-red-200 rounded">
             811 # Needed
           </span>
-          <span className="ml-2 text-xs text-gray-500">These listings are sorted to the top.</span>
+          <span className="ml-2 text-xs text-gray-500">Eligible install and change orders appear here.</span>
         </div>
       </form>
     </div>
@@ -362,7 +373,7 @@ export default function ElevenPage() {
           <h1 className="text-2xl font-bold text-blue-900 mb-2">811 Ticket Tracker</h1>
           <p className="text-blue-700 mb-4">No 811 tickets yet. When you request a utility locating, you'll track progress here.</p>
           <p className="text-sm text-blue-600">
-            {isTC ? 'Use the submission form above to add the first ticket.' : 'Contact support if you need to create a ticket.'}
+            Use the submission form {isTC ? 'above' : 'below'} to add the first ticket.
           </p>
         </div>
         {!isTC && addTicketCard}

@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+async function canAccessInvoice(userId: string, role: string, invoiceUserId: string) {
+  if (role === "ADMIN" || userId === invoiceUserId) return true;
+  if (role !== "TC") return false;
+
+  const link = await prisma.tCAgentLink.findUnique({
+    where: {
+      tcUserId_agentUserId: {
+        tcUserId: userId,
+        agentUserId: invoiceUserId,
+      },
+    },
+    select: { id: true },
+  });
+  return Boolean(link);
+}
+
 /**
  * GET /api/invoices/[id]
  * Get a single invoice for the logged-in realtor
@@ -24,14 +40,13 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Verify the user owns this invoice
-    if (invoice.userId !== session.user.id) {
+    if (!(await canAccessInvoice(session.user.id, (session.user as any).role, invoice.userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const availableCredits = await prisma.coupon.findMany({
       where: {
-        assignedUserId: session.user.id,
+        assignedUserId: invoice.userId,
         isCredit: true,
         isActive: true,
       },
@@ -78,7 +93,7 @@ export async function PUT(
     const { status } = body;
 
     // Validate that user only marks as VIEWED
-    if (status && status !== "VIEWED") {
+    if (status !== "VIEWED") {
       return NextResponse.json(
         { error: "Users can only mark invoices as viewed" },
         { status: 400 }
@@ -93,17 +108,22 @@ export async function PUT(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    // Verify the user owns this invoice
-    if (invoice.userId !== session.user.id) {
+    const role = (session.user as any).role;
+    if (role === "TC" || (role !== "ADMIN" && invoice.userId !== session.user.id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (!["SENT", "OVERDUE"].includes(invoice.status)) {
+      return NextResponse.json(
+        { error: "Invoice cannot be marked viewed from its current status" },
+        { status: 409 }
+      );
     }
 
     // Update invoice
     const updatedInvoice = await prisma.invoice.update({
       where: { id: params.id },
-      data: {
-        ...(status && { status }),
-      },
+      data: { status },
     });
 
     return NextResponse.json(updatedInvoice);

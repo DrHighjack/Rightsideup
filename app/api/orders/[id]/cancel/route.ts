@@ -13,6 +13,10 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    if (!["ADMIN", "REALTOR", "TC"].includes((session.user as any).role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
     const { cancelReason } = body;
 
@@ -32,9 +36,25 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    // Realtors can only cancel PENDING orders
+    if ((session.user as any).role === "TC") {
+      const link = await prisma.tCAgentLink.findUnique({
+        where: {
+          tcUserId_agentUserId: {
+            tcUserId: session.user.id,
+            agentUserId: order.realtorId,
+          },
+        },
+        select: { id: true },
+      });
+
+      if (!link) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
+    // Realtors and TCs can only cancel PENDING orders
     if (
-      (session.user as any).role === "REALTOR" &&
+      ["REALTOR", "TC"].includes((session.user as any).role) &&
       order.status !== "PENDING"
     ) {
       return NextResponse.json(
@@ -69,7 +89,10 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(updatedOrder);
+    return NextResponse.json({
+      ...updatedOrder,
+      photos: Array.isArray(updatedOrder.photos) ? updatedOrder.photos : [],
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },

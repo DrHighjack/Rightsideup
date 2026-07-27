@@ -186,6 +186,10 @@ export async function POST(request: Request) {
         id: true,
         address: true,
         realtorId: true,
+        type: true,
+        status: true,
+        self811Accepted: true,
+        ticket811: { select: { id: true } },
       },
     });
 
@@ -193,6 +197,19 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Selected property was not found' },
         { status: 404 }
+      );
+    }
+
+    const isEligible =
+      ['INSTALL', 'CHANGE'].includes(order.type) &&
+      ['PENDING', 'SCHEDULED', 'ON_HOLD'].includes(order.status) &&
+      !order.self811Accepted &&
+      !order.ticket811;
+
+    if (!isEligible) {
+      return NextResponse.json(
+        { error: 'The selected property is no longer eligible for an 811 ticket' },
+        { status: 409 }
       );
     }
 
@@ -205,6 +222,9 @@ export async function POST(request: Request) {
           },
           {
             orderId,
+          },
+          {
+            matchedOrderIds: { has: orderId },
           },
         ],
       },

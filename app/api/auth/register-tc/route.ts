@@ -99,7 +99,7 @@ export async function POST(request: Request) {
         throw new Error("INVITE_UNAVAILABLE");
       }
 
-      return tx.user.create({
+      const user = await tx.user.create({
         data: {
           email: normalizedEmail,
           firstName: firstName.trim(),
@@ -111,6 +111,18 @@ export async function POST(request: Request) {
           emailVerificationExpiresAt,
         },
       });
+
+      if (invite.invitedByUser.role === "REALTOR") {
+        await tx.tCAgentLink.create({
+          data: {
+            tcUserId: user.id,
+            agentUserId: invite.invitedByUserId,
+            grantedBy: "REALTOR",
+          },
+        });
+      }
+
+      return user;
     });
 
     const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;

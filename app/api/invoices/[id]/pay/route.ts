@@ -74,21 +74,12 @@ export async function POST(
     const isOwner = invoice.userId === actorUserId;
     const isAdmin = (session.user as any).role === "ADMIN";
 
-    let isLinkedTc = false;
     if (!isOwner && !isAdmin) {
-      const link = await prisma.tCAgentLink.findUnique({
-        where: {
-          tcUserId_agentUserId: {
-            tcUserId: actorUserId,
-            agentUserId: invoice.userId,
-          },
-        },
-      });
-      isLinkedTc = Boolean(link);
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (!isOwner && !isAdmin && !isLinkedTc) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!["SENT", "VIEWED", "OVERDUE"].includes(invoice.status)) {
+      return NextResponse.json({ error: "Invoice is not payable" }, { status: 409 });
     }
 
     const card = await prisma.paymentCard.findUnique({

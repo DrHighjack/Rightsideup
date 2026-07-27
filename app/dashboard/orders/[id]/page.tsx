@@ -12,7 +12,7 @@ interface OrderDetail {
   address: string;
   addressLat?: number;
   addressLng?: number;
-  scheduledDate?: string;
+  scheduledDate?: string | null;
   notes?: string;
   createdAt: string;
   updatedAt: string;
@@ -24,6 +24,18 @@ interface OrderDetail {
   ticket811?: { id: string } | null;
   self811Accepted: boolean;
   photos: Array<{ id: string; name: string; uploadedAt: string; url: string }>;
+}
+
+function normalizeOrder(data: OrderDetail): OrderDetail {
+  return { ...data, photos: Array.isArray(data.photos) ? data.photos : [] };
+}
+
+function calendarDateValue(value?: string | null) {
+  return value ? value.slice(0, 10) : "";
+}
+
+function formatCalendarDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, { timeZone: "UTC" }).format(new Date(value));
 }
 
 export default function OrderDetailPage() {
@@ -42,6 +54,10 @@ export default function OrderDetailPage() {
   const [cancelError, setCancelError] = useState("");
   const [photoUploading, setPhotoUploading] = useState(false);
   const [photoError, setPhotoError] = useState("");
+  const [editingDate, setEditingDate] = useState(false);
+  const [requestedDate, setRequestedDate] = useState("");
+  const [dateSaving, setDateSaving] = useState(false);
+  const [dateError, setDateError] = useState("");
 
   useEffect(() => {
     async function fetchOrder() {
@@ -51,7 +67,9 @@ export default function OrderDetailPage() {
           throw new Error("Failed to fetch order");
         }
         const data = await response.json();
-        setOrder(data);
+        const normalizedOrder = normalizeOrder(data);
+        setOrder(normalizedOrder);
+        setRequestedDate(calendarDateValue(normalizedOrder.scheduledDate));
       } catch (error) {
         console.error("Error fetching order:", error);
       } finally {
@@ -84,7 +102,7 @@ export default function OrderDetailPage() {
       }
 
       const updatedOrder = await response.json();
-      setOrder(updatedOrder);
+      setOrder(normalizeOrder(updatedOrder));
       setCancelled(true);
       setShowCancelModal(false);
     } catch (error) {
@@ -152,6 +170,33 @@ export default function OrderDetailPage() {
     }
   }
 
+  async function handleDateSave() {
+    if (!requestedDate) {
+      setDateError("Select a requested date");
+      return;
+    }
+
+    setDateSaving(true);
+    setDateError("");
+    try {
+      const response = await fetch(`/api/orders/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ scheduledDate: requestedDate }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to change requested date");
+      const normalizedOrder = normalizeOrder(data);
+      setOrder(normalizedOrder);
+      setRequestedDate(calendarDateValue(normalizedOrder.scheduledDate));
+      setEditingDate(false);
+    } catch (error) {
+      setDateError(error instanceof Error ? error.message : "Failed to change requested date");
+    } finally {
+      setDateSaving(false);
+    }
+  }
+
   if (loading) {
     return <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">Loading...</div>;
   }
@@ -190,7 +235,7 @@ export default function OrderDetailPage() {
           </label>
         </div>
         {photoError && <p className="text-sm text-red-700">{photoError}</p>}
-        {order.photos.length > 0 ? (
+        {(order.photos ?? []).length > 0 ? (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {order.photos.map((photo) => (
               <a key={photo.id} href={photo.url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-slate-200">
@@ -256,10 +301,54 @@ export default function OrderDetailPage() {
 
         {order.scheduledDate && (
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Scheduled Date</p>
-            <p className="mt-1 text-base font-medium text-slate-900 tabular-nums">
-              {new Date(order.scheduledDate).toLocaleDateString()}
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Requested Date</p>
+              {["PENDING", "SCHEDULED", "ON_HOLD"].includes(order.status) && !editingDate && (
+                <button
+                  type="button"
+                  onClick={() => setEditingDate(true)}
+                  className="text-sm font-medium text-navy-900 underline-offset-4 hover:underline"
+                >
+                  Change Date
+                </button>
+              )}
+            </div>
+            {editingDate ? (
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+                <input
+                  type="date"
+                  value={requestedDate}
+                  min={new Date().toISOString().slice(0, 10)}
+                  onChange={(event) => setRequestedDate(event.target.value)}
+                  className="h-11 flex-1 rounded-lg border border-slate-300 px-3 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
+                />
+                <button
+                  type="button"
+                  onClick={handleDateSave}
+                  disabled={dateSaving}
+                  className="h-11 rounded-lg bg-navy-900 px-4 font-medium text-white hover:bg-navy-800 disabled:opacity-50"
+                >
+                  {dateSaving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRequestedDate(calendarDateValue(order.scheduledDate));
+                    setDateError("");
+                    setEditingDate(false);
+                  }}
+                  disabled={dateSaving}
+                  className="h-11 rounded-lg border border-slate-300 bg-white px-4 font-medium text-slate-700 hover:bg-slate-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <p className="mt-1 text-base font-medium text-slate-900 tabular-nums">
+                {formatCalendarDate(order.scheduledDate)}
+              </p>
+            )}
+            {dateError && <p className="mt-2 text-sm text-red-700">{dateError}</p>}
           </div>
         )}
 

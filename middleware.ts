@@ -88,6 +88,7 @@ export async function middleware(request: NextRequest) {
   const dashboardRoutes = ["/dashboard"];
   const brokerageRoutes = ["/brokerage"];
   const fieldRoutes = ["/field"];
+  const tcRoutes = ["/tc"];
   
   const isAdminRoute = adminRoutes.some((route) =>
     pathname.startsWith(route)
@@ -101,12 +102,19 @@ export async function middleware(request: NextRequest) {
   const isFieldRoute = fieldRoutes.some((route) =>
     pathname.startsWith(route)
   );
+  const isTcRoute = tcRoutes.some((route) =>
+    pathname === route || pathname.startsWith(`${route}/`)
+  );
 
   const userRole = (session?.user as any)?.role;
 
   // Redirect to login if not authenticated for protected routes
-  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute) && !session?.user?.id) {
+  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !session?.user?.id) {
     return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (isTcRoute && userRole !== "TC") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // Block FIELD_TECH from /admin and /dashboard
@@ -147,5 +155,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/brokerage/:path*", "/field/:path*", "/api/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/brokerage/:path*", "/field/:path*", "/tc/:path*", "/api/:path*"],
 };

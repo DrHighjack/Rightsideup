@@ -25,12 +25,14 @@ export async function POST(request: Request) {
     }
 
     const { email } = await request.json();
-    if (!email) {
+    if (typeof email !== "string" || !email.trim()) {
       return Response.json({ error: "Email is required" }, { status: 400 });
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
     // Check if TC with this email already exists
-    const existingTC = await prisma.user.findUnique({ where: { email } });
+    const existingTC = await prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (existingTC?.role === "TC") {
       return Response.json(
         { error: "TC already registered with this email" },
@@ -43,7 +45,7 @@ export async function POST(request: Request) {
 
     const invite = await prisma.tCInvite.create({
       data: {
-        email,
+        email: normalizedEmail,
         token,
         expiresAt,
         invitedByUserId: session.user.id,
@@ -55,21 +57,30 @@ export async function POST(request: Request) {
     const inviterName = user.firstName
       ? `${user.firstName}${user.lastName ? " " + user.lastName : ""}`
       : user.email;
-    const tcInviteeName = email.split("@")[0]; // best guess; they'll set their real name on signup
+    const tcInviteeName = normalizedEmail.split("@")[0]; // best guess; they'll set their real name on signup
 
+    let emailSent = false;
+    let emailStatusCode: number | null = null;
+    let emailMessageId: string | null = null;
     try {
       const emailTemplate = getRealtorInvitesTCEmail(
         tcInviteeName,
         inviterName,
         user.brokerageName ?? null,
-        email,
+        normalizedEmail,
         signupLink
       );
-      await sendEmail({
-        to: email,
+      const sendResult = await sendEmail({
+        to: normalizedEmail,
         subject: emailTemplate.subject,
         html: emailTemplate.html,
       });
+      emailSent = true;
+      emailStatusCode = sendResult?.statusCode ?? null;
+      emailMessageId = sendResult?.messageId ?? null;
+      console.log(
+        `[TC_INVITE] Email accepted for ${normalizedEmail} (status=${emailStatusCode ?? "unknown"}, messageId=${emailMessageId ?? "n/a"})`
+      );
     } catch (emailError) {
       console.error("Failed to send TC invite email:", emailError);
       // Non-fatal — the invite record exists; inviter can share the link manually
@@ -82,6 +93,15 @@ export async function POST(request: Request) {
         token: invite.token,
         expiresAt: invite.expiresAt,
         createdAt: invite.createdAt,
+        emailSent,
+        emailStatusCode,
+        emailMessageId,
+        ...(emailSent
+          ? {}
+          : {
+              warning:
+                "Invite record was created, but the email could not be sent. Share the invite link manually.",
+            }),
       },
       { status: 201 }
     );
@@ -117,10 +137,15 @@ export async function GET(request: Request) {
     const email = url.searchParams.get("email");
 
     let invites;
+    const pendingWhere = {
+      usedAt: null,
+      expiresAt: { gt: new Date() },
+    };
     if (email) {
       invites = await prisma.tCInvite.findMany({
         where: {
-          email,
+          ...pendingWhere,
+          email: email.trim().toLowerCase(),
           invitedByUserId: user.role === "ADMIN" ? undefined : session.user.id,
         },
         include: {
@@ -132,6 +157,7 @@ export async function GET(request: Request) {
     } else {
       invites = await prisma.tCInvite.findMany({
         where: {
+          ...pendingWhere,
           invitedByUserId: user.role === "ADMIN" ? undefined : session.user.id,
         },
         include: {

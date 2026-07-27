@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { v4 as uuidv4 } from "uuid";
+import { z } from "zod";
 import { sendEmail, getTCInvitationEmail } from "@/lib/email";
 
 function normalizeEmail(email: string): string {
@@ -108,6 +109,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!z.string().email().safeParse(email).success) {
+      return NextResponse.json({ error: "Invalid email address" }, { status: 400 });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
 
     const tcName = `${tcUser.firstName} ${tcUser.lastName}`.trim();
@@ -121,58 +126,23 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await prisma.tCAgentLink.upsert({
+      const existingLink = await prisma.tCAgentLink.findUnique({
         where: {
           tcUserId_agentUserId: {
             tcUserId: tcUser.id,
             agentUserId: existingUser.id,
           },
         },
-        update: {},
-        create: {
-          tcUserId: tcUser.id,
-          agentUserId: existingUser.id,
-          grantedBy: "TC",
-        },
       });
 
-      const loginLink = `${baseUrl}/login`;
-      const invitationEmail = getTCInvitationEmail(
-        `${existingUser.firstName} ${existingUser.lastName}`,
-        tcName,
-        tcUser.email,
-        loginLink
+      return NextResponse.json(
+        {
+          error: existingLink
+            ? "This realtor is already linked to your account"
+            : "This realtor already has an account. Their approval is required before they can be linked.",
+        },
+        { status: 409 }
       );
-
-      const welcomeHtml = `
-        <p>Hi ${existingUser.firstName},</p>
-        <p>Welcome to North Shore Sign Co. ${tcName} has invited you to collaborate so your sign can be placed faster.</p>
-        <p>Please complete your registration by logging in and confirming your account details.</p>
-        <p><a href="${loginLink}">Go to Login</a></p>
-      `;
-
-      await Promise.all([
-        sendEmail({ to: existingUser.email, subject: invitationEmail.subject, html: invitationEmail.html }),
-        sendEmail({
-          to: existingUser.email,
-          subject: "Welcome to North Shore Sign Co - Complete Your Registration",
-          html: welcomeHtml,
-        }),
-      ]).catch((error) => {
-        console.warn("Failed to send one or more realtor onboarding emails:", error);
-      });
-
-      return NextResponse.json({
-        linked: true,
-        invited: false,
-        realtor: {
-          id: existingUser.id,
-          firstName: existingUser.firstName,
-          lastName: existingUser.lastName,
-          email: existingUser.email,
-          brokerageName: existingUser.brokerageName,
-        },
-      });
     }
 
     const existingInvite = await prisma.tCInvite.findFirst({
@@ -218,20 +188,40 @@ export async function POST(request: NextRequest) {
       <p><a href="${signupLink}">${signupLink}</a></p>
     `;
 
-    await Promise.all([
-      sendEmail({ to: email, subject: invitationEmail.subject, html: invitationEmail.html }),
-      sendEmail({
-        to: email,
-        subject: "Welcome to North Shore Sign Co - Complete Your Registration",
-        html: welcomeHtml,
-      }),
-    ]).catch((error) => {
+    let emailSent = false;
+    let emailStatusCodes: Array<number | null> = [];
+    let emailMessageIds: Array<string | null> = [];
+    try {
+      const sendResults = await Promise.all([
+        sendEmail({ to: email, subject: invitationEmail.subject, html: invitationEmail.html }),
+        sendEmail({
+          to: email,
+          subject: "Welcome to North Shore Sign Co - Complete Your Registration",
+          html: welcomeHtml,
+        }),
+      ]);
+      emailSent = true;
+      emailStatusCodes = sendResults.map((result) => result?.statusCode ?? null);
+      emailMessageIds = sendResults.map((result) => result?.messageId ?? null);
+      console.log(
+        `[TC_REALTOR_INVITE] Emails accepted for ${email} (statuses=${emailStatusCodes.map((code) => code ?? "unknown").join(",")}, messageIds=${emailMessageIds.map((id) => id ?? "n/a").join(",")})`
+      );
+    } catch (error) {
       console.warn("Failed to send one or more realtor invitation emails:", error);
-    });
+    }
 
     return NextResponse.json({
       linked: false,
       invited: true,
+      emailSent,
+      emailStatusCodes,
+      emailMessageIds,
+      ...(emailSent
+        ? {}
+        : {
+            warning:
+              "Invite record was created, but one or more emails failed to send. Share the invite link manually.",
+          }),
       pendingInvite: {
         id: invite.id,
         email: invite.email,

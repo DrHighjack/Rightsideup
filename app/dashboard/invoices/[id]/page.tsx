@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Script from "next/script";
 
@@ -43,6 +44,8 @@ const fluidPayBaseUrl =
   process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
 
 export default function InvoiceDetailPage() {
+  const { data: session, status: sessionStatus } = useSession();
+  const isTC = (session?.user as any)?.role === "TC";
   const params = useParams();
   const invoiceId = params.id as string;
 
@@ -110,11 +113,17 @@ export default function InvoiceDetailPage() {
 
   useEffect(() => {
     void fetchInvoice();
-    void fetchCardOnFile();
-  }, [invoiceId]);
+    if (sessionStatus === "loading") return;
+    if (isTC) {
+      setCardOnFile(false);
+      setCardOnFileLoading(false);
+    } else {
+      void fetchCardOnFile();
+    }
+  }, [invoiceId, isTC, sessionStatus]);
 
   const canPayInvoice =
-    invoice?.status === "SENT" || invoice?.status === "OVERDUE";
+    !isTC && (invoice?.status === "SENT" || invoice?.status === "OVERDUE");
 
   const shouldRenderTokenizer =
     Boolean(canPayInvoice) &&
@@ -313,12 +322,14 @@ export default function InvoiceDetailPage() {
 
   return (
     <>
-      <Script
-        src="https://sandbox.fluidpay.com/tokenizer/tokenizer.js"
-        strategy="afterInteractive"
-        onLoad={() => setTokenizerScriptLoaded(true)}
-        onError={() => setPaymentError("Failed to load payment form script")}
-      />
+      {sessionStatus === "authenticated" && !isTC && (
+        <Script
+          src="https://sandbox.fluidpay.com/tokenizer/tokenizer.js"
+          strategy="afterInteractive"
+          onLoad={() => setTokenizerScriptLoaded(true)}
+          onError={() => setPaymentError("Failed to load payment form script")}
+        />
+      )}
 
       <div className="min-h-screen bg-gray-50 p-4 md:p-6">
         <div className="max-w-4xl mx-auto">
@@ -432,6 +443,15 @@ export default function InvoiceDetailPage() {
             </div>
 
             <div className="space-y-4">
+              {isTC && balance > 0 && invoice.status !== "PAID" && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
+                  <h3 className="font-semibold text-blue-900">Agent Payment Required</h3>
+                  <p className="mt-1 text-sm text-blue-800">
+                    Transaction coordinators can review invoices, but the linked agent must complete payment.
+                  </p>
+                </div>
+              )}
+
               {canPayInvoice && (
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Pay Invoice</h3>

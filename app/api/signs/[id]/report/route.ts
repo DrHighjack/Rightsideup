@@ -14,7 +14,7 @@ export async function POST(
   }
 
   const user = session.user as any;
-  if (user.role !== "REALTOR" && user.role !== "TC") {
+  if (!["REALTOR", "TC", "ADMIN"].includes(user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -38,11 +38,36 @@ export async function POST(
     // Get sign details
     const sign = await prisma.sign.findUnique({
       where: { id: signId },
-      include: { assignedToUser: true },
+      include: {
+        assignedToUser: true,
+        assignedToOrder: { select: { realtorId: true } },
+      },
     });
 
     if (!sign) {
       return Response.json({ error: "Sign not found" }, { status: 404 });
+    }
+
+    const ownerId = sign.assignedToOrder?.realtorId ?? sign.assignedToUserId;
+    let authorized = user.role === "ADMIN";
+
+    if (user.role === "REALTOR") {
+      authorized = ownerId === user.id;
+    } else if (user.role === "TC" && ownerId) {
+      const link = await prisma.tCAgentLink.findUnique({
+        where: {
+          tcUserId_agentUserId: {
+            tcUserId: user.id,
+            agentUserId: ownerId,
+          },
+        },
+        select: { id: true },
+      });
+      authorized = Boolean(link);
+    }
+
+    if (!authorized) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
     }
 
     // Create the report

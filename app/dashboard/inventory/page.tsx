@@ -61,7 +61,9 @@ export default function InventoryPage() {
   const fetchPrinters = async () => {
     try {
       const res = await fetch('/api/printers');
-      if (!res.ok) return;
+      if (!res.ok) {
+        throw new Error('Printer options are unavailable');
+      }
       const data = await res.json();
       setPrinters(Array.isArray(data.printers) ? data.printers : []);
     } catch {
@@ -146,7 +148,7 @@ export default function InventoryPage() {
       !customSignForm.width ||
       !customSignForm.height ||
       !customSignForm.material ||
-      !customSignForm.printerId ||
+      (printers.length > 0 && !customSignForm.printerId) ||
       !customSignForm.image
     ) {
       setCustomSignError('Please complete all fields and upload an image.');
@@ -160,7 +162,10 @@ export default function InventoryPage() {
       formData.append('width', customSignForm.width);
       formData.append('height', customSignForm.height);
       formData.append('material', customSignForm.material);
-      formData.append('printerIds', JSON.stringify([customSignForm.printerId]));
+      formData.append(
+        'printerIds',
+        JSON.stringify(customSignForm.printerId ? [customSignForm.printerId] : [])
+      );
       formData.append('image', customSignForm.image);
 
       const res = await fetch('/api/custom-signs', {
@@ -359,6 +364,11 @@ export default function InventoryPage() {
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
                 >
                   <option value="">Select a printer</option>
+                  {printers.length === 0 && (
+                    <option value="" disabled>
+                      Admin will select a printer
+                    </option>
+                  )}
                   {printers.map((printer) => (
                     <option key={printer.id} value={printer.id}>
                       {printer.name}

@@ -51,11 +51,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Array.isArray(printerIds) || printerIds.length === 0) {
+    if (!Array.isArray(printerIds)) {
       return NextResponse.json(
-        { error: 'At least one printer must be selected' },
+        { error: 'Invalid printer selection' },
         { status: 400 }
       );
+    }
+
+    if (printerIds.length > 0) {
+      const validPrinterCount = await prisma.signPrinter.count({
+        where: { id: { in: printerIds }, isActive: true },
+      });
+      if (validPrinterCount !== printerIds.length) {
+        return NextResponse.json({ error: 'Selected printer is unavailable' }, { status: 400 });
+      }
     }
 
     const timestamp = Date.now();
@@ -106,6 +115,7 @@ export async function POST(request: NextRequest) {
           requestedBy: session.user.email,
           requestedAt: new Date().toISOString(),
           preferredPrinterIds: printerIds,
+          printerAssignmentPending: printerIds.length === 0,
         }),
       },
     });

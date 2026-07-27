@@ -67,6 +67,8 @@ const formatStatusLabel = (status: string): string => status.replace(/_/g, " ");
 const formatCalendarDate = (value: string): string =>
   new Intl.DateTimeFormat(undefined, { timeZone: "UTC" }).format(new Date(value));
 
+const SEATTLE_DEFAULT_CENTER = { lat: 47.6062, lng: -122.3321 };
+
 const OrderMarker = (props: {
   order: OrderData;
   selected: boolean;
@@ -128,7 +130,7 @@ export default function DashboardPage() {
   const [readyCardHidden, setReadyCardHidden] = useState(false);
   const [mapKey, setMapKey] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState({ lat: 47.6, lng: -122.3 });
+  const [mapCenter, setMapCenter] = useState(SEATTLE_DEFAULT_CENTER);
   const [selectedStatuses, setSelectedStatuses] = useState<Set<string>>(
     () => new Set(STATUS_FILTER_ORDER)
   );
@@ -435,8 +437,16 @@ export default function DashboardPage() {
             NEXT_PUBLIC_GOOGLE_MAPS_KEY is not configured.
           </div>
         ) : mappedOrders.length === 0 ? (
-          <div className="h-[420px] rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">
-            No orders with map coordinates yet.
+          <div className="h-[420px] rounded-lg overflow-hidden border border-slate-200 relative">
+            <GoogleMapReact
+              bootstrapURLKeys={{ key: mapKey }}
+              defaultCenter={SEATTLE_DEFAULT_CENTER}
+              defaultZoom={10}
+            />
+            <div className="pointer-events-none absolute inset-x-4 bottom-4 rounded-lg border border-slate-200 bg-white/95 p-3 text-sm text-slate-700 shadow-sm backdrop-blur-sm">
+              <p className="font-semibold text-slate-900">Welcome to Post Maps</p>
+              <p className="mt-1">This default view shows Seattle. Your posts will appear here once your first order is mapped.</p>
+            </div>
           </div>
         ) : filteredMappedOrders.length === 0 ? (
           <div className="h-[420px] rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">

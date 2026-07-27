@@ -5,11 +5,88 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { hash } from "bcryptjs";
 
-// Store password reset tokens (in production, use database)
-const resetTokens = new Map<
-  string,
-  { userId: string; expiresAt: number; phone?: string }
->();
+const RESET_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+function getResetSecret() {
+  const secret = process.env.PASSWORD_RESET_SECRET || process.env.NEXTAUTH_SECRET;
+  if (!secret) {
+    throw new Error("Missing PASSWORD_RESET_SECRET or NEXTAUTH_SECRET");
+  }
+  return secret;
+}
+
+function toBase64Url(input: string) {
+  return Buffer.from(input, "utf8").toString("base64url");
+}
+
+function fromBase64Url(input: string) {
+  return Buffer.from(input, "base64url").toString("utf8");
+}
+
+function passwordTag(passwordHash: string) {
+  return crypto.createHash("sha256").update(passwordHash).digest("hex").slice(0, 24);
+}
+
+function signPayload(payloadB64: string, secret: string) {
+  return crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+}
+
+function createResetToken(userId: string, currentPasswordHash: string) {
+  const payload = {
+    uid: userId,
+    exp: Date.now() + RESET_TOKEN_TTL_MS,
+    nonce: crypto.randomBytes(16).toString("hex"),
+    pt: passwordTag(currentPasswordHash),
+  };
+
+  const payloadB64 = toBase64Url(JSON.stringify(payload));
+  const signature = signPayload(payloadB64, getResetSecret());
+  return `${payloadB64}.${signature}`;
+}
+
+async function verifyResetToken(token: string) {
+  const [payloadB64, signature] = token.split(".");
+  if (!payloadB64 || !signature) {
+    return { valid: false as const, error: "Invalid or expired token" };
+  }
+
+  const expectedSignature = signPayload(payloadB64, getResetSecret());
+  const providedSigBuffer = Buffer.from(signature, "utf8");
+  const expectedSigBuffer = Buffer.from(expectedSignature, "utf8");
+
+  if (
+    providedSigBuffer.length !== expectedSigBuffer.length ||
+    !crypto.timingSafeEqual(providedSigBuffer, expectedSigBuffer)
+  ) {
+    return { valid: false as const, error: "Invalid or expired token" };
+  }
+
+  let payload: { uid?: string; exp?: number; pt?: string };
+  try {
+    payload = JSON.parse(fromBase64Url(payloadB64));
+  } catch {
+    return { valid: false as const, error: "Invalid or expired token" };
+  }
+
+  if (!payload.uid || !payload.exp || !payload.pt || payload.exp < Date.now()) {
+    return { valid: false as const, error: "Invalid or expired token" };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.uid },
+    select: { id: true, passwordHash: true },
+  });
+
+  if (!user) {
+    return { valid: false as const, error: "Invalid or expired token" };
+  }
+
+  if (passwordTag(user.passwordHash) !== payload.pt) {
+    return { valid: false as const, error: "Invalid or expired token" };
+  }
+
+  return { valid: true as const, userId: user.id };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -37,7 +114,7 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, firstName: true, email: true, phone: true },
+      select: { id: true, firstName: true, email: true, phone: true, passwordHash: true },
     });
 
     if (!user) {
@@ -47,18 +124,11 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Generate reset token
-    const token = crypto.randomBytes(32).toString("hex");
+    // Generate signed reset token that works across instances.
+    const token = createResetToken(user.id, user.passwordHash);
     const resetUrl = new URL("/reset-password", appUrl);
     resetUrl.searchParams.set("token", token);
     const resetLink = resetUrl.toString();
-
-    // Store token (expires in 24 hours)
-    resetTokens.set(token, {
-      userId: user.id,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-      phone: user.phone || undefined,
-    });
 
     // Send via email (always)
     try {
@@ -113,26 +183,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const resetData = resetTokens.get(token);
+    const verification = await verifyResetToken(token);
 
-    if (!resetData) {
-      return NextResponse.json(
-        { error: "Invalid or expired token" },
-        { status: 400 }
-      );
-    }
-
-    if (resetData.expiresAt < Date.now()) {
-      resetTokens.delete(token);
-      return NextResponse.json(
-        { error: "Token has expired" },
-        { status: 400 }
-      );
+    if (!verification.valid) {
+      return NextResponse.json({ error: verification.error }, { status: 400 });
     }
 
     return NextResponse.json({
       valid: true,
-      userId: resetData.userId,
+      userId: verification.userId,
     });
   } catch (error) {
     console.error("Token verification error:", error);
@@ -162,30 +221,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const resetData = resetTokens.get(token);
-    if (!resetData) {
-      return NextResponse.json(
-        { error: "Invalid or expired token" },
-        { status: 400 }
-      );
-    }
-
-    if (resetData.expiresAt < Date.now()) {
-      resetTokens.delete(token);
-      return NextResponse.json(
-        { error: "Token has expired" },
-        { status: 400 }
-      );
+    const verification = await verifyResetToken(token);
+    if (!verification.valid) {
+      return NextResponse.json({ error: verification.error }, { status: 400 });
     }
 
     const passwordHash = await hash(password, 12);
 
     await prisma.user.update({
-      where: { id: resetData.userId },
+      where: { id: verification.userId },
       data: { passwordHash },
     });
-
-    resetTokens.delete(token);
 
     return NextResponse.json({ success: true, message: "Password reset successful" });
   } catch (error) {

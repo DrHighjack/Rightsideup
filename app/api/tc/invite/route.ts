@@ -87,7 +87,7 @@ export async function POST(request: Request) {
           `[TC_INVITE] Email accepted for ${normalizedEmail} (status=${emailStatusCode ?? "unknown"}, messageId=${emailMessageId ?? "n/a"})`
         );
       } else if (emailSkipped) {
-        console.warn(`[TC_INVITE] Email skipped for ${normalizedEmail} (SendGrid not configured).`);
+        console.warn(`[TC_INVITE] Email skipped for ${normalizedEmail} (Brevo not configured).`);
       }
     } catch (emailError) {
       console.error("Failed to send TC invite email:", emailError);

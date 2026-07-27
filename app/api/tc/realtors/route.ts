@@ -211,7 +211,7 @@ export async function POST(request: NextRequest) {
           `[TC_REALTOR_INVITE] Emails accepted for ${email} (statuses=${emailStatusCodes.map((code) => code ?? "unknown").join(",")}, messageIds=${emailMessageIds.map((id) => id ?? "n/a").join(",")})`
         );
       } else if (emailSkipped) {
-        console.warn(`[TC_REALTOR_INVITE] One or more emails skipped for ${email} (SendGrid not configured).`);
+        console.warn(`[TC_REALTOR_INVITE] One or more emails skipped for ${email} (Brevo not configured).`);
       }
     } catch (error) {
       console.warn("Failed to send one or more realtor invitation emails:", error);

@@ -1,7 +1,5 @@
-﻿import sgMail from "@sendgrid/mail";
-
-const sendGridApiKey = process.env.SENDGRID_API_KEY || "";
-const isSendGridConfigured = sendGridApiKey.startsWith("SG.");
+﻿const brevoApiKey = process.env.BREVO_API_KEY || "";
+const isBrevoConfigured = brevoApiKey.length > 0;
 const NORTH_SHORE_SIGN_CO = "North Shore Sign Co";
 const NORTH_SHORE_BILLING_EMAIL = "billing@northshoresignco.com";
 const NORTH_SHORE_SENDER_EMAIL = "noreply@northshoresignco.com";
@@ -11,10 +9,8 @@ const STANDARD_FOOTER_HTML = `
             <div class="footer-text">${NORTH_SHORE_SIGN_CO} Â· Seattle, WA Â· (206) 659-6323 Â· <a href="mailto:${NORTH_SHORE_BILLING_EMAIL}">${NORTH_SHORE_BILLING_EMAIL}</a></div>
         </div>`;
 
-if (isSendGridConfigured) {
-    sgMail.setApiKey(sendGridApiKey);
-} else {
-    console.warn("[EMAIL] SENDGRID_API_KEY missing/invalid; email sending disabled.");
+if (!isBrevoConfigured) {
+    console.warn("[EMAIL] BREVO_API_KEY missing; email sending disabled.");
 }
 
 export interface EmailOptions {
@@ -27,8 +23,8 @@ export interface EmailOptions {
 
 export async function sendEmail(options: EmailOptions) {
   try {
-        if (!isSendGridConfigured) {
-            console.warn("[EMAIL] Skipping send; SendGrid not configured.");
+        if (!isBrevoConfigured) {
+            console.warn("[EMAIL] Skipping send; Brevo not configured.");
             return { success: false, skipped: true };
         }
 
@@ -37,26 +33,49 @@ export async function sendEmail(options: EmailOptions) {
       subject,
       html,
       text,
-            from = process.env.SENDGRID_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || NORTH_SHORE_SENDER_EMAIL,
+            from = process.env.BREVO_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || NORTH_SHORE_SENDER_EMAIL,
     } = options;
 
-        const sender = from.includes("<") ? from : `${NORTH_SHORE_SIGN_CO} <${from}>`;
+        const normalizedRecipients = Array.isArray(to) ? to : [to];
+        const senderEmail = from.includes("<") && from.includes(">")
+            ? from.slice(from.indexOf("<") + 1, from.indexOf(">")).trim()
+            : from.trim();
 
-    const msg = {
-      to,
-            from: sender,
-      subject,
-      html,
-      text: text || html.replace(/<[^>]*>/g, ""),
-    };
+        const payload = {
+            sender: {
+                name: NORTH_SHORE_SIGN_CO,
+                email: senderEmail,
+            },
+            to: normalizedRecipients.map((email) => ({ email })),
+            subject,
+            htmlContent: html,
+            textContent: text || html.replace(/<[^>]*>/g, ""),
+        };
 
-        const [response] = await sgMail.send(msg);
-        const messageId = response?.headers?.["x-message-id"] || null;
-        const statusCode = response?.statusCode || null;
+        const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+            method: "POST",
+            headers: {
+                "accept": "application/json",
+                "api-key": brevoApiKey,
+                "content-type": "application/json",
+            },
+            body: JSON.stringify(payload),
+        });
+
+        const rawBody = await response.text();
+        const parsedBody = rawBody ? JSON.parse(rawBody) : null;
+
+        if (!response.ok) {
+            console.error("Brevo send failed:", { status: response.status, body: parsedBody ?? rawBody });
+            throw new Error(`Brevo send failed with status ${response.status}`);
+        }
+
+        const messageId = parsedBody?.messageId || null;
+        const statusCode = response.status || null;
         console.log(`Email sent to ${to}: ${subject} (status=${statusCode || "unknown"}, messageId=${messageId || "n/a"})`);
         return { success: true, statusCode, messageId };
   } catch (error) {
-    console.error("SendGrid error:", error);
+    console.error("Brevo error:", error);
     throw error;
   }
 }

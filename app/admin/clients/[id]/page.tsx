@@ -342,7 +342,7 @@ export default function RealtorDetailPage() {
 
       if (data.emailSent === false) {
         alert(
-          `Credit code ${data.credit?.code || creditCode.trim()} was created for ${realtor?.firstName || "realtor"}, but email delivery failed. Please update SendGrid and resend using this code.`
+          `Credit code ${data.credit?.code || creditCode.trim()} was created for ${realtor?.firstName || "realtor"}, but email delivery failed. Please update Brevo settings and resend using this code.`
         );
       } else {
         alert(`Credit code ${data.credit?.code || creditCode.trim()} sent to ${realtor?.firstName || "realtor"}`);

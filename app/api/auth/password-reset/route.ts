@@ -14,10 +14,18 @@ const resetTokens = new Map<
 export async function POST(request: NextRequest) {
   try {
     const { email, sendViaSMS } = await request.json();
-    const appUrl =
-      process.env.NEXT_PUBLIC_APP_URL ||
-      process.env.NEXTAUTH_URL ||
-      "https://app.northshoresignco.com";
+    const forwardedProto = request.headers.get("x-forwarded-proto");
+    const forwardedHost = request.headers.get("x-forwarded-host");
+    const host = forwardedHost || request.headers.get("host");
+    const requestOrigin = host
+      ? `${forwardedProto || "https"}://${host}`
+      : request.nextUrl.origin;
+
+    const configuredAppUrl =
+      process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "";
+
+    // Normalize and prefer explicit configuration; otherwise use request origin.
+    const appUrl = (configuredAppUrl || requestOrigin || "https://app.northshoresignco.com").replace(/\/$/, "");
 
     if (!email) {
       return NextResponse.json(

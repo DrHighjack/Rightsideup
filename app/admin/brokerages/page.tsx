@@ -110,7 +110,7 @@ export default function ManagementPage() {
       try {
         const [brokeragesRes, agentsRes, tcsRes] = await Promise.all([
           fetch("/api/admin/brokerages"),
-          fetch("/api/admin/users"),
+          fetch("/api/admin/users?limit=500"),
           fetch("/api/admin/tcs"),
         ]);
 

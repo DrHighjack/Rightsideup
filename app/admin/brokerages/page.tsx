@@ -213,7 +213,7 @@ export default function ManagementPage() {
     const fetchData = async () => {
       const [agentsResult, tcsResult, closersResult, brokeragesResult] =
         await Promise.allSettled([
-          fetch("/api/admin/users"),
+          fetch("/api/admin/users?limit=500"),
           fetch("/api/admin/tcs"),
           fetch("/api/admin/users?role=ADMIN,SALESMEN&limit=200"),
           fetch("/api/admin/brokerages"),
@@ -598,7 +598,7 @@ export default function ManagementPage() {
         return;
       }
 
-      const refreshAgentsRes = await fetch("/api/admin/users");
+      const refreshAgentsRes = await fetch("/api/admin/users?limit=500");
       if (refreshAgentsRes.ok) {
         const refreshed = await refreshAgentsRes.json();
         setAgents(refreshed.users || []);
@@ -661,7 +661,7 @@ export default function ManagementPage() {
         return;
       }
 
-      await Promise.all([fetchBrokerages(), fetch("/api/admin/users").then(async (r) => {
+      await Promise.all([fetchBrokerages(), fetch("/api/admin/users?limit=500").then(async (r) => {
         if (r.ok) {
           const refreshed = await r.json();
           setAgents(refreshed.users || []);

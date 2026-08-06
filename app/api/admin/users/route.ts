@@ -56,6 +56,7 @@ export async function GET(request: NextRequest) {
       ];
     }
 
+<<<<<<< HEAD
     const [users, total] = await Promise.all([
       prisma.user.findMany({
         where,
@@ -77,6 +78,25 @@ export async function GET(request: NextRequest) {
           _count: {
             select: { orders: true },
           },
+=======
+    const users = await prisma.user.findMany({
+      where,
+          orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        email: true,
+        brokerageName: true,
+        phone: true,
+        tags: true,
+        createdAt: true,
+        _count: {
+          select: { orders: true },
+>>>>>>> d3bc066 (Fix admin agent list to show newly created realtors)
         },
       }),
       prisma.user.count({ where }),

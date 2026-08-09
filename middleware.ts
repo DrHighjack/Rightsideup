@@ -1,87 +1,13 @@
-import { auth } from "@/lib/auth";
 import { NextRequest, NextResponse } from "next/server";
-import { authLimiter, registerLimiter, couponLimiter, apiLimiter, getIdentifier } from "@/lib/ratelimit";
+import { getToken } from "next-auth/jwt";
 
 export async function middleware(request: NextRequest) {
-  const session = await auth();
+  const token = await getToken({
+    req: request,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+  });
   const pathname = request.nextUrl.pathname;
-  const forwardedFor = request.headers.get("x-forwarded-for");
-  const firstForwardedIp = forwardedFor?.split(",")?.[0]?.trim();
-  const ip = request.ip || firstForwardedIp;
-  const userId = (session?.user as any)?.id;
-
-  // Apply rate limiting to API routes
-  if (pathname.startsWith("/api/")) {
-    // Auth/Login endpoint - 5 per 15 minutes per IP
-    if (pathname.includes("/api/auth/callback/credentials")) {
-      try {
-        // Skip auth limiter when IP is unavailable to prevent global lockouts.
-        if (ip) {
-          const identifier = getIdentifier(ip);
-          const { success } = await authLimiter.limit(identifier);
-          if (!success) {
-            return NextResponse.json(
-              { error: "Too many requests, please try again later" },
-              { status: 429 }
-            );
-          }
-        }
-      } catch (error) {
-        console.error("Auth rate limiter error:", error);
-        // Allow request if rate limiter fails
-      }
-    }
-
-    // Register endpoint - 3 per hour per IP
-    if (pathname === "/api/auth/register") {
-      try {
-        const identifier = getIdentifier(ip);
-        const { success } = await registerLimiter.limit(identifier);
-        if (!success) {
-          return NextResponse.json(
-            { error: "Too many requests, please try again later" },
-            { status: 429 }
-          );
-        }
-      } catch (error) {
-        console.error("Register rate limiter error:", error);
-      }
-    }
-
-    // Coupon endpoints - 10 per hour per user
-    if (pathname.includes("/api/coupons")) {
-      if (userId) {
-        try {
-          const identifier = getIdentifier(undefined, userId);
-          const { success } = await couponLimiter.limit(identifier);
-          if (!success) {
-            return NextResponse.json(
-              { error: "Too many requests, please try again later" },
-              { status: 429 }
-            );
-          }
-        } catch (error) {
-          console.error("Coupon rate limiter error:", error);
-        }
-      }
-    }
-
-    // General API endpoints - 100 per minute per user (if authenticated)
-    if (userId && !pathname.includes("/api/auth")) {
-      try {
-        const identifier = getIdentifier(undefined, userId);
-        const { success } = await apiLimiter.limit(identifier);
-        if (!success) {
-          return NextResponse.json(
-            { error: "Too many requests, please try again later" },
-            { status: 429 }
-          );
-        }
-      } catch (error) {
-        console.error("API rate limiter error:", error);
-      }
-    }
-  }
+  const userId = typeof token?.id === "string" ? token.id : undefined;
 
   // Page route protection (original logic)
   const adminRoutes = ["/admin"];
@@ -106,10 +32,10 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  const userRole = (session?.user as any)?.role;
+  const userRole = typeof token?.role === "string" ? token.role : undefined;
 
   // Redirect to login if not authenticated for protected routes
-  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !session?.user?.id) {
+  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !userId) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
@@ -155,5 +81,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/admin/:path*", "/brokerage/:path*", "/field/:path*", "/tc/:path*", "/api/:path*"],
+  matcher: ["/dashboard/:path*", "/admin/:path*", "/brokerage/:path*", "/field/:path*", "/tc/:path*"],
 };

@@ -504,7 +504,12 @@ export default function ManagementPage() {
   };
 
   const handlePermanentDeleteAccount = async (
-    account: { id: string; firstName?: string; lastName?: string; email: string },
+    account: {
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      email: string;
+    },
     accountType: "realtor" | "TC"
   ) => {
     const fullName = `${account.firstName || ""} ${account.lastName || ""}`.trim();

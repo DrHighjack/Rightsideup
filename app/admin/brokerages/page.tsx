@@ -109,6 +109,7 @@ export default function ManagementPage() {
   const [addingClient, setAddingClient] = useState(false);
   const [addClientError, setAddClientError] = useState("");
   const [agentUpdatingId, setAgentUpdatingId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [newClient, setNewClient] = useState({
     firstName: "",
     lastName: "",
@@ -499,6 +500,45 @@ export default function ManagementPage() {
       setError(`Failed to ${actionLabel} realtor`);
     } finally {
       setAgentUpdatingId(null);
+    }
+  };
+
+  const handlePermanentDeleteAccount = async (
+    account: { id: string; firstName?: string; lastName?: string; email: string },
+    accountType: "realtor" | "TC"
+  ) => {
+    const fullName = `${account.firstName || ""} ${account.lastName || ""}`.trim();
+    const confirmation = prompt(
+      `Permanently delete ${fullName || account.email}? This also deletes related test orders, invoices, and links. Type ${account.email} to confirm.`
+    );
+
+    if (confirmation === null) return;
+
+    try {
+      setDeletingUserId(account.id);
+      setError("");
+
+      const res = await fetch(`/api/admin/users/${account.id}`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ confirmation }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        alert(data.error || `Failed to permanently delete ${accountType}`);
+        return;
+      }
+
+      if (accountType === "TC") {
+        await fetchTCs();
+      } else {
+        setAgents((prev) => prev.filter((agent) => agent.id !== account.id));
+      }
+    } catch (_error) {
+      alert(`Failed to permanently delete ${accountType}`);
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -1455,6 +1495,15 @@ export default function ManagementPage() {
                               ? "Reactivate"
                               : "Deactivate"}
                           </button>
+                          {Array.isArray(agent.tags) && agent.tags.includes("INACTIVE") && (
+                            <button
+                              onClick={() => handlePermanentDeleteAccount(agent, "realtor")}
+                              disabled={deletingUserId === agent.id}
+                              className="font-semibold text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:text-gray-400"
+                            >
+                              {deletingUserId === agent.id ? "Deleting..." : "Delete permanently"}
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1801,6 +1850,15 @@ export default function ManagementPage() {
                                 >
                                   {isActive ? "Deactivate" : "Reactivate"}
                                 </button>
+                                {!isActive && (
+                                  <button
+                                    onClick={() => handlePermanentDeleteAccount(tc, "TC")}
+                                    disabled={deletingUserId === tc.id}
+                                    className="font-semibold text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:text-gray-400"
+                                  >
+                                    {deletingUserId === tc.id ? "Deleting..." : "Delete permanently"}
+                                  </button>
+                                )}
                                 <button
                                   onClick={() => {
                                     setShowLinkModal(true);

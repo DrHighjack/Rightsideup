@@ -7,7 +7,13 @@ export async function middleware(request: NextRequest) {
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   });
   const pathname = request.nextUrl.pathname;
-  const userId = typeof token?.id === "string" ? token.id : undefined;
+  const hasSessionToken = Boolean(token);
+  const userId =
+    typeof token?.id === "string"
+      ? token.id
+      : typeof token?.sub === "string"
+      ? token.sub
+      : undefined;
 
   // Page route protection (original logic)
   const adminRoutes = ["/admin"];
@@ -35,7 +41,7 @@ export async function middleware(request: NextRequest) {
   const userRole = typeof token?.role === "string" ? token.role : undefined;
 
   // Redirect to login if not authenticated for protected routes
-  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !userId) {
+  if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !hasSessionToken) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

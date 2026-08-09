@@ -8,12 +8,6 @@ export async function middleware(request: NextRequest) {
   });
   const pathname = request.nextUrl.pathname;
   const hasSessionToken = Boolean(token);
-  const userId =
-    typeof token?.id === "string"
-      ? token.id
-      : typeof token?.sub === "string"
-      ? token.sub
-      : undefined;
 
   // Page route protection (original logic)
   const adminRoutes = ["/admin"];

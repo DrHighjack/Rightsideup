@@ -39,6 +39,10 @@ To fix the 500 error on Vercel login, ensure these environment variables are set
 9. **DISCORD_ORDER_WEBHOOK_URL**
    - Discord channel webhook URL used for new listing order alerts
 
+10. **DISCORD_ACTIVITY_WEBHOOK_URL**
+   - Discord channel webhook URL used for realtor logins and system activity alerts
+   - Optional: activity alerts use `DISCORD_ORDER_WEBHOOK_URL` when this is not set
+
 ## Steps to Fix Vercel Login:
 
 1. Go to **Vercel Dashboard** → Your Project → **Settings** → **Environment Variables**

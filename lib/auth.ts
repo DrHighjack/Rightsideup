@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import * as Sentry from "@sentry/nextjs";
 import { verifyAdminImpersonationToken } from "@/lib/admin-impersonation";
+import { sendActivityDiscordWebhook } from "@/lib/discord";
 
 const authSecret =
   process.env.AUTH_SECRET ||
@@ -175,6 +176,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               "[AUTH] Failed to update lastLoginAt:",
               loginUpdateError?.message || loginUpdateError
             );
+          }
+
+          if (user.role === "REALTOR") {
+            await sendActivityDiscordWebhook({
+              action: "REALTOR_LOGIN",
+              description: `${user.firstName} ${user.lastName} logged in.`,
+              actorName: `${user.firstName} ${user.lastName}`,
+              actorEmail: user.email,
+              actorRole: user.role,
+              entityType: "User",
+              entityId: user.id,
+            }).catch((discordError) => {
+              console.error("[DISCORD] Failed to send login webhook:", discordError);
+            });
           }
 
           return {

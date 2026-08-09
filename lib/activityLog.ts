@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { ActivityAction } from '@prisma/client';
+import { sendActivityDiscordWebhook } from '@/lib/discord';
 
 interface LogActivityParams {
   userId: string;
@@ -23,7 +24,7 @@ export async function logActivity({
   metadata,
 }: LogActivityParams): Promise<void> {
   try {
-    await prisma.activityLog.create({
+    const activity = await prisma.activityLog.create({
       data: {
         userId,
         action,
@@ -32,6 +33,28 @@ export async function logActivity({
         description,
         metadata,
       },
+      include: {
+        user: {
+          select: {
+            email: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+          },
+        },
+      },
+    });
+
+    await sendActivityDiscordWebhook({
+      action,
+      description,
+      actorName: `${activity.user.firstName} ${activity.user.lastName}`.trim(),
+      actorEmail: activity.user.email,
+      actorRole: activity.user.role,
+      entityType,
+      entityId,
+    }).catch((error) => {
+      console.error('[DISCORD] Failed to send activity webhook:', error);
     });
     
     console.log(`✅ Activity logged:`, {

@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getToken } from "next-auth/jwt";
+import { auth } from "@/lib/auth";
 
 export async function middleware(request: NextRequest) {
-  const token = await getToken({
-    req: request,
-    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
-  });
+  const session = await auth();
   const pathname = request.nextUrl.pathname;
-  const hasSessionToken = Boolean(token);
+  const hasSessionToken = Boolean(session?.user?.id);
 
   // Page route protection (original logic)
   const adminRoutes = ["/admin"];
@@ -32,7 +29,7 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  const userRole = typeof token?.role === "string" ? token.role : undefined;
+  const userRole = (session?.user as any)?.role;
 
   // Redirect to login if not authenticated for protected routes
   if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !hasSessionToken) {

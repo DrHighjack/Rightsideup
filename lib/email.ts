@@ -143,6 +143,9 @@ export function getPasswordResetEmail(
   _privacyUrl?: string,
   _termsUrl?: string
 ) {
+    const safeFirstName = escapeHtml(firstName);
+    const safeResetLink = escapeHtml(resetLink);
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -382,7 +385,7 @@ export function getPasswordResetEmail(
         <!-- Content -->
         <div class="content">
             <div class="greeting">
-                <p>Hi ${firstName},</p>
+                <p>Hi ${safeFirstName},</p>
                 <p style="margin-top: 12px;">We received a request to reset the password for your North Shore Sign Co account. Click the button below to create a new password.</p>
             </div>
             
@@ -395,12 +398,12 @@ export function getPasswordResetEmail(
             </div>
             
             <!-- CTA Button -->
-            <a href="${resetLink}" class="cta-button">Reset Your Password</a>
+            <a href="${safeResetLink}" class="cta-button">Reset Your Password</a>
             
             <!-- Link Fallback -->
             <div class="link-section">
                 <div class="link-label">Or copy this link:</div>
-                <div class="link-text">${resetLink}</div>
+                <div class="link-text">${safeResetLink}</div>
             </div>
             
             <!-- Expiration Warning -->
@@ -449,6 +452,9 @@ export function getAccountVerificationEmail(
   _privacyUrl?: string,
   _termsUrl?: string
 ) {
+    const safeFirstName = escapeHtml(firstName);
+    const safeVerificationLink = escapeHtml(verificationLink);
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -493,17 +499,17 @@ export function getAccountVerificationEmail(
         </div>
         <div class="content">
             <div class="greeting">
-                <p>Hi ${firstName},</p>
+                <p>Hi ${safeFirstName},</p>
                 <p style="margin-top: 12px;">Your North Shore Sign Co account was created successfully. Click the button below to verify your email address and activate ordering access.</p>
             </div>
             <div class="notice">
                 <div class="notice-title">Why this is required</div>
                 <div class="notice-text">For security, orders cannot be submitted until your email is verified. This keeps account ownership tied to the inbox you control.</div>
             </div>
-            <a href="${verificationLink}" class="cta-button">Verify Email Address</a>
+            <a href="${safeVerificationLink}" class="cta-button">Verify Email Address</a>
             <div class="link-section">
                 <div class="link-label">Or copy this link:</div>
-                <div class="link-text">${verificationLink}</div>
+                <div class="link-text">${safeVerificationLink}</div>
             </div>
             <div class="instructions">
                 <h3>Next Steps</h3>
@@ -537,6 +543,9 @@ export function getWelcomeEmail(
   _privacyUrl?: string,
   _termsUrl?: string
 ) {
+    const safeFirstName = escapeHtml(firstName);
+    const safeLoginLink = escapeHtml(loginLink);
+
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -569,10 +578,10 @@ export function getWelcomeEmail(
         </div>
         <div class="content">
             <div class="greeting">
-                <p>Hi <strong>${firstName}</strong>,</p>
+                <p>Hi <strong>${safeFirstName}</strong>,</p>
                 <p style="margin-top: 12px;">Your account has been created and is ready to go. Click the button below to log in and get started.</p>
             </div>
-            <a href="${loginLink}" class="cta-button">Log In</a>
+            <a href="${safeLoginLink}" class="cta-button">Log In</a>
             <div class="instructions">
                 <h3>Getting Started</h3>
                 <ol>
@@ -600,6 +609,12 @@ export function getOrderStatusUpdateEmail(
   address: string,
   dashboardLink: string
 ) {
+    const safeCustomerName = escapeHtml(customerName);
+    const safeOrderNumber = escapeHtml(orderNumber);
+    const safeStatus = escapeHtml(status);
+    const safeAddress = escapeHtml(address);
+    const safeDashboardLink = escapeHtml(dashboardLink);
+
   if (status === "COMPLETED") {
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -616,10 +631,10 @@ export function getOrderStatusUpdateEmail(
                 <p style="margin-top:8px;opacity:0.95;">Your North Shore Sign Co order is complete</p>
             </div>
             <div style="padding:32px;">
-                <p style="margin-bottom:16px;">Hi ${customerName}, your order status is now <strong>COMPLETED</strong>.</p>
-                <p style="margin-bottom:16px;"><strong>Order #:</strong> ${orderNumber}</p>
-                <p style="margin-bottom:16px;"><strong>Address:</strong> ${address}</p>
-                <a href="${dashboardLink}" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>
+                <p style="margin-bottom:16px;">Hi ${safeCustomerName}, your order status is now <strong>COMPLETED</strong>.</p>
+                <p style="margin-bottom:16px;"><strong>Order #:</strong> ${safeOrderNumber}</p>
+                <p style="margin-bottom:16px;"><strong>Address:</strong> ${safeAddress}</p>
+                <a href="${safeDashboardLink}" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>
             </div>
         </div>
 ${STANDARD_FOOTER_HTML}
@@ -645,10 +660,10 @@ ${STANDARD_FOOTER_HTML}
                 <p style="margin-top:8px;opacity:0.95;">Your North Shore Sign Co order has a new status</p>
             </div>
             <div style="padding:32px;">
-                <p style="margin-bottom:16px;">Hi ${customerName}, your order status is now <strong>${status}</strong>.</p>
-                <p style="margin-bottom:16px;"><strong>Order #:</strong> ${orderNumber}</p>
-                <p style="margin-bottom:16px;"><strong>Address:</strong> ${address}</p>
-                <a href="${dashboardLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>
+                <p style="margin-bottom:16px;">Hi ${safeCustomerName}, your order status is now <strong>${safeStatus}</strong>.</p>
+                <p style="margin-bottom:16px;"><strong>Order #:</strong> ${safeOrderNumber}</p>
+                <p style="margin-bottom:16px;"><strong>Address:</strong> ${safeAddress}</p>
+                <a href="${safeDashboardLink}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>
             </div>
         </div>
 ${STANDARD_FOOTER_HTML}
@@ -671,6 +686,11 @@ export function getWelcomeEmailWithMagicLink(
   _termsUrl?: string
 ) {
   const finalLoginPageUrl = loginPageUrl || `${process.env.NEXT_PUBLIC_APP_URL || "https://app.northshoresignco.com"}/login`;
+    const safeFirstName = escapeHtml(firstName);
+    const safeEmail = escapeHtml(email);
+    const safeTempPassword = escapeHtml(tempPassword);
+    const safeLoginLink = escapeHtml(loginLink);
+    const safeFinalLoginPageUrl = escapeHtml(finalLoginPageUrl);
   
   const html = `<!DOCTYPE html>
 <html lang="en">
@@ -913,7 +933,7 @@ export function getWelcomeEmailWithMagicLink(
         <!-- Content -->
         <div class="content">
             <div class="greeting">
-                <p>Hi <strong>${firstName}</strong>,</p>
+                <p>Hi <strong>${safeFirstName}</strong>,</p>
                 <p style="margin-top: 12px;">Your account has been created and is ready to go! Click the button below to log in directly.</p>
             </div>
             
@@ -923,12 +943,12 @@ export function getWelcomeEmailWithMagicLink(
                 
                 <div class="credential-item">
                     <div class="credential-label">Username / Email</div>
-                    <div class="credential-value">${email}</div>
+                    <div class="credential-value">${safeEmail}</div>
                 </div>
                 
                 <div class="credential-item">
                     <div class="credential-label">Temporary Password</div>
-                    <div class="credential-value">${tempPassword}</div>
+                    <div class="credential-value">${safeTempPassword}</div>
                 </div>
             </div>
             
@@ -943,11 +963,11 @@ export function getWelcomeEmailWithMagicLink(
             </div>
             
             <!-- Direct Login Button -->
-            <a href="${loginLink}" class="cta-button">Log In Directly</a>
+            <a href="${safeLoginLink}" class="cta-button">Log In Directly</a>
             
             <!-- Manual Login Link -->
             <div style="text-align: center; margin: 16px 0; font-size: 13px; color: #64748b;">
-                <p>Or login manually at: <a href="${finalLoginPageUrl}" style="color: #2563eb; text-decoration: none; font-weight: 600;">${finalLoginPageUrl}</a></p>
+                <p>Or login manually at: <a href="${safeFinalLoginPageUrl}" style="color: #2563eb; text-decoration: none; font-weight: 600;">${safeFinalLoginPageUrl}</a></p>
             </div>
             
             <!-- Instructions -->
@@ -1283,8 +1303,16 @@ export function getRealtorInvitesTCEmail(
     privacyUrl?: string,
     termsUrl?: string
 ) {
+    const safeTcInviteeName = escapeHtml(tcInviteeName);
+    const safeRealtorName = escapeHtml(realtorName);
+    const safeRealtorBrokerage = escapeHtml(realtorBrokerage || "");
+    const safeTcInviteeEmail = escapeHtml(tcInviteeEmail);
+    const safeSignupLink = escapeHtml(signupLink);
+    const safeSupportUrl = escapeHtml(supportUrl || "#");
+    const safePrivacyUrl = escapeHtml(privacyUrl || "#");
+    const safeTermsUrl = escapeHtml(termsUrl || "#");
   const brokerageText = realtorBrokerage
-    ? ` of <strong>${realtorBrokerage}</strong>`
+        ? ` of <strong>${safeRealtorBrokerage}</strong>`
     : "";
 
   const html = `<!DOCTYPE html>
@@ -1333,9 +1361,9 @@ export function getRealtorInvitesTCEmail(
         </div>
         <div class="content">
             <div class="greeting">
-                <p>Hi <strong>${tcInviteeName}</strong>,</p>
+                <p>Hi <strong>${safeTcInviteeName}</strong>,</p>
                 <p style="margin-top: 10px;">
-                    <strong>${realtorName}</strong>${brokerageText} has invited you to join North Shore Sign Co as their
+                    <strong>${safeRealtorName}</strong>${brokerageText} has invited you to join North Shore Sign Co as their
                     Transaction Coordinator. Once you complete registration, you'll be automatically
                     linked and can start managing their sign orders.
                 </p>
@@ -1343,29 +1371,29 @@ export function getRealtorInvitesTCEmail(
             <div class="card">
                 <div class="card-row">
                     <div class="card-label">Invited by</div>
-                    <div class="card-value">${realtorName}</div>
+                    <div class="card-value">${safeRealtorName}</div>
                 </div>
                 ${realtorBrokerage ? `
                 <div class="card-row">
                     <div class="card-label">Brokerage</div>
-                    <div class="card-value">${realtorBrokerage}</div>
+                    <div class="card-value">${safeRealtorBrokerage}</div>
                 </div>` : ""}
                 <div class="card-row">
                     <div class="card-label">Your invite email</div>
-                    <div class="card-value">${tcInviteeEmail}</div>
+                    <div class="card-value">${safeTcInviteeEmail}</div>
                 </div>
             </div>
             <div class="highlight">
-                After registration, your account is automatically linked to <strong>${realtorName}</strong>.
+                After registration, your account is automatically linked to <strong>${safeRealtorName}</strong>.
                 You'll be able to place and manage orders on their behalf immediately.
             </div>
-            <a href="${signupLink}" class="cta">Create Your TC Account</a>
+            <a href="${safeSignupLink}" class="cta">Create Your TC Account</a>
             <div class="link-box">
                 <div class="link-label">Or copy this link into your browser</div>
-                <div class="link-text">${signupLink}</div>
+                <div class="link-text">${safeSignupLink}</div>
             </div>
             <div class="expiry">
-                <strong>Note: This invite expires in 48 hours.</strong> Ask ${realtorName} to resend if it expires.
+                <strong>Note: This invite expires in 48 hours.</strong> Ask ${safeRealtorName} to resend if it expires.
             </div>
             <div class="steps">
                 <div class="steps-title">How it works</div>
@@ -1382,9 +1410,9 @@ export function getRealtorInvitesTCEmail(
         </div>
         <div class="footer">
             <div class="footer-text">North Shore Sign Co · Seattle, WA · (206) 659-6323 · <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a></div>
-            <a href="${supportUrl || "#"}">Help Center</a>
-            <a href="${privacyUrl || "#"}">Privacy Policy</a>
-            <a href="${termsUrl || "#"}">Terms of Service</a>
+            <a href="${safeSupportUrl}">Help Center</a>
+            <a href="${safePrivacyUrl}">Privacy Policy</a>
+            <a href="${safeTermsUrl}">Terms of Service</a>
         </div>
     </div>
 </body>

@@ -227,7 +227,7 @@ export default function InvoiceDetailPage() {
       return;
     }
 
-    container.innerHTML = "";
+    container.replaceChildren();
 
     try {
       tokenizerRef.current = new window.Tokenizer({

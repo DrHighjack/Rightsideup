@@ -177,16 +177,20 @@ async function getEmailTransporter() {
 export async function sendEmailNotification(
   toEmail: string,
   subject: string,
-  body: string
+  body: string,
+  options?: { allowHtml?: boolean }
 ): Promise<boolean> {
   try {
     const transporter = await getEmailTransporter();
+    const html = options?.allowHtml
+      ? body
+      : `<p>${escapeHtml(body).replace(/\n/g, '<br>')}</p>`;
 
     await transporter.sendMail({
       from: process.env.SMTP_FROM || 'noreply@northshoresignco.com',
       to: toEmail,
       subject,
-      html: `<p>${body.replace(/\n/g, '<br>')}</p>`,
+      html,
     });
     console.log(`✅ Email sent to ${toEmail}`);
     return true;
@@ -194,6 +198,15 @@ export async function sendEmailNotification(
     console.error(`❌ Email send failed to ${toEmail}:`, error);
     return false;
   }
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -319,6 +332,10 @@ export async function notifyRealtorAbout811Start(
 
     const title = '811 Ticket Submitted';
     const message = `Your 811 locate request (Ticket #${ticketNumber}) for ${address} has been submitted.`;
+    const safeTitle = escapeHtml(title);
+    const safeFirstName = escapeHtml(realtor.firstName || 'there');
+    const safeTicketNumber = escapeHtml(ticketNumber);
+    const safeAddress = escapeHtml(address);
 
     // Send SMS
     if (realtor.phone) {
@@ -327,18 +344,18 @@ export async function notifyRealtorAbout811Start(
 
     // Send email
     const emailHtml = `
-      <h2>${title}</h2>
-      <p>Hi ${realtor.firstName},</p>
+      <h2>${safeTitle}</h2>
+      <p>Hi ${safeFirstName},</p>
       <p>Your 811 locate request has been submitted:</p>
       <ul>
-        <li><strong>Ticket Number:</strong> ${ticketNumber}</li>
-        <li><strong>Address:</strong> ${address}</li>
+        <li><strong>Ticket Number:</strong> ${safeTicketNumber}</li>
+        <li><strong>Address:</strong> ${safeAddress}</li>
       </ul>
       <p>We'll notify you when the location is confirmed and the ticket is processed.</p>
     `;
 
     if (realtor.email) {
-      await sendEmailNotification(realtor.email, title, emailHtml);
+      await sendEmailNotification(realtor.email, title, emailHtml, { allowHtml: true });
     }
 
     console.log(`✅ 811 start notification sent to realtor ${realtorId}`);
@@ -368,6 +385,10 @@ export async function notifyRealtorAbout811Confirmed(
 
     const title = '811 Location Confirmed';
     const message = `The post location for your 811 ticket #${ticketNumber} has been confirmed. The ticket is now in the system and ready for scheduling.`;
+    const safeTitle = escapeHtml(title);
+    const safeFirstName = escapeHtml(realtor.firstName || 'there');
+    const safeTicketNumber = escapeHtml(ticketNumber);
+    const safeAddress = escapeHtml(address);
 
     // Send SMS
     if (realtor.phone) {
@@ -376,19 +397,19 @@ export async function notifyRealtorAbout811Confirmed(
 
     // Send email
     const emailHtml = `
-      <h2>${title}</h2>
-      <p>Hi ${realtor.firstName},</p>
+      <h2>${safeTitle}</h2>
+      <p>Hi ${safeFirstName},</p>
       <p>Great news! The post location for your 811 locate request has been confirmed:</p>
       <ul>
-        <li><strong>Ticket Number:</strong> ${ticketNumber}</li>
-        <li><strong>Address:</strong> ${address}</li>
+        <li><strong>Ticket Number:</strong> ${safeTicketNumber}</li>
+        <li><strong>Address:</strong> ${safeAddress}</li>
         <li><strong>Status:</strong> Location Confirmed</li>
       </ul>
       <p>The ticket is now in the system and ready for scheduling. We'll proceed with your sign installation.</p>
     `;
 
     if (realtor.email) {
-      await sendEmailNotification(realtor.email, title, emailHtml);
+      await sendEmailNotification(realtor.email, title, emailHtml, { allowHtml: true });
     }
 
     console.log(`✅ 811 confirmation notification sent to realtor ${realtorId}`);
@@ -539,6 +560,11 @@ export async function sendSignPickupRequestNotification(adminEmail: string, requ
     const locationText = request.location;
     const dateText = new Date(request.dateNeeded).toLocaleString();
     const description = request.description || 'No additional details provided';
+    const safeRequesterName = escapeHtml(requesterName);
+    const safeRequesterEmail = escapeHtml(requesterEmail);
+    const safeLocationText = escapeHtml(locationText);
+    const safeDateText = escapeHtml(dateText);
+    const safeDescription = escapeHtml(description);
 
     const emailBody = `
 <!DOCTYPE html>
@@ -565,22 +591,22 @@ export async function sendSignPickupRequestNotification(adminEmail: string, requ
       
       <div class="field">
         <div class="label">Requested By:</div>
-        <div class="value">${requesterName} (${requesterEmail})</div>
+        <div class="value">${safeRequesterName} (${safeRequesterEmail})</div>
       </div>
       
       <div class="field">
         <div class="label">Pickup Location:</div>
-        <div class="value">${locationText}</div>
+        <div class="value">${safeLocationText}</div>
       </div>
       
       <div class="field">
         <div class="label">Date Needed:</div>
-        <div class="value">${dateText}</div>
+        <div class="value">${safeDateText}</div>
       </div>
       
       <div class="field">
         <div class="label">Additional Details:</div>
-        <div class="value">${description}</div>
+        <div class="value">${safeDescription}</div>
       </div>
       
       <p style="margin-top: 25px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
@@ -595,7 +621,8 @@ export async function sendSignPickupRequestNotification(adminEmail: string, requ
     await sendEmailNotification(
       adminEmail,
       'New Sign Pickup Request - Pending Approval',
-      emailBody
+      emailBody,
+      { allowHtml: true }
     );
 
     console.log(`[Notification] Sign pickup request notification sent to ${adminEmail}`);

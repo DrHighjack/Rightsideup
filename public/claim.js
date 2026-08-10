@@ -70,7 +70,12 @@ async function handleFormSubmit(e) {
 function showSuccess() {
   const statusDiv = document.getElementById('formStatus');
   statusDiv.className = 'text-center mt-4 p-4 bg-green-50 border border-green-200 rounded-lg';
-  statusDiv.innerHTML = '✓ <strong>Got it!</strong> We will call you within 24 hours to confirm your first free install.';
+  statusDiv.textContent = '';
+  statusDiv.append('✓ ');
+  const strong = document.createElement('strong');
+  strong.textContent = 'Got it!';
+  statusDiv.append(strong);
+  statusDiv.append(' We will call you within 24 hours to confirm your first free install.');
 }
 
 function showError(message) {

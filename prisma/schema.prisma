@@ -111,6 +111,8 @@ model User {
   paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
   qboCustomerId  String?    // QuickBooks customer ID for this realtor
   vaultId        String?    @unique // FluidPay vault record ID for saved card on file
+  twoFactorSecret String?
+  twoFactorEnabled Boolean   @default(false)
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   lastLoginAt    DateTime?  // Track last login time for admin dashboard

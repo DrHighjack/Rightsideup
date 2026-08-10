@@ -3,6 +3,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeToken, chargeVaultRecord } from "@/lib/fluidpay";
 import { sendEmail } from "@/lib/email";
+import { paymentChargeSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 function buildPaidEmailHtml(recipientName: string, invoiceNumber: string, amountPaid: number) {
   return `
@@ -31,14 +33,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const invoiceId = String(body?.invoiceId || "").trim();
-    const useVault = Boolean(body?.useVault);
-    const token = String(body?.token || "").trim();
-
-    if (!invoiceId) {
-      return NextResponse.json({ error: "invoiceId is required" }, { status: 400 });
-    }
+    const parsedBody = paymentChargeSchema.parse(await request.json());
+    const invoiceId = parsedBody.invoiceId.trim();
+    const useVault = parsedBody.useVault;
+    const token = parsedBody.token.trim();
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -121,6 +119,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, transactionId: chargeResult.transactionId });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to charge invoice:", error);
     const message = error instanceof Error ? error.message : "Failed to charge invoice";
     return NextResponse.json({ error: message }, { status: 500 });

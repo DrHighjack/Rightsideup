@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { adminInvoiceUpdateSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 /**
  * GET /api/admin/invoices/[id]
@@ -67,7 +69,6 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
     const {
       status,
       amount,
@@ -75,7 +76,7 @@ export async function PUT(
       dueDate,
       paidAmount,
       paidAt,
-    } = body;
+    } = adminInvoiceUpdateSchema.parse(await request.json());
 
     const updateData: any = {};
     if (status) updateData.status = status;
@@ -111,6 +112,9 @@ export async function PUT(
 
     return NextResponse.json(response);
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to update invoice:", error);
     return NextResponse.json(
       { error: "Failed to update invoice" },

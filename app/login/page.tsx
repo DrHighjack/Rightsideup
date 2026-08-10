@@ -11,6 +11,10 @@ import { useSearchParams } from "next/navigation";
 function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [backupCode, setBackupCode] = useState("");
+  const [requiresTwoFactor, setRequiresTwoFactor] = useState(false);
+  const [useBackupCode, setUseBackupCode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [impersonationTried, setImpersonationTried] = useState(false);
@@ -79,14 +83,58 @@ function LoginPageContent() {
     setLoading(true);
 
     try {
-      const result = await signIn("credentials", {
+      if (!requiresTwoFactor) {
+        const challengeResponse = await fetch("/api/auth/admin-2fa/challenge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
+
+        if (!challengeResponse.ok) {
+          setError("Invalid email or password");
+          setLoading(false);
+          return;
+        }
+
+        const challengeData = await challengeResponse.json();
+        if (challengeData.requiresTwoFactor) {
+          setRequiresTwoFactor(true);
+          setError("");
+          setLoading(false);
+          return;
+        }
+      }
+
+      const credentialPayload: Record<string, string | boolean> = {
         email,
         password,
         redirect: false,
+      };
+
+      if (requiresTwoFactor) {
+        if (useBackupCode) {
+          if (!backupCode.trim()) {
+            setError("Enter a backup code");
+            setLoading(false);
+            return;
+          }
+          credentialPayload.backupCode = backupCode.trim();
+        } else {
+          if (!/^\d{6}$/.test(twoFactorCode.trim())) {
+            setError("Enter a valid 6-digit authenticator code");
+            setLoading(false);
+            return;
+          }
+          credentialPayload.twoFactorCode = twoFactorCode.trim();
+        }
+      }
+
+      const result = await signIn("credentials", {
+        ...credentialPayload,
       });
 
       if (result?.error) {
-        setError("Invalid email or password");
+        setError(requiresTwoFactor ? "Invalid login or verification code" : "Invalid email or password");
       } else {
         // Fetch the updated session and redirect based on role
         const response = await fetch("/api/auth/session");
@@ -172,6 +220,59 @@ function LoginPageContent() {
                 placeholder="••••••••"
               />
             </div>
+
+            {requiresTwoFactor && (
+              <>
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                  This admin account requires two-factor authentication.
+                </div>
+
+                {!useBackupCode ? (
+                  <div>
+                    <label htmlFor="twoFactorCode" className="block text-sm font-medium text-slate-700">
+                      Authenticator Code
+                    </label>
+                    <input
+                      type="text"
+                      id="twoFactorCode"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value)}
+                      required={requiresTwoFactor && !useBackupCode}
+                      inputMode="numeric"
+                      maxLength={6}
+                      className="mt-1.5 block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      placeholder="123456"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="backupCode" className="block text-sm font-medium text-slate-700">
+                      Backup Code
+                    </label>
+                    <input
+                      type="text"
+                      id="backupCode"
+                      value={backupCode}
+                      onChange={(e) => setBackupCode(e.target.value.toUpperCase())}
+                      required={requiresTwoFactor && useBackupCode}
+                      className="mt-1.5 block w-full rounded-lg border border-slate-300 px-3.5 py-2.5 text-slate-900 placeholder-slate-400 focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+                      placeholder="ABCD-EFGH"
+                    />
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUseBackupCode((prev) => !prev);
+                    setError("");
+                  }}
+                  className="text-sm font-medium text-primary-600 hover:text-primary-700"
+                >
+                  {useBackupCode ? "Use authenticator code instead" : "Use a backup code instead"}
+                </button>
+              </>
+            )}
 
             <button
               type="submit"

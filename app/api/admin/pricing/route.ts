@@ -2,6 +2,8 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { parseInventoryPriceServiceType } from "@/lib/pricing";
+import { adminPricingUpdateSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 export async function GET() {
   try {
@@ -33,21 +35,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { serviceType, amountCents } = await request.json();
-
-    if (!serviceType || amountCents === undefined) {
-      return NextResponse.json(
-        { error: "serviceType and amountCents are required" },
-        { status: 400 }
-      );
-    }
-
-    if (typeof amountCents !== "number" || amountCents < 0) {
-      return NextResponse.json(
-        { error: "amountCents must be a non-negative number" },
-        { status: 400 }
-      );
-    }
+    const { serviceType, amountCents } = adminPricingUpdateSchema.parse(await request.json());
 
     // Import the pricing helper
     const { updateMasterPrice } = await import("@/lib/pricing");
@@ -74,6 +62,9 @@ export async function POST(request: Request) {
       { status: 200 }
     );
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Error updating master price:", error);
     return NextResponse.json(
       { error: "Failed to update master price" },

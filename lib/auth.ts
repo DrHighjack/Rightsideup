@@ -6,6 +6,12 @@ import { prisma } from "@/lib/prisma";
 import * as Sentry from "@sentry/nextjs";
 import { verifyAdminImpersonationToken } from "@/lib/admin-impersonation";
 import { sendActivityDiscordWebhook } from "@/lib/discord";
+import {
+  parseTwoFactorData,
+  verifyAndConsumeBackupCode,
+  verifyTotpCode,
+  serializeTwoFactorData,
+} from "@/lib/two-factor";
 
 const authSecret =
   process.env.AUTH_SECRET ||
@@ -17,6 +23,8 @@ const authSecret =
 const passwordCredentialsSchema = z.object({
   email: z.string().email(),
   password: z.string().min(1),
+  twoFactorCode: z.string().optional(),
+  backupCode: z.string().optional(),
 });
 
 const impersonationCredentialsSchema = z.object({
@@ -91,7 +99,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             };
           }
 
-          const { email, password } = parsedCredentials;
+          const { email, password, twoFactorCode, backupCode } = parsedCredentials;
           const normalizedEmail = normalizeEmail(email);
 
           let user = await prisma.user.findUnique({
@@ -105,6 +113,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               brokerageName: true,
               passwordHash: true,
               tags: true,
+              twoFactorEnabled: true,
+              twoFactorSecret: true,
             },
           });
 
@@ -120,6 +130,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 brokerageName: true,
                 passwordHash: true,
                 tags: true,
+                twoFactorEnabled: true,
+                twoFactorSecret: true,
               },
             });
           }
@@ -141,6 +153,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 brokerageName: true,
                 passwordHash: true,
                 tags: true,
+                twoFactorEnabled: true,
+                twoFactorSecret: true,
               },
             });
           }
@@ -163,6 +177,48 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           if (user.tags.includes("INACTIVE")) {
             console.error("[AUTH] Inactive account blocked:", email);
             return null;
+          }
+
+          if (user.role === "ADMIN" && user.twoFactorEnabled) {
+            const stored = parseTwoFactorData(user.twoFactorSecret);
+            if (!stored) {
+              console.error("[AUTH] Admin 2FA is enabled but data is invalid for user:", email);
+              return null;
+            }
+
+            const hasTotp = Boolean(twoFactorCode && twoFactorCode.trim().length > 0);
+            const hasBackup = Boolean(backupCode && backupCode.trim().length > 0);
+
+            if (!hasTotp && !hasBackup) {
+              console.error("[AUTH] Missing admin 2FA code for user:", email);
+              return null;
+            }
+
+            if (hasTotp) {
+              const validTotp = verifyTotpCode(stored.secret, twoFactorCode as string);
+              if (!validTotp) {
+                console.error("[AUTH] Invalid admin TOTP code for user:", email);
+                return null;
+              }
+            } else {
+              const consumed = await verifyAndConsumeBackupCode(backupCode as string, stored.backupCodeHashes);
+              if (!consumed.valid) {
+                console.error("[AUTH] Invalid admin backup code for user:", email);
+                return null;
+              }
+
+              await prisma.user.update({
+                where: { id: user.id },
+                data: {
+                  twoFactorSecret: serializeTwoFactorData({
+                    secret: stored.secret,
+                    backupCodeHashes: consumed.remainingHashes,
+                    pending: false,
+                    createdAt: stored.createdAt,
+                  }),
+                },
+              });
+            }
           }
 
           // Best-effort write so auth still succeeds if runtime DB lags schema.

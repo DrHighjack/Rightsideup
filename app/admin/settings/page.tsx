@@ -19,6 +19,19 @@ interface SettingsState {
   lowInventoryThreshold: string;
 }
 
+interface TwoFactorStatus {
+  enabled: boolean;
+  hasPendingSetup: boolean;
+  backupCodesRemaining: number;
+}
+
+interface TwoFactorSetupPayload {
+  secret: string;
+  otpauthUri: string;
+  qrCodeDataUrl: string;
+  backupCodes: string[];
+}
+
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<SettingsState>({
     imapHost: '',
@@ -36,14 +49,35 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [messages, setMessages] = useState<Record<string, { type: string; text: string }>>({});
   const [testingImap, setTestingImap] = useState(false);
+  const [twoFactorStatus, setTwoFactorStatus] = useState<TwoFactorStatus | null>(null);
+  const [twoFactorSetup, setTwoFactorSetup] = useState<TwoFactorSetupPayload | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [disablePassword, setDisablePassword] = useState('');
+
+  async function loadTwoFactorStatus() {
+    const res = await fetch('/api/admin/2fa');
+    if (!res.ok) {
+      throw new Error('Failed to load 2FA status');
+    }
+    const data = await res.json();
+    setTwoFactorStatus(data);
+  }
 
   // Load settings on mount
   useEffect(() => {
     async function loadSettings() {
       try {
-        const res = await fetch('/api/admin/settings');
-        if (!res.ok) throw new Error('Failed to load settings');
-        const data = await res.json();
+        const [settingsRes, twoFactorRes] = await Promise.all([
+          fetch('/api/admin/settings'),
+          fetch('/api/admin/2fa'),
+        ]);
+
+        if (!settingsRes.ok) throw new Error('Failed to load settings');
+        if (!twoFactorRes.ok) throw new Error('Failed to load 2FA status');
+
+        const data = await settingsRes.json();
+        const twoFactorData = await twoFactorRes.json();
+        setTwoFactorStatus(twoFactorData);
 
         // Map database keys to state keys
         setSettings((prev) => ({
@@ -71,6 +105,111 @@ export default function AdminSettingsPage() {
 
     loadSettings();
   }, []);
+
+  async function beginTwoFactorSetup() {
+    try {
+      setSaving((prev) => ({ ...prev, twoFactorSetup: true }));
+      setMessages((prev) => ({ ...prev, twoFactor: { type: '', text: '' } }));
+
+      const res = await fetch('/api/admin/2fa/setup', {
+        method: 'POST',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to start 2FA setup');
+      }
+
+      setTwoFactorSetup(data);
+      setMessages((prev) => ({
+        ...prev,
+        twoFactor: { type: 'success', text: '2FA setup started. Save your backup codes now.' },
+      }));
+      await loadTwoFactorStatus();
+    } catch (error) {
+      setMessages((prev) => ({
+        ...prev,
+        twoFactor: {
+          type: 'error',
+          text: error instanceof Error ? error.message : 'Failed to start 2FA setup',
+        },
+      }));
+    } finally {
+      setSaving((prev) => ({ ...prev, twoFactorSetup: false }));
+    }
+  }
+
+  async function confirmTwoFactorSetup() {
+    try {
+      setSaving((prev) => ({ ...prev, twoFactorConfirm: true }));
+      setMessages((prev) => ({ ...prev, twoFactor: { type: '', text: '' } }));
+
+      const res = await fetch('/api/admin/2fa/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: twoFactorCode.trim() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to confirm 2FA');
+      }
+
+      setTwoFactorCode('');
+      setTwoFactorSetup(null);
+      setMessages((prev) => ({
+        ...prev,
+        twoFactor: { type: 'success', text: '2FA has been enabled.' },
+      }));
+      await loadTwoFactorStatus();
+    } catch (error) {
+      setMessages((prev) => ({
+        ...prev,
+        twoFactor: {
+          type: 'error',
+          text: error instanceof Error ? error.message : 'Failed to confirm 2FA',
+        },
+      }));
+    } finally {
+      setSaving((prev) => ({ ...prev, twoFactorConfirm: false }));
+    }
+  }
+
+  async function disableTwoFactor() {
+    try {
+      setSaving((prev) => ({ ...prev, twoFactorDisable: true }));
+      setMessages((prev) => ({ ...prev, twoFactor: { type: '', text: '' } }));
+
+      const res = await fetch('/api/admin/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: disablePassword }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to disable 2FA');
+      }
+
+      setDisablePassword('');
+      setTwoFactorSetup(null);
+      setMessages((prev) => ({
+        ...prev,
+        twoFactor: { type: 'success', text: '2FA has been disabled.' },
+      }));
+      await loadTwoFactorStatus();
+    } catch (error) {
+      setMessages((prev) => ({
+        ...prev,
+        twoFactor: {
+          type: 'error',
+          text: error instanceof Error ? error.message : 'Failed to disable 2FA',
+        },
+      }));
+    } finally {
+      setSaving((prev) => ({ ...prev, twoFactorDisable: false }));
+    }
+  }
 
   async function saveSection(section: string, sectionSettings: Record<string, any>) {
     try {
@@ -163,6 +302,136 @@ export default function AdminSettingsPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600 mt-1">Configure system settings and integrations</p>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Admin Two-Factor Authentication</h2>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600">
+            Status: {twoFactorStatus?.enabled ? 'Enabled' : 'Disabled'}
+            {twoFactorStatus?.enabled && typeof twoFactorStatus?.backupCodesRemaining === 'number'
+              ? ` (${twoFactorStatus.backupCodesRemaining} backup codes remaining)`
+              : ''}
+          </p>
+
+          {messages.twoFactor?.text && (
+            <div
+              className={`p-3 rounded-md text-sm ${
+                messages.twoFactor.type === 'success'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}
+            >
+              {messages.twoFactor.text}
+            </div>
+          )}
+
+          {!twoFactorStatus?.enabled && (
+            <div className="space-y-4">
+              {!twoFactorSetup && (
+                <>
+                  {twoFactorStatus?.hasPendingSetup && (
+                    <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                      A pending 2FA setup exists. Start setup again to generate a new QR and backup codes.
+                    </div>
+                  )}
+                  <button
+                    onClick={() => beginTwoFactorSetup()}
+                    disabled={saving.twoFactorSetup}
+                    className="px-4 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary-dark disabled:opacity-50"
+                  >
+                    {saving.twoFactorSetup ? 'Generating...' : 'Start 2FA Setup'}
+                  </button>
+                </>
+              )}
+
+              {twoFactorSetup && (
+                <div className="space-y-4 rounded-md border border-gray-200 p-4">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 mb-2">1) Scan this QR code in Google Authenticator or Authy</p>
+                    <img
+                      src={twoFactorSetup.qrCodeDataUrl}
+                      alt="2FA QR code"
+                      className="h-56 w-56 border border-gray-200 rounded-md"
+                    />
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">Manual key</p>
+                    <p className="text-xs text-gray-600 break-all">{twoFactorSetup.secret}</p>
+                  </div>
+
+                  <div>
+                    <p className="text-sm font-medium text-gray-900 mb-2">2) Save backup codes (shown once)</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {twoFactorSetup.backupCodes.map((code) => (
+                        <div key={code} className="rounded border border-gray-200 bg-gray-50 px-3 py-2 text-sm font-mono text-gray-800">
+                          {code}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="twoFactorCode" className="block text-sm font-medium text-gray-700 mb-1">
+                      3) Enter a 6-digit code to confirm
+                    </label>
+                    <input
+                      id="twoFactorCode"
+                      type="text"
+                      value={twoFactorCode}
+                      onChange={(e) => setTwoFactorCode(e.target.value)}
+                      maxLength={6}
+                      inputMode="numeric"
+                      placeholder="123456"
+                      className="w-full max-w-xs rounded-md border border-gray-300 px-4 py-2"
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => confirmTwoFactorSetup()}
+                      disabled={saving.twoFactorConfirm}
+                      className="px-4 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary-dark disabled:opacity-50"
+                    >
+                      {saving.twoFactorConfirm ? 'Verifying...' : 'Verify and Enable 2FA'}
+                    </button>
+                    <button
+                      onClick={() => beginTwoFactorSetup()}
+                      disabled={saving.twoFactorSetup}
+                      className="px-4 py-2 rounded-md border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50"
+                    >
+                      Regenerate QR and backup codes
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {twoFactorStatus?.enabled && (
+            <div className="space-y-3 rounded-md border border-red-200 bg-red-50 p-4">
+              <p className="text-sm font-medium text-red-900">Disable 2FA</p>
+              <p className="text-sm text-red-800">
+                Confirm your password to disable two-factor authentication.
+              </p>
+              <input
+                type="password"
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                placeholder="Current password"
+                className="w-full max-w-sm rounded-md border border-red-200 px-4 py-2"
+              />
+              <button
+                onClick={() => disableTwoFactor()}
+                disabled={saving.twoFactorDisable}
+                className="px-4 py-2 rounded-md bg-red-600 text-white font-medium hover:bg-red-700 disabled:opacity-50"
+              >
+                {saving.twoFactorDisable ? 'Disabling...' : 'Disable 2FA'}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Section 1: 811 Inbox Configuration */}

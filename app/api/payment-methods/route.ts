@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encryptToken } from "@/lib/encryption";
+import { paymentMethodCreateSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 function detectCardBrand(cardNumber: string) {
   if (cardNumber.startsWith("4")) return "VISA";
@@ -52,7 +54,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
+    const parsedBody = paymentMethodCreateSchema.parse(await request.json());
     const {
       nickname,
       cardNumber,
@@ -65,35 +67,12 @@ export async function POST(request: NextRequest) {
       billingState,
       billingPostalCode,
       billingCountry,
-      termsAccepted,
-    } = body;
-
-    if (!nickname || !cardNumber || !cvv || !expMonth || !expYear || !billingAddressLine1 || !billingCity || !billingState || !billingPostalCode) {
-      return NextResponse.json({ error: "All card and billing fields are required" }, { status: 400 });
-    }
-
-    if (!termsAccepted) {
-      return NextResponse.json(
-        { error: "You must accept Terms of Service, Refund Policy, and Credit Card Payment Policy" },
-        { status: 400 }
-      );
-    }
+    } = parsedBody;
 
     const digitsOnly = String(cardNumber).replace(/\s+/g, "");
-    if (!/^\d{13,19}$/.test(digitsOnly)) {
-      return NextResponse.json({ error: "Card number must be 13-19 digits" }, { status: 400 });
-    }
-
     const cvvDigits = String(cvv).trim();
-    if (!/^\d{3,4}$/.test(cvvDigits)) {
-      return NextResponse.json({ error: "CVV must be 3 or 4 digits" }, { status: 400 });
-    }
-
-    const month = Number(expMonth);
-    const year = Number(expYear);
-    if (!Number.isInteger(month) || month < 1 || month > 12 || !Number.isInteger(year) || year < new Date().getFullYear()) {
-      return NextResponse.json({ error: "Invalid expiration date" }, { status: 400 });
-    }
+    const month = expMonth;
+    const year = expYear;
 
     const cardCount = await prisma.paymentCard.count({ where: { userId: session.user.id } });
     if (cardCount >= 5) {
@@ -140,6 +119,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ card: created }, { status: 201 });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to add payment method:", error);
     return NextResponse.json({ error: "Failed to add payment method" }, { status: 500 });
   }

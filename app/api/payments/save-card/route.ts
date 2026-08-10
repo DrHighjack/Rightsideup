@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { createVaultRecord } from "@/lib/fluidpay";
+import { saveCardSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 export async function POST(request: NextRequest) {
   try {
@@ -29,12 +31,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, hasCard: true });
     }
 
-    const body = await request.json();
-    const token = String(body?.token || "").trim();
-
-    if (!token) {
-      return NextResponse.json({ error: "token is required" }, { status: 400 });
-    }
+    const { token } = saveCardSchema.parse(await request.json());
 
     const vaultId = await createVaultRecord(token, user.id);
 
@@ -45,6 +42,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, hasCard: true });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to save card:", error);
     return NextResponse.json({ error: "Failed to save card" }, { status: 500 });
   }

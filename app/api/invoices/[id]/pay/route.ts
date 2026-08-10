@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
+import { invoicePaySchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 function uniqueEmails(emails: Array<string | null | undefined>) {
   return Array.from(
@@ -39,13 +41,9 @@ export async function POST(
     }
     const actorUserId = session.user.id;
 
-    const body = await request.json();
-    const paymentCardId = String(body.paymentCardId || "").trim();
-    const payerType = body.payerType === "BROKERAGE" ? "BROKERAGE" : "AGENT";
-
-    if (!paymentCardId) {
-      return NextResponse.json({ error: "paymentCardId is required" }, { status: 400 });
-    }
+    const parsedBody = invoicePaySchema.parse(await request.json());
+    const paymentCardId = parsedBody.paymentCardId.trim();
+    const payerType = parsedBody.payerType;
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
@@ -178,6 +176,9 @@ export async function POST(
       emailed: recipients,
     });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to pay invoice:", error);
     return NextResponse.json({ error: "Failed to pay invoice" }, { status: 500 });
   }

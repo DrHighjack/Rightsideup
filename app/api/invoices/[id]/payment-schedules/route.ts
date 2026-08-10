@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { invoicePaymentScheduleCreateSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 function computeNextRunDate(dayOfMonth: number) {
   const now = new Date();
@@ -77,17 +79,10 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const paymentCardId = String(body.paymentCardId || "").trim();
-    const dayOfMonth = Number(body.dayOfMonth);
-    const recurring = Boolean(body.recurring);
-
-    if (!paymentCardId || !Number.isInteger(dayOfMonth) || dayOfMonth < 1 || dayOfMonth > 28) {
-      return NextResponse.json(
-        { error: "paymentCardId and dayOfMonth (1-28) are required" },
-        { status: 400 }
-      );
-    }
+    const parsedBody = invoicePaymentScheduleCreateSchema.parse(await request.json());
+    const paymentCardId = parsedBody.paymentCardId.trim();
+    const dayOfMonth = parsedBody.dayOfMonth;
+    const recurring = parsedBody.recurring;
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
@@ -141,6 +136,9 @@ export async function POST(
 
     return NextResponse.json({ schedule }, { status: 201 });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to create payment schedule:", error);
     return NextResponse.json({ error: "Failed to create payment schedule" }, { status: 500 });
   }

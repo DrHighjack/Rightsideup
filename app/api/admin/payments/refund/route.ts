@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { refundTransaction } from "@/lib/fluidpay";
+import { adminPaymentRefundSchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,13 +18,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const invoiceId = String(body?.invoiceId || "").trim();
-    const amountCents = Number(body?.amountCents);
-
-    if (!invoiceId || !Number.isFinite(amountCents) || amountCents <= 0) {
-      return NextResponse.json({ error: "invoiceId and amountCents are required" }, { status: 400 });
-    }
+    const parsedBody = adminPaymentRefundSchema.parse(await request.json());
+    const invoiceId = parsedBody.invoiceId.trim();
+    const amountCents = parsedBody.amountCents;
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -51,6 +49,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to refund invoice:", error);
     const message = error instanceof Error ? error.message : "Failed to refund invoice";
     return NextResponse.json({ error: message }, { status: 500 });

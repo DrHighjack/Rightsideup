@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { adminInvoiceCreateSchema, adminInvoiceListQuerySchema } from "@/lib/schemas";
+import { ZodError } from "zod";
 
 /**
  * GET /api/admin/invoices
@@ -20,11 +22,15 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url);
-    const status = searchParams.get("status");
-    const userId = searchParams.get("userId");
-    const sortBy = searchParams.get("sortBy") || "createdAt";
-    const limit = Math.min(100, parseInt(searchParams.get("limit") || "50", 10));
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
+    const parsedQuery = adminInvoiceListQuerySchema.parse({
+      status: searchParams.get("status") ?? undefined,
+      userId: searchParams.get("userId") ?? undefined,
+      sortBy: searchParams.get("sortBy") ?? undefined,
+      limit: searchParams.get("limit") ? Number(searchParams.get("limit")) : undefined,
+      offset: searchParams.get("offset") ? Number(searchParams.get("offset")) : undefined,
+    });
+
+    const { status, userId, sortBy, limit, offset } = parsedQuery;
 
     const where: any = {};
     if (status) where.status = status;
@@ -67,6 +73,9 @@ export async function GET(request: NextRequest) {
       hasMore: offset + limit < total,
     });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to fetch invoices:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
@@ -86,15 +95,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { userId, orderId, amount, discountAmount, dueDate } = body;
-
-    if (!userId || !amount) {
-      return NextResponse.json(
-        { error: "userId and amount are required" },
-        { status: 400 }
-      );
-    }
+    const parsedBody = adminInvoiceCreateSchema.parse(await request.json());
+    const { userId, orderId, amount, discountAmount, dueDate } = parsedBody;
 
     // Verify user exists
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -142,6 +144,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(response, { status: 201 });
   } catch (error) {
+    if (error instanceof ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
+    }
     console.error("Failed to create invoice:", error);
     return NextResponse.json(
       { error: "Failed to create invoice" },

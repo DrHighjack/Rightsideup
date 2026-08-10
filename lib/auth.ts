@@ -6,12 +6,6 @@ import { prisma } from "@/lib/prisma";
 import * as Sentry from "@sentry/nextjs";
 import { verifyAdminImpersonationToken } from "@/lib/admin-impersonation";
 import { sendActivityDiscordWebhook } from "@/lib/discord";
-import {
-  parseTwoFactorData,
-  verifyAndConsumeBackupCode,
-  verifyTotpCode,
-  serializeTwoFactorData,
-} from "@/lib/two-factor";
 
 const authSecret =
   process.env.AUTH_SECRET ||
@@ -180,6 +174,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
 
           if (user.role === "ADMIN" && user.twoFactorEnabled) {
+            const {
+              parseTwoFactorData,
+              verifyAndConsumeBackupCode,
+              verifyTotpCode,
+              serializeTwoFactorData,
+            } = await import("@/lib/two-factor");
+
             const stored = parseTwoFactorData(user.twoFactorSecret);
             if (!stored) {
               console.error("[AUTH] Admin 2FA is enabled but data is invalid for user:", email);
@@ -195,7 +196,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
 
             if (hasTotp) {
-              const validTotp = verifyTotpCode(stored.secret, twoFactorCode as string);
+              const validTotp = await verifyTotpCode(stored.secret, twoFactorCode as string);
               if (!validTotp) {
                 console.error("[AUTH] Invalid admin TOTP code for user:", email);
                 return null;

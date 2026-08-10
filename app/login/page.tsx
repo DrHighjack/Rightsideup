@@ -105,10 +105,9 @@ function LoginPageContent() {
         }
       }
 
-      const credentialPayload: Record<string, string | boolean> = {
+      const credentialPayload: Record<string, string> = {
         email,
         password,
-        redirect: false,
       };
 
       if (requiresTwoFactor) {
@@ -131,6 +130,7 @@ function LoginPageContent() {
 
       const result = await signIn("credentials", {
         ...credentialPayload,
+        redirect: false,
       });
 
       if (result?.error) {

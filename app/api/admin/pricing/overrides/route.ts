@@ -78,6 +78,13 @@ export async function POST(request: Request) {
         },
       });
     } else {
+      if (!brokerageId) {
+        return NextResponse.json(
+          { error: "brokerageId is required when userId is not provided" },
+          { status: 400 }
+        );
+      }
+
       override = await prisma.priceOverride.findUnique({
         where: {
           serviceType_brokerageId: { serviceType, brokerageId },

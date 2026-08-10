@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { authenticator } from "otplib";
 import QRCode from "qrcode";
 import {
   buildTwoFactorQrUri,
   generateBackupCodes,
+  generateTotpSecret,
   hashBackupCodes,
   serializeTwoFactorData,
 } from "@/lib/two-factor";
@@ -35,7 +35,7 @@ export async function POST(_request: NextRequest) {
       return NextResponse.json({ error: "2FA is already enabled" }, { status: 400 });
     }
 
-    const secret = authenticator.generateSecret();
+    const secret = generateTotpSecret();
     const otpauthUri = buildTwoFactorQrUri(user.email, secret);
     const qrCodeDataUrl = await QRCode.toDataURL(otpauthUri);
 

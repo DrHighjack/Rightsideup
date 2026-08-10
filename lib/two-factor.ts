@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { authenticator } from "otplib";
+import { generateSecret, generateURI, verify } from "otplib";
 import { encryptToken, decryptToken } from "@/lib/encryption";
 
 export interface StoredTwoFactorData {
@@ -101,14 +101,28 @@ export function parseTwoFactorData(encryptedValue: string | null): StoredTwoFact
 }
 
 export function buildTwoFactorQrUri(email: string, secret: string): string {
-  return authenticator.keyuri(email, "SignPost Field", secret);
+  return generateURI({
+    issuer: "SignPost Field",
+    label: email,
+    secret,
+  });
 }
 
-export function verifyTotpCode(secret: string, code: string): boolean {
+export function generateTotpSecret(): string {
+  return generateSecret();
+}
+
+export async function verifyTotpCode(secret: string, code: string): Promise<boolean> {
   const cleaned = code.replace(/\s+/g, "").trim();
   if (!/^\d{6}$/.test(cleaned)) {
     return false;
   }
 
-  return authenticator.check(cleaned, secret);
+  const result = await verify({
+    strategy: "totp",
+    secret,
+    token: cleaned,
+  });
+
+  return result.valid;
 }

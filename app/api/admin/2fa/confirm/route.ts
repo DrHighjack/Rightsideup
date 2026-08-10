@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No pending 2FA setup found" }, { status: 400 });
     }
 
-    const valid = verifyTotpCode(stored.secret, code);
+    const valid = await verifyTotpCode(stored.secret, code);
     if (!valid) {
       return NextResponse.json({ error: "Invalid authenticator code" }, { status: 400 });
     }

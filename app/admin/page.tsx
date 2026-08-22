@@ -69,6 +69,9 @@ interface TechMetrics {
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899'];
 
+const formatCentsAsCurrency = (cents: number) =>
+  `$${(cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
 export default function AdminDashboardPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -198,7 +201,7 @@ export default function AdminDashboardPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <MetricCard
             label="Revenue Today"
-            value={`$${metrics.revenueToday.toFixed(2)}`}
+            value={formatCentsAsCurrency(metrics.revenueToday)}
             color="bg-blue-50 text-blue-700 border-blue-200"
           />
           <MetricCard
@@ -222,7 +225,7 @@ export default function AdminDashboardPage() {
           />
           <MetricCard
             label="Outstanding Invoices"
-            value={`$${metrics.outstandingInvoiceTotal.toFixed(2)}`}
+            value={formatCentsAsCurrency(metrics.outstandingInvoiceTotal)}
             color="bg-yellow-50 text-yellow-700 border-yellow-200"
           />
           <MetricCard
@@ -259,7 +262,7 @@ export default function AdminDashboardPage() {
                 />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip
-                  formatter={(value) => `$${(value as number).toFixed(2)}`}
+                  formatter={(value) => formatCentsAsCurrency(value as number)}
                   labelFormatter={(label) => new Date(label).toLocaleDateString()}
                 />
                 <Legend />
@@ -375,7 +378,7 @@ export default function AdminDashboardPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">{realtor.orderCount}</td>
                     <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                      ${realtor.totalRevenue.toFixed(2)}
+                                {formatCentsAsCurrency(realtor.totalRevenue)}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-500">
                       {realtor.lastOrderDate

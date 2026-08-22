@@ -667,13 +667,6 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      {/* Section 4: QuickBooks (Disabled) */}
-      <div className="bg-gray-50 rounded-lg border border-gray-200 p-6 opacity-50">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">QuickBooks</h2>
-        <div className="bg-blue-50 border border-blue-200 rounded p-4">
-          <p className="text-blue-900 font-medium">QuickBooks integration coming soon</p>
-        </div>
-      </div>
     </div>
   );
 }

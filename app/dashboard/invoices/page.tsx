@@ -24,6 +24,8 @@ interface Invoice {
   };
 }
 
+type InvoicePeriod = "day" | "week" | "month" | "year" | "ytd";
+
 const statusColors: Record<string, { bg: string; text: string }> = {
   DRAFT: { bg: "bg-gray-100", text: "text-gray-800" },
   SENT: { bg: "bg-blue-100", text: "text-blue-800" },
@@ -44,18 +46,24 @@ export default function InvoicesPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [offset, setOffset] = useState(0);
   const [error, setError] = useState("");
+  const [period, setPeriod] = useState<InvoicePeriod>("month");
+  const [invoiceStats, setInvoiceStats] = useState({
+    paidInvoices: 0,
+    unpaidInvoices: 0,
+    averageInvoice: 0,
+  });
 
   const limit = 20;
 
   useEffect(() => {
     fetchInvoices();
-  }, [statusFilter, offset]);
+  }, [statusFilter, offset, period]);
 
   const fetchInvoices = async () => {
     try {
       setLoading(true);
       setError("");
-      let url = `/api/invoices?limit=${limit}&offset=${offset}`;
+      let url = `/api/invoices?limit=${limit}&offset=${offset}&period=${period}`;
       if (statusFilter) url += `&status=${statusFilter}`;
 
       const res = await fetch(url);
@@ -66,6 +74,7 @@ export default function InvoicesPage() {
       setInvoices(Array.isArray(data.invoices) ? data.invoices : []);
       setTotalCount(data.total || 0);
       setAvailableCreditAmount(data.availableCreditAmount || 0);
+      setInvoiceStats(data.stats || { paidInvoices: 0, unpaidInvoices: 0, averageInvoice: 0 });
     } catch (error) {
       console.error("Failed to fetch invoices:", error);
       setInvoices([]);
@@ -107,8 +116,29 @@ export default function InvoicesPage() {
           <p className="text-gray-600 mt-2">View and manage your invoices</p>
         </div>
 
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <h2 className="text-lg font-semibold text-gray-900">Invoice summary</h2>
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            Period
+            <select
+              value={period}
+              onChange={(event) => {
+                setPeriod(event.target.value as InvoicePeriod);
+                setOffset(0);
+              }}
+              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
+            >
+              <option value="month">Month</option>
+              <option value="day">Day</option>
+              <option value="week">Week</option>
+              <option value="year">Year</option>
+              <option value="ytd">YTD</option>
+            </select>
+          </label>
+        </div>
+
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-4 lg:grid-cols-7">
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <p className="text-gray-600 text-sm font-medium">Total Invoices</p>
             <p className="text-3xl font-bold text-gray-900 mt-2">{totalCount}</p>
@@ -134,6 +164,21 @@ export default function InvoicesPage() {
               ${availableCreditAmount.toFixed(2)}
             </p>
           </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <p className="text-gray-600 text-sm font-medium">Paid Invoices</p>
+            <p className="text-3xl font-bold text-green-600 mt-2">{invoiceStats.paidInvoices}</p>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <p className="text-gray-600 text-sm font-medium">Unpaid Invoices</p>
+            <p className="text-3xl font-bold text-orange-600 mt-2">{invoiceStats.unpaidInvoices}</p>
+          </div>
+
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <p className="text-gray-600 text-sm font-medium">Average Invoice</p>
+            <p className="text-3xl font-bold text-blue-600 mt-2">{formatCurrency(invoiceStats.averageInvoice)}</p>
+          </div>
         </div>
 
         {/* Status Filter */}
@@ -156,8 +201,11 @@ export default function InvoicesPage() {
           ))}
         </div>
 
-        {/* Invoices Table */}
+        {/* Invoice Timeline */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+            <h2 className="text-lg font-semibold text-gray-900">Invoice timeline</h2>
+          </div>
           {loading ? (
             <PageSkeleton variant="list" />
           ) : error ? (

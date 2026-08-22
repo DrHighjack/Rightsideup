@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+    const period = searchParams.get("period") || "month";
     const limit = Math.min(50, parseInt(searchParams.get("limit") || "20", 10));
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
@@ -40,7 +41,22 @@ export async function GET(request: NextRequest) {
     };
     if (status) where.status = status;
 
-    const [invoices, total, availableCredits] = await Promise.all([
+    const periodStart = new Date();
+    if (period === "day") {
+      periodStart.setHours(0, 0, 0, 0);
+    } else if (period === "week") {
+      periodStart.setDate(periodStart.getDate() - periodStart.getDay());
+      periodStart.setHours(0, 0, 0, 0);
+    } else if (period === "year" || period === "ytd") {
+      periodStart.setMonth(0, 1);
+      periodStart.setHours(0, 0, 0, 0);
+    } else {
+      periodStart.setDate(1);
+      periodStart.setHours(0, 0, 0, 0);
+    }
+    const periodWhere = { ...where, createdAt: { gte: periodStart } };
+
+    const [invoices, total, availableCredits, periodInvoices] = await Promise.all([
       prisma.invoice.findMany({
         where,
         include: {
@@ -65,6 +81,10 @@ export async function GET(request: NextRequest) {
           remainingValue: true,
         },
       }),
+      prisma.invoice.findMany({
+        where: periodWhere,
+        select: { amount: true, status: true },
+      }),
     ]);
 
     const availableCreditAmount = availableCredits.reduce((sum, credit) => {
@@ -79,6 +99,14 @@ export async function GET(request: NextRequest) {
       hasMore: offset + limit < total,
       availableCreditAmount,
       availableCredits,
+      period,
+      stats: {
+        paidInvoices: periodInvoices.filter((invoice) => invoice.status === "PAID").length,
+        unpaidInvoices: periodInvoices.filter((invoice) => ["DRAFT", "SENT", "VIEWED", "OVERDUE"].includes(invoice.status)).length,
+        averageInvoice: periodInvoices.length > 0
+          ? periodInvoices.reduce((sum, invoice) => sum + (invoice.amount || 0), 0) / periodInvoices.length
+          : 0,
+      },
     });
   } catch (error) {
     console.error("Failed to fetch invoices:", error);

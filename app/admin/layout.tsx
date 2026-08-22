@@ -86,7 +86,6 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/brokerages?tab=clients", label: "Client Management", icon: UsersIcon },
       { href: "/admin/brokerages?tab=brokerages", label: "Brokerages & TCs", icon: BriefcaseIcon },
-      { href: "/admin/leads", label: "Lead Responses", icon: TagIcon },
       { href: "/admin/salesmen", label: "Salesmen", icon: BriefcaseIcon },
       { href: "/admin/coupons", label: "Coupons", icon: TagIcon },
     ],

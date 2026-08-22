@@ -1111,6 +1111,12 @@ export default function ManagementPage() {
                       <td className="px-6 py-4 text-sm text-gray-700">{brokerage.agentCount}</td>
                       <td className="px-6 py-4 text-sm">
                         <div className="flex items-center gap-4">
+                          <Link
+                            href={`/admin/brokerages/${brokerage.id}`}
+                            className="text-blue-700 hover:text-blue-900 font-medium"
+                          >
+                            View
+                          </Link>
                           <button
                             onClick={() => openEditBrokerageModal(brokerage)}
                             className="text-green-700 hover:text-green-800 font-medium"

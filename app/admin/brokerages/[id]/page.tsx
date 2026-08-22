@@ -149,7 +149,7 @@ export default function BrokeragePage() {
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-8 px-4">
           <p className="text-gray-600">Brokerage not found</p>
-          <Link href="/admin/brokerages" className="text-primary hover:underline">
+          <Link href="/admin/brokerages?tab=brokerages" className="text-primary hover:underline">
             Back to Brokerages
           </Link>
         </div>
@@ -160,7 +160,7 @@ export default function BrokeragePage() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-7xl mx-auto py-8 px-4">
-        <Link href="/admin/brokerages" className="text-primary hover:underline mb-6 inline-block">
+        <Link href="/admin/brokerages?tab=brokerages" className="text-primary hover:underline mb-6 inline-block">
           ← Back to Brokerages
         </Link>
 

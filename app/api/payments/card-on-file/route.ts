@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     const actorUserId = session.user.id;
-    if (role !== "REALTOR" && role !== "TC") {
+    if (role !== "REALTOR" && role !== "TC" && role !== "BROKERAGE") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -136,7 +136,7 @@ export async function PATCH(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    if (role !== "REALTOR" && role !== "TC") {
+    if (role !== "REALTOR" && role !== "TC" && role !== "BROKERAGE") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

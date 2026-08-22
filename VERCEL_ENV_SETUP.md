@@ -43,6 +43,21 @@ To fix the 500 error on Vercel login, ensure these environment variables are set
    - Discord channel webhook URL used for realtor logins and system activity alerts
    - Optional: activity alerts use `DISCORD_ORDER_WEBHOOK_URL` when this is not set
 
+## Brokerage Billing
+
+11. **CRON_SECRET**
+   - Generate a long random value and add it to Production
+   - Vercel sends it as a bearer token when invoking the monthly statement cron
+
+12. **FLUIDPAY_SECRET_KEY** and **FLUIDPAY_BASE_URL**
+   - Server-side FluidPay credentials and API URL used to charge a saved company card
+
+13. **NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY** and **NEXT_PUBLIC_FLUIDPAY_BASE_URL**
+   - Browser-safe tokenizer key and URL used by the brokerage company-card form
+
+14. **BREVO_API_KEY** or SMTP credentials
+   - Required to send the monthly statement-ready email
+
 ## Steps to Fix Vercel Login:
 
 1. Go to **Vercel Dashboard** → Your Project → **Settings** → **Environment Variables**

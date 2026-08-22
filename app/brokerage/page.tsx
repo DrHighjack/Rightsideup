@@ -3,6 +3,21 @@
 import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import Script from "next/script";
+
+declare global {
+  interface Window {
+    Tokenizer?: new (options: {
+      url: string;
+      apikey: string;
+      container: string;
+      submission: (response: { status?: string; token?: string; message?: string }) => void;
+    }) => { submit?: () => void };
+  }
+}
+
+const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
+const fluidPayBaseUrl = process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
 
 interface BrokerageProfile {
   id: string;
@@ -68,6 +83,41 @@ interface InvoiceSummary {
   overdueCount: number;
 }
 
+interface SavedPaymentMethod {
+  id: string;
+  last4: string | null;
+  nickname: string | null;
+}
+
+interface StatementSnapshot {
+  invoices: Array<{
+    id: string;
+    invoiceNumber: string;
+    invoiceDate: string;
+    realtorName: string;
+    balanceCents: number;
+    lineItems: Array<{
+      description: string;
+      quantity: number;
+      unitAmount: number;
+      totalAmount: number;
+    }>;
+  }>;
+}
+
+interface BrokerageStatement {
+  id: string;
+  statementNumber: string;
+  periodStart: string;
+  periodEnd: string;
+  dueDate: string;
+  status: "READY" | "PAYMENT_PENDING" | "PAID" | "FAILED" | "VOIDED";
+  totalCents: number;
+  paidAt: string | null;
+  paymentCardLast4: string | null;
+  snapshot: StatementSnapshot;
+}
+
 const invoiceStatusColors: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-700",
   SENT: "bg-blue-100 text-blue-700",
@@ -80,6 +130,7 @@ const invoiceStatusColors: Record<string, string> = {
 function BrokerageDashboardContent() {
   const searchParams = useSearchParams();
   const activeTab = searchParams.get("tab") === "billing" ? "billing" : "members";
+  const linkedStatementId = searchParams.get("statement");
 
   const [brokerage, setBrokerage] = useState<BrokerageProfile | null>(null);
   const [agents, setAgents] = useState<Agent[]>([]);
@@ -93,6 +144,17 @@ function BrokerageDashboardContent() {
   const [showAddAgent, setShowAddAgent] = useState(false);
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState("");
   const [invoiceMemberFilter, setInvoiceMemberFilter] = useState("");
+  const [statements, setStatements] = useState<BrokerageStatement[]>([]);
+  const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState("");
+  const [expandedStatementId, setExpandedStatementId] = useState<string | null>(null);
+  const [generatingStatement, setGeneratingStatement] = useState(false);
+  const [payingStatementId, setPayingStatementId] = useState<string | null>(null);
+  const [addingCard, setAddingCard] = useState(false);
+  const [paymentScriptLoaded, setPaymentScriptLoaded] = useState(false);
+  const [paymentFormReady, setPaymentFormReady] = useState(false);
+  const [savingCard, setSavingCard] = useState(false);
+  const [paymentTokenizer, setPaymentTokenizer] = useState<{ submit?: () => void } | null>(null);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -118,10 +180,12 @@ function BrokerageDashboardContent() {
         query.set("memberId", invoiceMemberFilter);
       }
 
-      const [profileRes, agentsRes, invoicesRes] = await Promise.all([
+      const [profileRes, agentsRes, invoicesRes, statementsRes, cardsRes] = await Promise.all([
         fetch("/api/brokerage/profile"),
         fetch("/api/brokerage/agents"),
         fetch(`/api/brokerage/invoices?${query.toString()}`),
+        fetch("/api/brokerage/statements"),
+        fetch("/api/payments/card-on-file"),
       ]);
 
       if (!profileRes.ok) {
@@ -142,11 +206,16 @@ function BrokerageDashboardContent() {
       const profileData = await profileRes.json();
       const agentsData = await agentsRes.json();
       const invoicesData = await invoicesRes.json();
+      const statementsData = statementsRes.ok ? await statementsRes.json() : { statements: [] };
+      const cardsData = cardsRes.ok ? await cardsRes.json() : { cards: [] };
       setBrokerage(profileData.brokerage);
       setAgents(agentsData.agents || []);
       setAgentSummary(agentsData.summary || null);
       setInvoices(invoicesData.invoices || []);
       setInvoiceSummary(invoicesData.summary || null);
+      setStatements(statementsData.statements || []);
+      setSavedCards(cardsData.cards || []);
+      setSelectedCardId((current) => current || cardsData.cards?.[0]?.id || "");
     } catch (err: any) {
       setError(err?.message || "Failed to load brokerage data");
     } finally {
@@ -158,12 +227,111 @@ function BrokerageDashboardContent() {
     loadData();
   }, [invoiceStatusFilter, invoiceMemberFilter]);
 
+  useEffect(() => {
+    if (linkedStatementId && statements.some((statement) => statement.id === linkedStatementId)) {
+      setExpandedStatementId(linkedStatementId);
+      document.getElementById(`statement-${linkedStatementId}`)?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [linkedStatementId, statements]);
+
   const activeMembers = useMemo(
     () => agents.filter((agent) => !agent.isInactive).length,
     [agents]
   );
 
-  const formatMoney = (amount: number) => `$${amount.toFixed(2)}`;
+  const formatMoney = (amountCents: number) => `$${(amountCents / 100).toFixed(2)}`;
+
+  useEffect(() => {
+    if (!paymentScriptLoaded || !addingCard || !window.Tokenizer) return;
+    if (!fluidPayPublicKey) {
+      setError("FluidPay public key is not configured");
+      return;
+    }
+    const container = document.getElementById("brokerage-payment-form");
+    if (!container) return;
+    container.replaceChildren();
+
+    const tokenizer = new window.Tokenizer({
+      url: fluidPayBaseUrl,
+      apikey: fluidPayPublicKey,
+      container: "#brokerage-payment-form",
+      submission: async (response) => {
+        if (response.status !== "success" || !response.token) {
+          setError(response.message || "Card tokenization failed");
+          setSavingCard(false);
+          return;
+        }
+        try {
+          const saveResponse = await fetch("/api/payments/save-card", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: response.token }),
+          });
+          const data = await saveResponse.json();
+          if (!saveResponse.ok) throw new Error(data.error || "Failed to save company card");
+          setAddingCard(false);
+          await loadData();
+        } catch (saveError) {
+          setError(saveError instanceof Error ? saveError.message : "Failed to save company card");
+        } finally {
+          setSavingCard(false);
+        }
+      },
+    });
+    setPaymentTokenizer(tokenizer);
+    setPaymentFormReady(Boolean(tokenizer.submit));
+  }, [addingCard, paymentScriptLoaded]);
+
+  const handleSaveCompanyCard = () => {
+    setError("");
+    if (!paymentTokenizer?.submit) {
+      setError("Payment form is still loading");
+      return;
+    }
+    setSavingCard(true);
+    paymentTokenizer.submit();
+  };
+
+  const handleGenerateStatement = async () => {
+    try {
+      setGeneratingStatement(true);
+      setError("");
+      const response = await fetch("/api/brokerage/statements", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to generate statement");
+      await loadData();
+      setExpandedStatementId(data.statement?.id || null);
+    } catch (statementError) {
+      setError(statementError instanceof Error ? statementError.message : "Failed to generate statement");
+    } finally {
+      setGeneratingStatement(false);
+    }
+  };
+
+  const handlePayStatement = async (statementId: string) => {
+    if (!selectedCardId) {
+      setError("Add or select a company card first");
+      return;
+    }
+    if (!window.confirm("Charge the selected company card for this full statement?")) return;
+
+    try {
+      setPayingStatementId(statementId);
+      setError("");
+      const response = await fetch(`/api/brokerage/statements/${statementId}/pay`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ savedPaymentMethodId: selectedCardId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Statement payment failed");
+      await loadData();
+    } catch (paymentError) {
+      setError(paymentError instanceof Error ? paymentError.message : "Statement payment failed");
+    } finally {
+      setPayingStatementId(null);
+    }
+  };
 
   const countOpenInvoices = useMemo(() => {
     return invoices.filter((invoice) => ["SENT", "VIEWED", "OVERDUE", "DRAFT"].includes(invoice.status)).length;
@@ -516,6 +684,154 @@ function BrokerageDashboardContent() {
       )}
 
       {activeTab === "billing" && (
+      <div className="space-y-6">
+      <Script
+        src={`${fluidPayBaseUrl}/tokenizer/tokenizer.js`}
+        strategy="afterInteractive"
+        onLoad={() => setPaymentScriptLoaded(true)}
+        onError={() => setError("Failed to load the secure payment form")}
+      />
+
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Company payment method</h3>
+            <p className="mt-1 text-sm text-gray-600">Used only when you approve a monthly statement payment.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setAddingCard((current) => !current)}
+            className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            {addingCard ? "Cancel" : "Add company card"}
+          </button>
+        </div>
+        {savedCards.length > 0 && (
+          <select
+            value={selectedCardId}
+            onChange={(event) => setSelectedCardId(event.target.value)}
+            className="w-full max-w-md rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-900"
+          >
+            {savedCards.map((card) => (
+              <option key={card.id} value={card.id}>
+                {card.nickname || "Company card"} ending in {card.last4 || "saved"}
+              </option>
+            ))}
+          </select>
+        )}
+        {savedCards.length === 0 && !addingCard && (
+          <p className="text-sm text-orange-700">No company card is saved.</p>
+        )}
+        {addingCard && (
+          <div className="mt-4 max-w-xl space-y-3">
+            <div id="brokerage-payment-form" className="min-h-[220px] rounded-md border border-gray-200 p-3" />
+            <button
+              type="button"
+              onClick={handleSaveCompanyCard}
+              disabled={savingCard || !paymentFormReady}
+              className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
+            >
+              {savingCard ? "Saving..." : "Save company card"}
+            </button>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900">Monthly statements</h3>
+            <p className="mt-1 text-sm text-gray-600">Generated automatically on the first day of each month for unpaid member invoices.</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleGenerateStatement}
+            disabled={generatingStatement}
+            className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
+          >
+            {generatingStatement ? "Generating..." : "Generate previous month"}
+          </button>
+        </div>
+
+        <div className="space-y-3">
+          {statements.map((statement) => (
+            <div id={`statement-${statement.id}`} key={statement.id} className="scroll-mt-6 border-t border-gray-200 pt-4 first:border-0 first:pt-0">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <button
+                  type="button"
+                  onClick={() => setExpandedStatementId((current) => current === statement.id ? null : statement.id)}
+                  className="text-left"
+                >
+                  <span className="block font-semibold text-gray-900">{statement.statementNumber}</span>
+                  <span className="block text-sm text-gray-600">
+                    {new Date(statement.periodStart).toLocaleDateString()} - {new Date(statement.periodEnd).toLocaleDateString()} · {statement.snapshot.invoices.length} invoices
+                  </span>
+                </button>
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statement.status === "PAID" ? "bg-green-100 text-green-800" : statement.status === "FAILED" ? "bg-red-100 text-red-800" : "bg-orange-100 text-orange-800"}`}>
+                    {statement.status.replace("_", " ")}
+                  </span>
+                  <span className="text-lg font-bold text-gray-900">{formatMoney(statement.totalCents)}</span>
+                  <a
+                    href={`/api/brokerage/statements/${statement.id}/pdf`}
+                    className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Download PDF
+                  </a>
+                  {statement.status !== "PAID" && statement.status !== "PAYMENT_PENDING" && (
+                    <button
+                      type="button"
+                      onClick={() => void handlePayStatement(statement.id)}
+                      disabled={payingStatementId === statement.id || !selectedCardId}
+                      className="rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      {payingStatementId === statement.id ? "Processing..." : "Pay all"}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {expandedStatementId === statement.id && (
+                <div className="mt-4 overflow-x-auto border-t border-gray-100 pt-3">
+                  <table className="w-full min-w-[700px] text-sm">
+                    <thead className="text-left text-xs uppercase text-gray-500">
+                      <tr>
+                        <th className="px-2 py-2">Invoice / Date</th>
+                        <th className="px-2 py-2">Realtor</th>
+                        <th className="px-2 py-2">Item</th>
+                        <th className="px-2 py-2 text-right">Qty</th>
+                        <th className="px-2 py-2 text-right">Rate</th>
+                        <th className="px-2 py-2 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {statement.snapshot.invoices.flatMap((invoice) =>
+                        invoice.lineItems.map((item, index) => (
+                          <tr key={`${invoice.id}-${index}`} className="border-t border-gray-100">
+                            <td className="px-2 py-2">
+                              <span className="block font-medium text-gray-900">{invoice.invoiceNumber}</span>
+                              <span className="text-xs text-gray-500">{new Date(invoice.invoiceDate).toLocaleDateString()}</span>
+                            </td>
+                            <td className="px-2 py-2 text-gray-700">{invoice.realtorName}</td>
+                            <td className="px-2 py-2 text-gray-700">{item.description}</td>
+                            <td className="px-2 py-2 text-right">{item.quantity}</td>
+                            <td className="px-2 py-2 text-right">{formatMoney(item.unitAmount)}</td>
+                            <td className="px-2 py-2 text-right font-medium">{formatMoney(item.totalAmount)}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          ))}
+          {statements.length === 0 && (
+            <p className="py-4 text-center text-sm text-gray-500">No monthly statements yet.</p>
+          )}
+        </div>
+      </section>
+
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="text-xl font-semibold text-gray-900">Brokerage Invoices</h3>
@@ -578,6 +894,7 @@ function BrokerageDashboardContent() {
                 <th className="px-2 py-3 text-right">Paid</th>
                 <th className="px-2 py-3 text-right">Balance</th>
                 <th className="px-2 py-3">Due Date</th>
+                <th className="px-2 py-3 text-right">PDF</th>
               </tr>
             </thead>
             <tbody>
@@ -610,12 +927,20 @@ function BrokerageDashboardContent() {
                     <td className="px-2 py-3 text-gray-700">
                       {invoice.dueDate ? new Date(invoice.dueDate).toLocaleDateString() : "-"}
                     </td>
+                    <td className="px-2 py-3 text-right">
+                      <a
+                        href={`/api/invoices/${invoice.id}/pdf`}
+                        className="font-medium text-blue-700 hover:text-blue-900"
+                      >
+                        Download
+                      </a>
+                    </td>
                   </tr>
                 );
               })}
               {invoices.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-2 py-8 text-center text-gray-500">
+                  <td colSpan={8} className="px-2 py-8 text-center text-gray-500">
                     No invoices found for this filter.
                   </td>
                 </tr>
@@ -624,6 +949,7 @@ function BrokerageDashboardContent() {
           </table>
         </div>
       </section>
+      </div>
       )}
     </div>
   );

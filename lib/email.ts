@@ -50,6 +50,58 @@ export interface EmailOptions {
   from?: string;
 }
 
+export function getBrokerageStatementEmail(input: {
+    recipientName: string;
+    brokerageName: string;
+    statementNumber: string;
+    periodStart: Date;
+    periodEnd: Date;
+    invoiceCount: number;
+    totalCents: number;
+    statementUrl: string;
+    pdfUrl: string;
+}) {
+    const recipientName = escapeHtml(input.recipientName);
+    const brokerageName = escapeHtml(input.brokerageName);
+    const statementNumber = escapeHtml(input.statementNumber);
+    const statementUrl = escapeHtml(input.statementUrl);
+    const pdfUrl = escapeHtml(input.pdfUrl);
+    const period = `${input.periodStart.toLocaleDateString()} - ${input.periodEnd.toLocaleDateString()}`;
+    const total = `$${(input.totalCents / 100).toFixed(2)}`;
+
+    return {
+        subject: `${brokerageName} monthly invoice ${statementNumber} is ready`,
+        html: `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937">
+    <div style="max-width:640px;margin:0 auto;padding:32px 16px">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+            <div style="background:#0f3d5e;color:#ffffff;padding:24px 28px">
+                <div style="font-size:13px;font-weight:700;text-transform:uppercase">North Shore Sign Co</div>
+                <h1 style="margin:8px 0 0;font-size:24px">Your monthly invoice is ready</h1>
+            </div>
+            <div style="padding:28px">
+                <p>Hi ${recipientName},</p>
+                <p>The monthly invoice for <strong>${brokerageName}</strong> is ready to review and pay.</p>
+                <div style="margin:24px 0;padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                    <p style="margin:0 0 8px"><strong>Statement:</strong> ${statementNumber}</p>
+                    <p style="margin:0 0 8px"><strong>Period:</strong> ${escapeHtml(period)}</p>
+                    <p style="margin:0 0 8px"><strong>Invoices:</strong> ${input.invoiceCount}</p>
+                    <p style="margin:0;font-size:20px"><strong>Total due:</strong> ${total}</p>
+                </div>
+                <p style="margin:24px 0">
+                    <a href="${statementUrl}" style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:700">View and pay statement</a>
+                </p>
+                <p><a href="${pdfUrl}" style="color:#0369a1">Download the detailed PDF</a></p>
+            </div>
+            ${STANDARD_FOOTER_HTML}
+        </div>
+    </div>
+</body>
+</html>`,
+    };
+}
+
 export async function sendEmail(options: EmailOptions) {
   try {
     const {

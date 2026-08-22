@@ -314,11 +314,41 @@ model Brokerage {
   admin          User       @relation("BrokerageAdmin", fields: [adminId], references: [id], onDelete: Cascade)
   agents         User[]
   priceOverrides PriceOverride[]
+  statements     BrokerageStatement[]
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   
   @@map("brokerages")
   @@index([adminId])
+}
+
+model BrokerageStatement {
+  id                    String    @id @default(cuid())
+  brokerageId           String
+  brokerage             Brokerage @relation(fields: [brokerageId], references: [id], onDelete: Cascade)
+  statementNumber       String    @unique
+  periodStart           DateTime
+  periodEnd             DateTime
+  dueDate               DateTime
+  status                String    @default("READY") // READY | PAYMENT_PENDING | PAID | FAILED | VOIDED
+  invoiceIds            String[]  @default([])
+  snapshot              Json
+  subtotalCents         Int
+  totalCents            Int
+  paidAmountCents       Int?
+  paymentMethodId       String?
+  paymentCardLast4      String?
+  fluidpayTransactionId String?
+  emailSentAt           DateTime?
+  paidAt                DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@map("brokerage_statements")
+  @@unique([brokerageId, periodStart])
+  @@index([brokerageId])
+  @@index([periodStart])
+  @@index([status])
 }
 
 model QBOConnection {

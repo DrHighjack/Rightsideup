@@ -27,6 +27,15 @@ function money(cents: number) {
 
 async function canAccessInvoice(userId: string, role: string, invoiceUserId: string) {
   if (role === "ADMIN" || userId === invoiceUserId) return true;
+  if (role === "BROKERAGE") {
+    const [brokerageUser, invoiceUser] = await Promise.all([
+      prisma.user.findUnique({ where: { id: userId }, select: { brokerageId: true } }),
+      prisma.user.findUnique({ where: { id: invoiceUserId }, select: { brokerageId: true } }),
+    ]);
+    return Boolean(
+      brokerageUser?.brokerageId && brokerageUser.brokerageId === invoiceUser?.brokerageId
+    );
+  }
   if (role !== "TC") return false;
   const link = await prisma.tCAgentLink.findUnique({
     where: { tcUserId_agentUserId: { tcUserId: userId, agentUserId: invoiceUserId } },

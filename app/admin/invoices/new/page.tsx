@@ -82,6 +82,7 @@ export default function NewInvoicePage() {
   const [taxRate, setTaxRate] = useState("10.4");
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [submitting, setSubmitting] = useState(false);
+  const [submissionAction, setSubmissionAction] = useState<"draft" | "send" | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -180,6 +181,8 @@ export default function NewInvoicePage() {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const shouldSend = submitter?.value === "send";
 
     if (!selectedCustomer) {
       setError("Select a realtor account");
@@ -210,6 +213,7 @@ export default function NewInvoicePage() {
 
     try {
       setSubmitting(true);
+      setSubmissionAction(shouldSend ? "send" : "draft");
       const response = await fetch("/api/admin/invoices", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -225,11 +229,24 @@ export default function NewInvoicePage() {
       if (!response.ok || !data.id) {
         throw new Error(data.error || "Unable to create invoice");
       }
+      if (shouldSend) {
+        try {
+          const sendResponse = await fetch(`/api/admin/invoices/${data.id}/send`, {
+            method: "POST",
+          });
+          if (!sendResponse.ok) {
+            throw new Error("Unable to send invoice");
+          }
+        } catch {
+          window.alert("The invoice was saved as a draft, but it could not be sent. You can send it from the invoice details page.");
+        }
+      }
       router.push(`/admin/invoices/${data.id}`);
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to create invoice");
     } finally {
       setSubmitting(false);
+      setSubmissionAction(null);
     }
   };
 
@@ -243,7 +260,7 @@ export default function NewInvoicePage() {
             </Link>
             <h1 className="mt-2 text-3xl font-bold text-gray-900">Create invoice</h1>
           </div>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Link
               href="/admin/invoices"
               className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 font-medium text-gray-700 hover:bg-gray-50"
@@ -252,10 +269,21 @@ export default function NewInvoicePage() {
             </Link>
             <button
               type="submit"
+              name="invoiceAction"
+              value="draft"
+              disabled={submitting}
+              className="rounded-lg border border-blue-300 bg-white px-5 py-2.5 font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-50"
+            >
+              {submitting && submissionAction === "draft" ? "Saving..." : "Save draft"}
+            </button>
+            <button
+              type="submit"
+              name="invoiceAction"
+              value="send"
               disabled={submitting}
               className="rounded-lg bg-blue-600 px-5 py-2.5 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
             >
-              {submitting ? "Creating..." : "Create invoice"}
+              {submitting && submissionAction === "send" ? "Saving & sending..." : "Save & send"}
             </button>
           </div>
         </div>

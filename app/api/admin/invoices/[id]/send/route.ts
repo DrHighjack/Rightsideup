@@ -124,7 +124,7 @@ export async function POST(
         new Date(updated.createdAt).toLocaleDateString(),
         updated.dueDate ? new Date(updated.dueDate).toLocaleDateString() : "Not specified",
         "Service provided",
-        ((updated.amount || 0) / 100).toFixed(2),
+        (((updated.amount || 0) - (updated.discountAmount || 0) + updated.taxAmount) / 100).toFixed(2),
         `${appUrl}/dashboard/invoices/${updated.id}`
       );
 

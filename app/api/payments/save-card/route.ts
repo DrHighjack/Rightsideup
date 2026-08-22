@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (role !== "REALTOR") {
+    if (role !== "REALTOR" && role !== "TC") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

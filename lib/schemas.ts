@@ -41,6 +41,7 @@ export const paymentChargeSchema = z
   .object({
     invoiceId: z.string().cuid("invoiceId must be a valid ID"),
     useVault: z.boolean().optional().default(false),
+    savedPaymentMethodId: z.string().optional(),
     token: z.string().optional().default(""),
   })
   .refine(

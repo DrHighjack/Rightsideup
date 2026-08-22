@@ -18,7 +18,20 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
     if (role !== "ADMIN" && invoice.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const link = role === "TC"
+        ? await prisma.tCAgentLink.findUnique({
+            where: {
+              tcUserId_agentUserId: {
+                tcUserId: session.user.id,
+                agentUserId: invoice.userId,
+              },
+            },
+            select: { id: true },
+          })
+        : null;
+      if (!link) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
     if (!["SENT", "VIEWED", "OVERDUE"].includes(invoice.status)) {
       return NextResponse.json({ error: "Invoice is not payable" }, { status: 409 });
@@ -85,7 +98,22 @@ export async function POST(
         },
       });
 
-      return { updatedInvoice, appliedCents, creditCode: credit.code, remainingCredit };
+      const remainingCredits = await tx.coupon.aggregate({
+        where: {
+          assignedUserId: invoice.userId,
+          isCredit: true,
+          isActive: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        _sum: { remainingValue: true },
+      });
+
+      return {
+        updatedInvoice,
+        appliedCents,
+        creditCode: credit.code,
+        remainingCredit: remainingCredits._sum.remainingValue || 0,
+      };
     });
 
     return NextResponse.json({

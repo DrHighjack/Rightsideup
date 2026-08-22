@@ -28,14 +28,16 @@ export async function POST(request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+    const actorUserId = session.user.id;
 
-    if (role !== "REALTOR" && role !== "ADMIN") {
+    if (role !== "REALTOR" && role !== "TC" && role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const parsedBody = paymentChargeSchema.parse(await request.json());
     const invoiceId = parsedBody.invoiceId.trim();
     const useVault = parsedBody.useVault;
+    const savedPaymentMethodId = parsedBody.savedPaymentMethodId;
     const token = parsedBody.token.trim();
 
     const invoice = await prisma.invoice.findUnique({
@@ -58,8 +60,21 @@ export async function POST(request: NextRequest) {
     }
 
     const isAdmin = role === "ADMIN";
-    if (!isAdmin && invoice.userId !== session.user.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!isAdmin && invoice.userId !== actorUserId) {
+      const link = role === "TC"
+        ? await prisma.tCAgentLink.findUnique({
+            where: {
+              tcUserId_agentUserId: {
+                tcUserId: actorUserId,
+                agentUserId: invoice.userId,
+              },
+            },
+            select: { id: true },
+          })
+        : null;
+      if (!link) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     if (invoice.status === "PAID" || invoice.status === "VOIDED") {
@@ -79,6 +94,40 @@ export async function POST(request: NextRequest) {
 
     const chargeResult = useVault
       ? await (async () => {
+          if (savedPaymentMethodId) {
+            const allowedOwnerIds = new Set([invoice.userId]);
+            if (role === "TC") allowedOwnerIds.add(actorUserId);
+
+            if (savedPaymentMethodId.startsWith("legacy:")) {
+              const ownerId = savedPaymentMethodId.slice("legacy:".length);
+              if (!allowedOwnerIds.has(ownerId) && !isAdmin) {
+                throw new Error("Saved payment method is not available for this invoice");
+              }
+              const owner = await prisma.user.findUnique({
+                where: { id: ownerId },
+                select: { id: true, vaultId: true },
+              });
+              if (!owner?.vaultId) {
+                throw new Error("Saved payment method is not available for this invoice");
+              }
+              return chargeVaultRecord(owner.id, owner.vaultId, amountCents, invoice.id);
+            }
+
+            const savedMethod = await prisma.savedPaymentMethod.findUnique({
+              where: { id: savedPaymentMethodId },
+              select: { userId: true, fluidpayPaymentMethodId: true },
+            });
+            if (isAdmin) allowedOwnerIds.add(savedMethod?.userId || "");
+            if (!savedMethod || !allowedOwnerIds.has(savedMethod.userId)) {
+              throw new Error("Saved payment method is not available for this invoice");
+            }
+            return chargeVaultRecord(
+              savedMethod.userId,
+              savedMethod.fluidpayPaymentMethodId,
+              amountCents,
+              invoice.id
+            );
+          }
           const vaultId = invoice.user.vaultId;
           if (!vaultId) {
             throw new Error("No card on file for this user");
@@ -99,7 +148,7 @@ export async function POST(request: NextRequest) {
         paidAt: new Date(),
         paidAmount: (invoice.paidAmount || 0) + totalDue,
         paidByType: useVault ? "VAULT" : "TOKEN",
-        paidByUserId: session.user.id,
+        paidByUserId: actorUserId,
         fluidpayTransactionId: chargeResult.transactionId,
       },
     });

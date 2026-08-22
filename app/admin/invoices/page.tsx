@@ -20,6 +20,24 @@ interface Invoice {
   };
 }
 
+interface InvoiceStats {
+  totalInvoices: number;
+  amountPaid: number;
+  outstandingAmount: number;
+  paidInvoices: number;
+  unpaidInvoices: number;
+  averageInvoice: number;
+}
+
+const emptyInvoiceStats: InvoiceStats = {
+  totalInvoices: 0,
+  amountPaid: 0,
+  outstandingAmount: 0,
+  paidInvoices: 0,
+  unpaidInvoices: 0,
+  averageInvoice: 0,
+};
+
 const statusColors: Record<string, { bg: string; text: string }> = {
   DRAFT: { bg: "bg-gray-100", text: "text-gray-800" },
   SENT: { bg: "bg-blue-100", text: "text-blue-800" },
@@ -33,6 +51,7 @@ export default function AdminInvoicesPage() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
+  const [invoiceStats, setInvoiceStats] = useState<InvoiceStats>(emptyInvoiceStats);
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [offset, setOffset] = useState(0);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -63,6 +82,7 @@ export default function AdminInvoicesPage() {
         const data = await res.json();
         setInvoices(data.invoices);
         setTotalCount(data.total);
+        setInvoiceStats(data.stats || emptyInvoiceStats);
       }
     } catch (error) {
       console.error("Failed to fetch invoices:", error);
@@ -169,6 +189,33 @@ export default function AdminInvoicesPage() {
           </button>
         </div>
 
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Total Invoices</p>
+            <p className="mt-2 text-3xl font-bold text-gray-900">{invoiceStats.totalInvoices}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Amount Paid</p>
+            <p className="mt-2 text-3xl font-bold text-green-600">{formatCurrency(invoiceStats.amountPaid)}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Outstanding</p>
+            <p className="mt-2 text-3xl font-bold text-orange-600">{formatCurrency(invoiceStats.outstandingAmount)}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Paid Invoices</p>
+            <p className="mt-2 text-3xl font-bold text-green-600">{invoiceStats.paidInvoices}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Unpaid Invoices</p>
+            <p className="mt-2 text-3xl font-bold text-orange-600">{invoiceStats.unpaidInvoices}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Average Invoice</p>
+            <p className="mt-2 text-3xl font-bold text-blue-600">{formatCurrency(invoiceStats.averageInvoice)}</p>
+          </div>
+        </div>
+
         {/* Status Filter */}
         <div className="mb-6 flex gap-2 flex-wrap">
           {["", "DRAFT", "SENT", "VIEWED", "PAID", "OVERDUE", "VOIDED"].map(
@@ -243,7 +290,7 @@ export default function AdminInvoicesPage() {
                           <div className="text-sm text-gray-500">{invoice.user.email}</div>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                          {formatCurrency(invoice.amount * 100)}
+                          {formatCurrency(invoice.amount)}
                         </td>
                         <td className="px-6 py-4 text-gray-700">
                           {formatDate(invoice.dueDate)}

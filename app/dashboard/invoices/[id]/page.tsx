@@ -33,6 +33,14 @@ interface Invoice {
   lineItems?: Array<{ id: string; description: string; quantity: number; unitAmount: number; totalAmount: number }>;
 }
 
+interface SavedPaymentMethod {
+  id: string;
+  last4: string | null;
+  nickname: string | null;
+  ownerType: "SELF" | "AGENT";
+  ownerName: string;
+}
+
 const statusColors: Record<string, { bg: string; text: string }> = {
   DRAFT: { bg: "bg-gray-100", text: "text-gray-800" },
   SENT: { bg: "bg-blue-100", text: "text-blue-800" },
@@ -57,6 +65,8 @@ export default function InvoiceDetailPage() {
   const [invoiceError, setInvoiceError] = useState("");
 
   const [cardOnFile, setCardOnFile] = useState<boolean | null>(null);
+  const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
+  const [selectedCardId, setSelectedCardId] = useState("");
   const [cardOnFileLoading, setCardOnFileLoading] = useState(true);
   const [showDifferentCard, setShowDifferentCard] = useState(false);
 
@@ -99,14 +109,17 @@ export default function InvoiceDetailPage() {
   const fetchCardOnFile = async () => {
     try {
       setCardOnFileLoading(true);
-      const res = await fetch("/api/payments/card-on-file");
+      const res = await fetch(`/api/payments/card-on-file?invoiceId=${encodeURIComponent(invoiceId)}`);
 
       if (!res.ok) {
         setCardOnFile(false);
         return;
       }
 
-      const data = (await res.json()) as { hasCard?: boolean };
+      const data = (await res.json()) as { hasCard?: boolean; cards?: SavedPaymentMethod[] };
+      const cards = data.cards || [];
+      setSavedCards(cards);
+      setSelectedCardId((current) => current || cards[0]?.id || "");
       setCardOnFile(Boolean(data.hasCard));
       if (data.hasCard) {
         setShowDifferentCard(false);
@@ -122,16 +135,11 @@ export default function InvoiceDetailPage() {
   useEffect(() => {
     void fetchInvoice();
     if (sessionStatus === "loading") return;
-    if (isTC) {
-      setCardOnFile(false);
-      setCardOnFileLoading(false);
-    } else {
-      void fetchCardOnFile();
-    }
+    void fetchCardOnFile();
   }, [invoiceId, isTC, sessionStatus]);
 
   const canPayInvoice =
-    !isTC && (invoice?.status === "SENT" || invoice?.status === "OVERDUE");
+    invoice?.status === "SENT" || invoice?.status === "VIEWED" || invoice?.status === "OVERDUE";
 
   const shouldRenderTokenizer =
     Boolean(canPayInvoice) &&
@@ -271,6 +279,7 @@ export default function InvoiceDetailPage() {
         body: JSON.stringify({
           invoiceId,
           useVault: true,
+            savedPaymentMethodId: selectedCardId || undefined,
         }),
       });
 
@@ -312,11 +321,19 @@ export default function InvoiceDetailPage() {
       setPaymentError("");
       setCreditMessage("");
       const response = await fetch(`/api/invoices/${invoiceId}/apply-credit`, { method: "POST" });
-      const data = (await response.json()) as { error?: string; invoice?: Invoice; appliedAmount?: number };
+      const data = (await response.json()) as {
+        error?: string;
+        invoice?: Invoice;
+        appliedAmount?: number;
+        remainingCredit?: number;
+      };
       if (!response.ok || !data.invoice) {
         throw new Error(data.error || "Unable to apply credit");
       }
-      setInvoice(data.invoice);
+      setInvoice({
+        ...data.invoice,
+        availableCreditAmount: data.remainingCredit || 0,
+      });
       setCreditMessage(`Credit applied: $${((data.appliedAmount || 0) / 100).toFixed(2)}`);
     } catch (error) {
       setPaymentError(error instanceof Error ? error.message : "Unable to apply credit");
@@ -349,7 +366,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <>
-      {sessionStatus === "authenticated" && !isTC && (
+      {sessionStatus === "authenticated" && (
         <Script
           src={`${fluidPayBaseUrl}/tokenizer/tokenizer.js`}
           strategy="afterInteractive"
@@ -501,15 +518,6 @@ export default function InvoiceDetailPage() {
             </div>
 
             <div className="space-y-4">
-              {isTC && balance > 0 && invoice.status !== "PAID" && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4">
-                  <h3 className="font-semibold text-blue-900">Agent Payment Required</h3>
-                  <p className="mt-1 text-sm text-blue-800">
-                    Transaction coordinators can review invoices, but the linked agent must complete payment.
-                  </p>
-                </div>
-              )}
-
               {canPayInvoice && (
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Pay Invoice</h3>
@@ -541,11 +549,33 @@ export default function InvoiceDetailPage() {
                       <p className="mt-1 text-sm text-orange-800">
                         You cannot pay this invoice until a card is saved to your account.
                       </p>
+                      <Link
+                        href="/dashboard/account"
+                        className="mt-3 inline-flex rounded-lg bg-orange-700 px-4 py-2 text-sm font-medium text-white hover:bg-orange-800"
+                      >
+                        Add a card to my account
+                      </Link>
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {cardOnFile && !showDifferentCard && (
                         <>
+                          {savedCards.length > 0 && (
+                            <label className="block text-sm font-medium text-gray-700">
+                              Saved card
+                              <select
+                                value={selectedCardId}
+                                onChange={(event) => setSelectedCardId(event.target.value)}
+                                className="mt-1 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
+                              >
+                                {savedCards.map((card) => (
+                                  <option key={card.id} value={card.id}>
+                                    {card.ownerType === "SELF" ? "My card" : `${card.ownerName}'s card`}: {card.nickname || `ending in ${card.last4 || "saved"}`}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
                           <button
                             onClick={handlePayWithSavedCard}
                             disabled={processingPayment}

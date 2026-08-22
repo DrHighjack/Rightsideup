@@ -277,6 +277,22 @@ export default function PricingPage() {
     return item ? `Add-On: ${item.name}` : "Add-On Item";
   };
 
+  const servicePrices = masterPrices.filter((price) => !price.serviceType.startsWith("ADDON:"));
+
+  const handleOverrideProductChange = (serviceType: string) => {
+    const masterPrice = getMasterPrice(serviceType);
+    const itemId = serviceType.startsWith("ADDON:") ? serviceType.slice("ADDON:".length) : null;
+    const inventoryPrice = itemId
+      ? inventoryItems.find((item) => item.id === itemId)?.pricePerUnit
+      : null;
+
+    setOverrideForm({
+      ...overrideForm,
+      serviceType,
+      amountCents: masterPrice ?? inventoryPrice ?? 0,
+    });
+  };
+
   const handleSaveInventoryPrice = async (itemId: string, pricePerUnit: number) => {
     try {
       setSavingInventoryPriceId(itemId);
@@ -698,24 +714,34 @@ export default function PricingPage() {
             <h3 className="text-lg font-bold text-gray-900 mb-4">Add Price Override</h3>
 
             <div className="space-y-4">
-              {/* Service Type */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Service Type
+                  Product or Service
                 </label>
                 <select
                   value={overrideForm.serviceType}
-                  onChange={(e) =>
-                    setOverrideForm({ ...overrideForm, serviceType: e.target.value })
-                  }
+                  onChange={(e) => handleOverrideProductChange(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">Select service type...</option>
-                  {masterPrices.map((price) => (
-                    <option key={price.serviceType} value={price.serviceType}>
-                      {getServiceTypeLabel(price.serviceType)}
-                    </option>
-                  ))}
+                  <option value="">Select a product or service...</option>
+                  {servicePrices.length > 0 && (
+                    <optgroup label="Services">
+                      {servicePrices.map((price) => (
+                        <option key={price.serviceType} value={price.serviceType}>
+                          {getServiceTypeLabel(price.serviceType)}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {inventoryItems.length > 0 && (
+                    <optgroup label="Products">
+                      {inventoryItems.map((item) => (
+                        <option key={item.id} value={`ADDON:${item.id}`}>
+                          {item.name} ({item.category})
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 

@@ -33,10 +33,14 @@ export async function GET(request: NextRequest) {
     const { status, userId, sortBy, limit, offset } = parsedQuery;
 
     const where: any = {};
+    const statsWhere: any = {};
     if (status) where.status = status;
-    if (userId) where.userId = userId;
+    if (userId) {
+      where.userId = userId;
+      statsWhere.userId = userId;
+    }
 
-    const [invoices, total] = await Promise.all([
+    const [invoices, total, statsTotal, paidStats, unpaidStats, averageStats] = await Promise.all([
       prisma.invoice.findMany({
         where,
         include: {
@@ -54,6 +58,24 @@ export async function GET(request: NextRequest) {
         take: limit,
       }),
       prisma.invoice.count({ where }),
+      prisma.invoice.count({ where: statsWhere }),
+      prisma.invoice.aggregate({
+        where: { ...statsWhere, status: "PAID" },
+        _count: true,
+        _sum: { paidAmount: true },
+      }),
+      prisma.invoice.aggregate({
+        where: {
+          ...statsWhere,
+          status: { in: ["DRAFT", "SENT", "VIEWED", "OVERDUE"] },
+        },
+        _count: true,
+        _sum: { amount: true, discountAmount: true, paidAmount: true },
+      }),
+      prisma.invoice.aggregate({
+        where: statsWhere,
+        _avg: { amount: true },
+      }),
     ]);
 
     // Transform response to include computed name field
@@ -71,6 +93,17 @@ export async function GET(request: NextRequest) {
       limit,
       offset,
       hasMore: offset + limit < total,
+      stats: {
+        totalInvoices: statsTotal,
+        amountPaid: paidStats._sum.paidAmount || 0,
+        outstandingAmount:
+          (unpaidStats._sum.amount || 0) -
+          (unpaidStats._sum.discountAmount || 0) -
+          (unpaidStats._sum.paidAmount || 0),
+        paidInvoices: paidStats._count,
+        unpaidInvoices: unpaidStats._count,
+        averageInvoice: averageStats._avg.amount || 0,
+      },
     });
   } catch (error) {
     if (error instanceof ZodError) {

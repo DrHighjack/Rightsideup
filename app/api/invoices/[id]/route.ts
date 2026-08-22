@@ -50,6 +50,7 @@ export async function GET(
         assignedUserId: invoice.userId,
         isCredit: true,
         isActive: true,
+        OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
       },
       select: {
         id: true,

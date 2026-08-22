@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
           assignedUserId: { in: invoiceUserIds },
           isCredit: true,
           isActive: true,
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
         },
         select: {
           id: true,

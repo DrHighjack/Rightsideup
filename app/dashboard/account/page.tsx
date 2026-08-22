@@ -56,6 +56,7 @@ export default function AccountPage() {
   const [passwordResetMessage, setPasswordResetMessage] = useState("");
   const [cardOnFile, setCardOnFile] = useState<boolean | null>(null);
   const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
+  const [accountCreditAmount, setAccountCreditAmount] = useState(0);
   const [addingPaymentMethod, setAddingPaymentMethod] = useState(false);
   const [paymentScriptLoaded, setPaymentScriptLoaded] = useState(false);
   const [paymentFormReady, setPaymentFormReady] = useState(false);
@@ -104,14 +105,20 @@ export default function AccountPage() {
   }, [session?.user]);
 
   useEffect(() => {
-    if ((session?.user as any)?.role !== "REALTOR") return;
+    const role = (session?.user as any)?.role;
+    if (role !== "REALTOR" && role !== "TC") return;
 
     const fetchCardOnFile = async () => {
       try {
         const response = await fetch("/api/payments/card-on-file");
-        const data = (await response.json()) as { hasCard?: boolean; cards?: SavedPaymentMethod[] };
+        const data = (await response.json()) as {
+          hasCard?: boolean;
+          cards?: SavedPaymentMethod[];
+          accountCreditAmount?: number;
+        };
         setCardOnFile(response.ok ? Boolean(data.hasCard) : false);
         setSavedCards(data.cards || []);
+        setAccountCreditAmount(data.accountCreditAmount || 0);
       } catch (error) {
         console.error("Failed to check payment method:", error);
         setCardOnFile(false);
@@ -365,7 +372,7 @@ export default function AccountPage() {
           Your card is tokenized securely by FluidPay. North Shore Sign Co does not store your full card number or CVV.
         </p>
 
-        {user.role === "REALTOR" ? (
+        {user.role === "REALTOR" || user.role === "TC" ? (
           <>
             <Script
               src={`${fluidPayBaseUrl}/tokenizer/tokenizer.js`}
@@ -373,6 +380,10 @@ export default function AccountPage() {
               onLoad={() => setPaymentScriptLoaded(true)}
               onError={() => setPaymentError("Failed to load payment form.")}
             />
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
+              <p className="text-sm font-medium text-green-900">Available account credit</p>
+              <p className="mt-1 text-2xl font-bold text-green-700">${accountCreditAmount.toFixed(2)}</p>
+            </div>
             {cardOnFile === null ? (
               <p className="text-sm text-slate-600">Checking saved payment method...</p>
             ) : (

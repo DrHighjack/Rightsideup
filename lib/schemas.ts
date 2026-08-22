@@ -98,9 +98,17 @@ export const adminPaymentRefundSchema = z.object({
 export const adminInvoiceCreateSchema = z.object({
   userId: z.string().min(1, "userId is required"),
   orderId: z.string().optional(),
-  amount: z.number().finite().positive("amount must be greater than 0"),
+  amount: z.number().finite().positive("amount must be greater than 0").optional(),
   discountAmount: z.number().finite().min(0).optional().default(0),
   dueDate: z.string().optional(),
+  lineItems: z.array(z.object({
+    description: z.string().trim().min(1, "Line item description is required").max(200),
+    quantity: z.number().int().positive().max(999),
+    unitAmount: z.number().int().min(0),
+  })).min(1).max(100).optional(),
+}).refine((data) => data.amount !== undefined || data.lineItems?.length, {
+  message: "At least one line item is required",
+  path: ["lineItems"],
 });
 
 export const adminInvoiceUpdateSchema = z

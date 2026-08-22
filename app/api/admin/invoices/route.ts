@@ -129,7 +129,23 @@ export async function POST(request: NextRequest) {
     }
 
     const parsedBody = adminInvoiceCreateSchema.parse(await request.json());
-    const { userId, orderId, amount, discountAmount, dueDate } = parsedBody;
+    const { userId, orderId, amount: requestedAmount, discountAmount, dueDate, lineItems } = parsedBody;
+    const normalizedLineItems = lineItems?.map((item) => ({
+      description: item.description,
+      quantity: item.quantity,
+      unitAmount: item.unitAmount,
+      totalAmount: item.quantity * item.unitAmount,
+    }));
+    const amount = normalizedLineItems
+      ? normalizedLineItems.reduce((sum, item) => sum + item.totalAmount, 0)
+      : requestedAmount!;
+
+    if (amount <= 0) {
+      return NextResponse.json({ error: "Invoice total must be greater than 0" }, { status: 400 });
+    }
+    if (discountAmount > amount) {
+      return NextResponse.json({ error: "Discount cannot exceed the invoice subtotal" }, { status: 400 });
+    }
 
     // Verify user exists
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -154,12 +170,12 @@ export async function POST(request: NextRequest) {
         dueDate: dueDate ? new Date(dueDate) : undefined,
         status: "DRAFT",
         lineItems: {
-          create: {
+          create: normalizedLineItems || [{
             description: "Service charge",
             quantity: 1,
             unitAmount: Math.round(amount),
             totalAmount: Math.round(amount),
-          },
+          }],
         },
       },
       include: {

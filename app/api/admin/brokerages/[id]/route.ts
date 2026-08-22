@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { calculateInvoiceBalance, calculateInvoiceTotal } from "@/lib/invoice-totals";
 
 const addAgentSchema = z.object({
   email: z.string().email(),
@@ -10,13 +11,14 @@ const addAgentSchema = z.object({
   lastName: z.string().min(1),
   phone: z.string().optional(),
   paymentMethod: z.enum(["OFFICE", "SELF"]).default("OFFICE"),
-  password: z.string().min(6),
+  password: z.string().min(8),
 });
 
 const updateBrokerageSchema = z.object({
   name: z.string().min(1).optional(),
   address: z.string().optional(),
   phone: z.string().optional(),
+  email: z.string().trim().email().optional().or(z.literal("")),
   billingType: z.enum(["AGENT", "BROKERAGE"]).optional(),
   basePriceDollars: z.number().nonnegative().nullable().optional(),
   basePriceCents: z.number().int().nonnegative().nullable().optional(),
@@ -92,7 +94,82 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ brokerage });
+    const [invoices, orders] = await Promise.all([
+      prisma.invoice.findMany({
+        where: { user: { brokerageId: brokerage.id, role: "REALTOR" } },
+        select: {
+          id: true,
+          invoiceNumber: true,
+          amount: true,
+          discountAmount: true,
+          taxAmount: true,
+          paidAmount: true,
+          status: true,
+          dueDate: true,
+          createdAt: true,
+          user: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.order.findMany({
+        where: { realtor: { brokerageId: brokerage.id } },
+        select: {
+          id: true,
+          orderNumber: true,
+          type: true,
+          status: true,
+          address: true,
+          addressLat: true,
+          addressLng: true,
+          createdAt: true,
+          scheduledDate: true,
+          realtor: {
+            select: { id: true, firstName: true, lastName: true, email: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+    const invoiceStats = invoices.reduce(
+      (stats, invoice) => {
+        if (invoice.status === "VOIDED") return stats;
+        const total = calculateInvoiceTotal(invoice);
+        stats.lifetimeInvoiceTotal += total;
+        stats.lifetimePaidTotal += Math.round(invoice.paidAmount || 0);
+        if (invoice.status !== "PAID") {
+          stats.outstandingBalance += calculateInvoiceBalance(invoice);
+          stats.outstandingInvoiceCount += 1;
+        }
+        return stats;
+      },
+      {
+        lifetimeInvoiceTotal: 0,
+        lifetimePaidTotal: 0,
+        outstandingBalance: 0,
+        outstandingInvoiceCount: 0,
+      }
+    );
+
+    return NextResponse.json({
+      brokerage,
+      invoices,
+      pendingOrders: orders.filter((order) => order.status === "PENDING"),
+      mappedOrders: orders.filter(
+        (order) => order.addressLat !== null && order.addressLng !== null
+      ),
+      stats: {
+        ...invoiceStats,
+        lifetimeInvoiceCount: invoices.filter((invoice) => invoice.status !== "VOIDED").length,
+        totalOrders: orders.length,
+        pendingOrderCount: orders.filter((order) => order.status === "PENDING").length,
+        mappedPostCount: orders.filter(
+          (order) => order.addressLat !== null && order.addressLng !== null
+        ).length,
+      },
+    });
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
@@ -232,6 +309,7 @@ export async function PUT(
         ...(parsed.name !== undefined ? { name: parsed.name } : {}),
         ...(parsed.address !== undefined ? { address: parsed.address || null } : {}),
         ...(parsed.phone !== undefined ? { phone: parsed.phone || null } : {}),
+        ...(parsed.email !== undefined ? { email: parsed.email || null } : {}),
         ...(parsed.billingType !== undefined
           ? { billingType: parsed.billingType }
           : {}),

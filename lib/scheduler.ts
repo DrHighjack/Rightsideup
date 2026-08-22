@@ -86,6 +86,7 @@ async function checkInvoiceAging() {
     // Get all invoices with SENT or OVERDUE status
     const invoices = await prisma.invoice.findMany({
       where: {
+        qboInvoiceId: null,
         status: {
           in: ['SENT', 'OVERDUE'],
         },

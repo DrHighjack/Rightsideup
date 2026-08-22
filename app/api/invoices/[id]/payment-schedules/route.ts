@@ -86,7 +86,7 @@ export async function POST(
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
-      select: { id: true, userId: true, status: true },
+      select: { id: true, userId: true, status: true, qboInvoiceId: true },
     });
 
     if (!invoice) {
@@ -95,6 +95,13 @@ export async function POST(
 
     if (invoice.userId !== session.user.id && (session.user as any).role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (invoice.qboInvoiceId) {
+      return NextResponse.json(
+        { error: "Payment schedules cannot be added to imported QuickBooks invoices" },
+        { status: 409 }
+      );
     }
 
     if (invoice.status === "PAID" || invoice.status === "VOIDED") {

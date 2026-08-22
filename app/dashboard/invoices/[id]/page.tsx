@@ -21,6 +21,7 @@ declare global {
 interface Invoice {
   id: string;
   invoiceNumber: string;
+  qboInvoiceId: string | null;
   amount: number;
   discountAmount: number;
   taxRateBps: number;
@@ -141,7 +142,8 @@ export default function InvoiceDetailPage() {
   }, [invoiceId, isTC, sessionStatus]);
 
   const canPayInvoice =
-    invoice?.status === "SENT" || invoice?.status === "VIEWED" || invoice?.status === "OVERDUE";
+    !invoice?.qboInvoiceId &&
+    (invoice?.status === "SENT" || invoice?.status === "VIEWED" || invoice?.status === "OVERDUE");
 
   const shouldRenderTokenizer =
     Boolean(canPayInvoice) &&
@@ -409,7 +411,16 @@ export default function InvoiceDetailPage() {
             </div>
           )}
 
-          {isOverdue && invoice.status !== "PAID" && (
+          {invoice.qboInvoiceId && (
+            <div className="mb-6 border border-blue-200 bg-blue-50 p-4">
+              <p className="font-medium text-blue-900">Imported from QuickBooks</p>
+              <p className="mt-1 text-sm text-blue-800">
+                This invoice is retained for account history. Payments and changes remain managed in QuickBooks.
+              </p>
+            </div>
+          )}
+
+          {isOverdue && invoice.status !== "PAID" && !invoice.qboInvoiceId && (
             <div className="mb-8 p-4 bg-orange-50 border border-orange-200 rounded-lg">
               <p className="text-orange-900 font-medium">
                 This invoice is overdue. Please make payment as soon as possible.

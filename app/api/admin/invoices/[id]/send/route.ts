@@ -47,6 +47,13 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    if (invoice.qboInvoiceId) {
+      return NextResponse.json(
+        { error: "Imported QuickBooks invoices are historical records and cannot be sent" },
+        { status: 409 }
+      );
+    }
+
     // Update invoice status to SENT
     const updated = await prisma.invoice.update({
       where: { id: params.id },

@@ -215,7 +215,7 @@ model Invoice {
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderId           String?          // Link to order if created from order
   invoiceNumber     String?          @unique // QB invoice number
-  qboInvoiceId      String?          // QB Online invoice ID
+  qboInvoiceId      String?          @unique // QB Online invoice ID
   amount            Float?
   discountAmount    Float?           @default(0)
   taxRateBps        Int              @default(0)
@@ -241,7 +241,6 @@ model Invoice {
   @@index([userId])
   @@index([status])
   @@index([dueDate])
-  @@index([qboInvoiceId])
   @@index([fluidpayTransactionId])
 }
 

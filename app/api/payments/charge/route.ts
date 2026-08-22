@@ -60,6 +60,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
+    if (invoice.qboInvoiceId) {
+      return NextResponse.json(
+        { error: "Imported QuickBooks invoices must be paid through QuickBooks" },
+        { status: 409 }
+      );
+    }
+
     const isAdmin = role === "ADMIN";
     if (!isAdmin && invoice.userId !== actorUserId) {
       const link = role === "TC"

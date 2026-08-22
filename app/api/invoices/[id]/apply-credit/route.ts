@@ -18,6 +18,12 @@ export async function POST(
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
+    if (invoice.qboInvoiceId) {
+      return NextResponse.json(
+        { error: "Credits cannot be applied to imported QuickBooks invoices" },
+        { status: 409 }
+      );
+    }
     if (role !== "ADMIN" && invoice.userId !== session.user.id) {
       const link = role === "TC"
         ? await prisma.tCAgentLink.findUnique({

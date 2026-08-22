@@ -286,7 +286,19 @@ export async function getActiveCoupons() {
       expiresAt: true,
       maxUses: true,
       usedCount: true,
+      isCredit: true,
+      remainingValue: true,
+      assignedUserId: true,
+      assignedUser: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
     },
+    orderBy: { createdAt: 'desc' },
   });
 }
 
@@ -299,6 +311,7 @@ export async function createCoupon(data: {
   value: number;
   remainingValue?: number;
   isCredit?: boolean;
+  assignedUserId?: string;
   description?: string;
   maxUses?: number;
   expiresAt?: Date;
@@ -311,6 +324,7 @@ export async function createCoupon(data: {
         value: data.value,
         remainingValue: data.remainingValue ?? 0,
         isCredit: data.isCredit ?? false,
+        assignedUserId: data.assignedUserId,
         description: data.description,
         maxUses: data.maxUses,
         expiresAt: data.expiresAt,

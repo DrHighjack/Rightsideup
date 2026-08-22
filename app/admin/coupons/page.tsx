@@ -13,7 +13,17 @@ interface Coupon {
   usedCount: number;
   expiresAt?: string;
   isActive: boolean;
+  isCredit: boolean;
+  remainingValue?: number;
+  assignedUser?: Realtor | null;
   createdAt: string;
+}
+
+interface Realtor {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 interface CouponStats {
@@ -30,6 +40,8 @@ export default function CouponsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [formMode, setFormMode] = useState<'coupon' | 'credit'>('coupon');
+  const [realtors, setRealtors] = useState<Realtor[]>([]);
   const [formData, setFormData] = useState({
     code: '',
     type: 'FIXED',
@@ -37,6 +49,7 @@ export default function CouponsPage() {
     description: '',
     maxUses: '',
     expiresAt: '',
+    assignedUserId: '',
   });
 
   useEffect(() => {
@@ -48,12 +61,17 @@ export default function CouponsPage() {
       setLoading(true);
       setError(null);
 
-      const res = await fetch('/api/admin/coupons');
-      if (!res.ok) throw new Error('Failed to fetch coupons');
+      const [res, clientsRes] = await Promise.all([
+        fetch('/api/admin/coupons'),
+        fetch('/api/admin/clients'),
+      ]);
+      if (!res.ok || !clientsRes.ok) throw new Error('Failed to fetch coupons and credits');
 
       const data = await res.json();
+      const clientsData = await clientsRes.json();
       setCoupons(data.coupons);
       setStats(data.stats);
+      setRealtors(clientsData.users || []);
     } catch (err) {
       console.error('Error fetching coupons:', err);
       setError(
@@ -69,12 +87,14 @@ export default function CouponsPage() {
 
     try {
       const payload = {
-        code: formData.code.toUpperCase(),
-        type: formData.type,
+        code: formMode === 'coupon' ? formData.code.toUpperCase() : undefined,
+        type: formMode === 'credit' ? 'FIXED' : formData.type,
         value: parseFloat(formData.value),
         description: formData.description || undefined,
-        maxUses: formData.maxUses ? parseInt(formData.maxUses) : undefined,
+        maxUses: formMode === 'coupon' && formData.maxUses ? parseInt(formData.maxUses) : undefined,
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt) : undefined,
+        isCredit: formMode === 'credit',
+        assignedUserId: formMode === 'credit' ? formData.assignedUserId : undefined,
       };
 
       const res = await fetch('/api/admin/coupons', {
@@ -96,6 +116,7 @@ export default function CouponsPage() {
         description: '',
         maxUses: '',
         expiresAt: '',
+        assignedUserId: '',
       });
       setShowForm(false);
       await fetchCoupons();
@@ -118,15 +139,23 @@ export default function CouponsPage() {
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Coupon Management</h1>
-            <p className="text-gray-600 mt-2">Create and manage discount coupons</p>
+            <h1 className="text-3xl font-bold text-gray-900">Coupons/Credits</h1>
+            <p className="text-gray-600 mt-2">Manage discount coupons and realtor account credits</p>
           </div>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-          >
-            {showForm ? 'Cancel' : '+ New Coupon'}
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={() => { setFormMode('coupon'); setShowForm(true); }}
+              className="bg-white text-blue-700 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50"
+            >
+              + New Coupon
+            </button>
+            <button
+              onClick={() => { setFormMode('credit'); setShowForm(true); }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              + Give Credit
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -144,7 +173,7 @@ export default function CouponsPage() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <StatBox label="Total Coupons" value={stats.total} icon="🎟️" />
+            <StatBox label="Coupons/Credits" value={stats.total} icon="🎟️" />
             <StatBox label="Active" value={stats.active} icon="✅" />
             <StatBox label="Expired" value={stats.expired} icon="⏰" />
             <StatBox label="Total Used" value={stats.totalUsed} icon="📊" />
@@ -156,11 +185,11 @@ export default function CouponsPage() {
         {showForm && (
           <div className="bg-white rounded-lg shadow p-6 mb-8">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">
-              Create New Coupon
+              {formMode === 'credit' ? 'Give Account Credit' : 'Create New Coupon'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                {formMode === 'coupon' && <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Coupon Code
                   </label>
@@ -174,9 +203,9 @@ export default function CouponsPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
-                </div>
+                </div>}
 
-                <div>
+                {formMode === 'coupon' && <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Type
                   </label>
@@ -190,11 +219,32 @@ export default function CouponsPage() {
                     <option value="FIXED">Fixed Amount ($)</option>
                     <option value="PERCENTAGE">Percentage (%)</option>
                   </select>
-                </div>
+                </div>}
+
+                {formMode === 'credit' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Realtor Account
+                    </label>
+                    <select
+                      value={formData.assignedUserId}
+                      onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required
+                    >
+                      <option value="">Select a realtor...</option>
+                      {realtors.map((realtor) => (
+                        <option key={realtor.id} value={realtor.id}>
+                          {realtor.firstName} {realtor.lastName} ({realtor.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Value
+                    {formMode === 'credit' ? 'Credit Amount ($)' : 'Value'}
                   </label>
                   <input
                     type="number"
@@ -203,16 +253,16 @@ export default function CouponsPage() {
                       setFormData({ ...formData, value: e.target.value })
                     }
                     placeholder={
-                      formData.type === 'FIXED' ? 'e.g., 10' : 'e.g., 20'
+                      formMode === 'credit' || formData.type === 'FIXED' ? 'e.g., 25.00' : 'e.g., 20'
                     }
-                    step={formData.type === 'FIXED' ? '0.01' : '1'}
-                    min="0"
+                    step={formMode === 'credit' || formData.type === 'FIXED' ? '0.01' : '1'}
+                    min="0.01"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
 
-                <div>
+                {formMode === 'coupon' && <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Max Uses (Optional)
                   </label>
@@ -226,7 +276,7 @@ export default function CouponsPage() {
                     min="1"
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
+                </div>}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -270,7 +320,7 @@ export default function CouponsPage() {
                   type="submit"
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
-                  Create Coupon
+                  {formMode === 'credit' ? 'Give Credit' : 'Create Coupon'}
                 </button>
               </div>
             </form>
@@ -287,7 +337,7 @@ export default function CouponsPage() {
                     Code
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
-                    Type
+                    Type / Account
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase">
                     Value
@@ -307,7 +357,7 @@ export default function CouponsPage() {
                 {coupons.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
-                      No coupons yet. Create one to get started!
+                      No coupons or credits yet.
                     </td>
                   </tr>
                 ) : (
@@ -317,10 +367,21 @@ export default function CouponsPage() {
                         {coupon.code}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {coupon.type === 'FIXED' ? '$' : '%'}
+                        {coupon.isCredit ? (
+                          <>
+                            <span className="font-medium text-green-700">Account Credit</span>
+                            <span className="block text-xs text-gray-500">
+                              {coupon.assignedUser
+                                ? `${coupon.assignedUser.firstName} ${coupon.assignedUser.lastName} (${coupon.assignedUser.email})`
+                                : 'Unassigned'}
+                            </span>
+                          </>
+                        ) : coupon.type === 'FIXED' ? '$' : '%'}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {coupon.type === 'FIXED'
+                        {coupon.isCredit
+                          ? `$${(coupon.remainingValue || 0).toFixed(2)} remaining of $${coupon.value.toFixed(2)}`
+                          : coupon.type === 'FIXED'
                           ? `$${coupon.value.toFixed(2)}`
                           : `${coupon.value}%`}
                       </td>

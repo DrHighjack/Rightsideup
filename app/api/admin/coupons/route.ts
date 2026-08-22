@@ -8,6 +8,7 @@ import { createCoupon, getActiveCoupons, getCouponStats } from '@/lib/discounts'
 import { NextResponse } from 'next/server';
 import { logActivity } from '@/lib/activityLog';
 import { ActivityAction } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
@@ -44,13 +45,28 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { code, type, value, description, maxUses, expiresAt } = body;
+    const { code, type, value, description, maxUses, expiresAt, isCredit, assignedUserId } = body;
+    const numericValue = Number(value);
 
-    if (!code || !type || !value) {
+    if ((!isCredit && !code) || !type || !Number.isFinite(numericValue) || numericValue <= 0) {
       return NextResponse.json(
-        { error: 'Missing required fields: code, type, value' },
+        { error: 'A positive value and all required fields are required' },
         { status: 400 }
       );
+    }
+
+    if (isCredit && !assignedUserId) {
+      return NextResponse.json({ error: 'Select a realtor account' }, { status: 400 });
+    }
+
+    if (isCredit) {
+      const realtor = await prisma.user.findFirst({
+        where: { id: assignedUserId, role: 'REALTOR' },
+        select: { id: true },
+      });
+      if (!realtor) {
+        return NextResponse.json({ error: 'Realtor account not found' }, { status: 404 });
+      }
     }
 
     if (!['FIXED', 'PERCENTAGE'].includes(type)) {
@@ -60,19 +76,23 @@ export async function POST(req: Request) {
       );
     }
 
-    if (type === 'PERCENTAGE' && (value < 0 || value > 100)) {
+    if (!isCredit && type === 'PERCENTAGE' && (numericValue < 0 || numericValue > 100)) {
       return NextResponse.json(
         { error: 'Percentage value must be between 0 and 100' },
         { status: 400 }
       );
     }
 
+    const creditCode = `CREDIT-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const coupon = await createCoupon({
-      code,
-      type,
-      value,
+      code: isCredit ? creditCode : code,
+      type: isCredit ? 'FIXED' : type,
+      value: numericValue,
+      remainingValue: isCredit ? numericValue : undefined,
+      isCredit: Boolean(isCredit),
+      assignedUserId: isCredit ? assignedUserId : undefined,
       description,
-      maxUses,
+      maxUses: isCredit ? undefined : maxUses,
       expiresAt: expiresAt ? new Date(expiresAt) : undefined,
     });
 
@@ -83,11 +103,15 @@ export async function POST(req: Request) {
         action: ActivityAction.COUPON_REDEEMED,
         entityType: 'Coupon',
         entityId: coupon.id,
-        description: `Coupon created: ${code} (${type} - ${value})`,
+        description: isCredit
+          ? `Account credit granted: $${numericValue.toFixed(2)}`
+          : `Coupon created: ${code} (${type} - ${numericValue})`,
         metadata: {
-          code,
-          type,
-          value,
+          code: isCredit ? creditCode : code,
+          type: isCredit ? 'FIXED' : type,
+          value: numericValue,
+          isCredit: Boolean(isCredit),
+          assignedUserId: isCredit ? assignedUserId : undefined,
           maxUses,
           expiresAt,
         },

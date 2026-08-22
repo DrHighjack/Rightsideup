@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       }),
       prisma.invoice.findMany({
         where: periodWhere,
-        select: { amount: true, status: true },
+        select: { amount: true, discountAmount: true, taxAmount: true, status: true },
       }),
     ]);
 
@@ -105,7 +105,11 @@ export async function GET(request: NextRequest) {
         paidInvoices: periodInvoices.filter((invoice) => invoice.status === "PAID").length,
         unpaidInvoices: periodInvoices.filter((invoice) => ["DRAFT", "SENT", "VIEWED", "OVERDUE"].includes(invoice.status)).length,
         averageInvoice: periodInvoices.length > 0
-          ? periodInvoices.reduce((sum, invoice) => sum + (invoice.amount || 0), 0) / periodInvoices.length
+          ? periodInvoices.reduce(
+              (sum, invoice) =>
+                sum + (invoice.amount || 0) - (invoice.discountAmount || 0) + invoice.taxAmount,
+              0
+            ) / periodInvoices.length
           : 0,
       },
     });

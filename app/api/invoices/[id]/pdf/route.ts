@@ -44,11 +44,11 @@ async function canAccessInvoice(userId: string, role: string, invoiceUserId: str
   return Boolean(link);
 }
 
-function InvoicePdf({ invoice }: { invoice: { invoiceNumber: string | null; amount: number | null; discountAmount: number | null; paidAmount: number | null; status: string; dueDate: Date | null; createdAt: Date; paidAt: Date | null; paidByType: string | null; fluidpayTransactionId: string | null; lineItems: Array<{ description: string; quantity: number; unitAmount: number; totalAmount: number }>; user: { firstName: string; lastName: string; email: string } } }) {
+function InvoicePdf({ invoice }: { invoice: { invoiceNumber: string | null; amount: number | null; discountAmount: number | null; taxRateBps: number; taxAmount: number; paidAmount: number | null; status: string; dueDate: Date | null; createdAt: Date; paidAt: Date | null; paidByType: string | null; fluidpayTransactionId: string | null; lineItems: Array<{ description: string; quantity: number; unitAmount: number; totalAmount: number }>; user: { firstName: string; lastName: string; email: string } } }) {
   const amount = invoice.amount || 0;
   const discount = invoice.discountAmount || 0;
   const paid = invoice.paidAmount || 0;
-  const total = Math.max(0, amount - discount);
+  const total = Math.max(0, amount - discount + invoice.taxAmount);
   const isPaid = invoice.status === "PAID";
 
   return React.createElement(Document, null,
@@ -71,6 +71,7 @@ function InvoicePdf({ invoice }: { invoice: { invoiceNumber: string | null; amou
         React.createElement(View, { style: styles.row }, React.createElement(Text, { style: styles.label }, "Due"), React.createElement(Text, { style: styles.value }, invoice.dueDate ? invoice.dueDate.toLocaleDateString() : "No due date")),
         React.createElement(View, { style: styles.row }, React.createElement(Text, { style: styles.label }, "Subtotal"), React.createElement(Text, { style: styles.value }, money(amount))),
         discount > 0 ? React.createElement(View, { style: styles.row }, React.createElement(Text, { style: styles.label }, "Credit / discount"), React.createElement(Text, { style: styles.value }, `-${money(discount)}`)) : null,
+        invoice.taxAmount > 0 ? React.createElement(View, { style: styles.row }, React.createElement(Text, { style: styles.label }, `Sales tax (${(invoice.taxRateBps / 100).toFixed(2)}%)`), React.createElement(Text, { style: styles.value }, money(invoice.taxAmount))) : null,
         React.createElement(View, { style: styles.total }, React.createElement(Text, null, isPaid ? "Total paid" : "Total due"), React.createElement(Text, null, money(total)))
       ),
       isPaid ? React.createElement(View, { style: styles.section },

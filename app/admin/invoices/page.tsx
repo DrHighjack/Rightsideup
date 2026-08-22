@@ -8,6 +8,7 @@ interface Invoice {
   invoiceNumber: string;
   amount: number;
   discountAmount: number;
+  taxAmount: number;
   status: "DRAFT" | "SENT" | "VIEWED" | "PAID" | "VOIDED" | "OVERDUE";
   dueDate: string | null;
   paidAt: string | null;
@@ -236,7 +237,7 @@ export default function AdminInvoicesPage() {
                           <div className="text-sm text-gray-500">{invoice.user.email}</div>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                          {formatCurrency(invoice.amount)}
+                          {formatCurrency(invoice.amount - invoice.discountAmount + invoice.taxAmount)}
                         </td>
                         <td className="px-6 py-4 text-gray-700">
                           {formatDate(invoice.dueDate)}

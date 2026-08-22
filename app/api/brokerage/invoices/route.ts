@@ -97,6 +97,7 @@ export async function GET(request: NextRequest) {
           invoiceNumber: true,
           amount: true,
           discountAmount: true,
+          taxAmount: true,
           paidAmount: true,
           status: true,
           dueDate: true,
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest) {
         _sum: {
           amount: true,
           discountAmount: true,
+          taxAmount: true,
           paidAmount: true,
         },
       }),
@@ -137,13 +139,14 @@ export async function GET(request: NextRequest) {
       invoiceCount: invoiceSummary._count._all || 0,
       totalInvoiced: invoiceSummary._sum.amount || 0,
       totalDiscount: invoiceSummary._sum.discountAmount || 0,
+      totalTax: invoiceSummary._sum.taxAmount || 0,
       totalPaid: invoiceSummary._sum.paidAmount || 0,
       overdueCount,
     };
 
     const totalOutstanding = Math.max(
       0,
-      summary.totalInvoiced - summary.totalDiscount - summary.totalPaid
+      summary.totalInvoiced - summary.totalDiscount + summary.totalTax - summary.totalPaid
     );
 
     return NextResponse.json({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeToken, chargeVaultRecord } from "@/lib/fluidpay";
+import { calculateInvoiceBalance } from "@/lib/invoice-totals";
 import { sendEmail } from "@/lib/email";
 import { paymentChargeSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
@@ -81,10 +82,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invoice is not payable" }, { status: 400 });
     }
 
-    const totalDue = Math.max(
-      0,
-      (invoice.amount || 0) - (invoice.discountAmount || 0) - (invoice.paidAmount || 0)
-    );
+    const totalDue = calculateInvoiceBalance(invoice);
 
     if (totalDue <= 0) {
       return NextResponse.json({ error: "Invoice has no balance due" }, { status: 400 });

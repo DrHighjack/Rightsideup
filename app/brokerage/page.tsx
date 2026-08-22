@@ -61,6 +61,7 @@ interface Invoice {
   invoiceNumber: string | null;
   amount: number | null;
   discountAmount: number | null;
+  taxAmount: number;
   paidAmount: number | null;
   status: "DRAFT" | "SENT" | "VIEWED" | "PAID" | "VOIDED" | "OVERDUE";
   dueDate: string | null;
@@ -902,7 +903,7 @@ function BrokerageDashboardContent() {
                 const amount = invoice.amount || 0;
                 const discount = invoice.discountAmount || 0;
                 const paid = invoice.paidAmount || 0;
-                const balance = Math.max(0, amount - discount - paid);
+                const balance = Math.max(0, amount - discount + invoice.taxAmount - paid);
                 return (
                   <tr key={invoice.id} className="border-b border-gray-100">
                     <td className="px-2 py-3 font-mono text-xs text-gray-900">
@@ -921,7 +922,7 @@ function BrokerageDashboardContent() {
                         {invoice.status}
                       </span>
                     </td>
-                    <td className="px-2 py-3 text-right font-medium text-gray-900">{formatMoney(amount)}</td>
+                    <td className="px-2 py-3 text-right font-medium text-gray-900">{formatMoney(amount - discount + invoice.taxAmount)}</td>
                     <td className="px-2 py-3 text-right font-medium text-green-700">{formatMoney(paid)}</td>
                     <td className="px-2 py-3 text-right font-medium text-orange-700">{formatMoney(balance)}</td>
                     <td className="px-2 py-3 text-gray-700">

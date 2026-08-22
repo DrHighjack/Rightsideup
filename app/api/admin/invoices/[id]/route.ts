@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adminInvoiceUpdateSchema } from "@/lib/schemas";
+import { calculateTaxAmount } from "@/lib/invoice-totals";
 import { ZodError } from "zod";
 
 /**
@@ -73,6 +74,7 @@ export async function PUT(
       status,
       amount,
       discountAmount,
+      taxRateBps,
       dueDate,
       paidAmount,
       paidAt,
@@ -82,6 +84,22 @@ export async function PUT(
     if (status) updateData.status = status;
     if (amount) updateData.amount = amount;
     if (discountAmount !== undefined) updateData.discountAmount = discountAmount;
+    if (amount !== undefined || discountAmount !== undefined || taxRateBps !== undefined) {
+      const currentInvoice = await prisma.invoice.findUnique({
+        where: { id: params.id },
+        select: { amount: true, discountAmount: true, taxRateBps: true },
+      });
+      if (!currentInvoice) {
+        return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+      }
+      const nextTaxRateBps = taxRateBps ?? currentInvoice.taxRateBps;
+      updateData.taxRateBps = nextTaxRateBps;
+      updateData.taxAmount = calculateTaxAmount(
+        amount ?? currentInvoice.amount ?? 0,
+        discountAmount ?? currentInvoice.discountAmount ?? 0,
+        nextTaxRateBps
+      );
+    }
     if (dueDate) updateData.dueDate = new Date(dueDate);
     if (paidAmount !== undefined) updateData.paidAmount = paidAmount;
     if (paidAt) updateData.paidAt = new Date(paidAt);

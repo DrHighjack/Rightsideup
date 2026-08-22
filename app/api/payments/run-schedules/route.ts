@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateInvoiceBalance } from "@/lib/invoice-totals";
 
 function nextRunDate(dayOfMonth: number) {
   const now = new Date();
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      const totalDue = Math.max(0, (invoice.amount || 0) - (invoice.discountAmount || 0) - (invoice.paidAmount || 0));
+      const totalDue = calculateInvoiceBalance(invoice);
       if (totalDue <= 0 || invoice.status === "PAID" || invoice.status === "VOIDED") {
         await prisma.invoicePaymentSchedule.update({ where: { id: schedule.id }, data: { isActive: false } });
         results.push({ scheduleId: schedule.id, status: "skipped", reason: "invoice-closed" });

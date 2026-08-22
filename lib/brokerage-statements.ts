@@ -13,6 +13,8 @@ export interface BrokerageStatementSnapshot {
     realtorEmail: string;
     subtotalCents: number;
     discountCents: number;
+    taxRateBps: number;
+    taxCents: number;
     previouslyPaidCents: number;
     balanceCents: number;
     lineItems: Array<{
@@ -78,8 +80,12 @@ export async function generateBrokerageStatement(
     .map((invoice) => {
       const subtotalCents = Math.round(invoice.amount || 0);
       const discountCents = Math.round(invoice.discountAmount || 0);
+      const taxCents = invoice.taxAmount;
       const previouslyPaidCents = Math.round(invoice.paidAmount || 0);
-      const balanceCents = Math.max(0, subtotalCents - discountCents - previouslyPaidCents);
+      const balanceCents = Math.max(
+        0,
+        subtotalCents - discountCents + taxCents - previouslyPaidCents
+      );
       return {
         id: invoice.id,
         invoiceNumber: invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
@@ -91,6 +97,8 @@ export async function generateBrokerageStatement(
         realtorEmail: invoice.user.email,
         subtotalCents,
         discountCents,
+        taxRateBps: invoice.taxRateBps,
+        taxCents,
         previouslyPaidCents,
         balanceCents,
         lineItems: invoice.lineItems.length

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateInvoiceBalance, calculateTaxAmount } from "@/lib/invoice-totals";
 
 export async function POST(
   _request: NextRequest,
@@ -37,10 +38,7 @@ export async function POST(
       return NextResponse.json({ error: "Invoice is not payable" }, { status: 409 });
     }
 
-    const balanceCents = Math.max(
-      0,
-      (invoice.amount || 0) - (invoice.discountAmount || 0) - (invoice.paidAmount || 0)
-    );
+    const balanceCents = calculateInvoiceBalance(invoice);
     if (balanceCents <= 0) {
       return NextResponse.json({ error: "Invoice has no balance due" }, { status: 400 });
     }
@@ -66,7 +64,16 @@ export async function POST(
       const appliedDollars = appliedCents / 100;
       const remainingCredit = Math.max(0, (credit.remainingValue || 0) - appliedDollars);
       const newDiscountAmount = (invoice.discountAmount || 0) + appliedCents;
-      const newBalance = balanceCents - appliedCents;
+      const newTaxAmount = calculateTaxAmount(
+        invoice.amount || 0,
+        newDiscountAmount,
+        invoice.taxRateBps
+      );
+      const newBalance = calculateInvoiceBalance({
+        ...invoice,
+        discountAmount: newDiscountAmount,
+        taxAmount: newTaxAmount,
+      });
 
       await tx.coupon.update({
         where: { id: credit.id },
@@ -81,6 +88,7 @@ export async function POST(
         where: { id: invoice.id },
         data: {
           discountAmount: newDiscountAmount,
+          taxAmount: newTaxAmount,
           ...(newBalance === 0
             ? { status: "PAID", paidAt: new Date(), paidAmount: (invoice.paidAmount || 0) + appliedCents }
             : {}),

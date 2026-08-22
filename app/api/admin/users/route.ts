@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
         _sum: {
           amount: true,
           discountAmount: true,
+          taxAmount: true,
           paidAmount: true,
         },
       });
@@ -104,8 +105,9 @@ export async function GET(request: NextRequest) {
         invoiceTotals.map((row) => {
           const amount = row._sum.amount || 0;
           const discountAmount = row._sum.discountAmount || 0;
+          const taxAmount = row._sum.taxAmount || 0;
           const paidAmount = row._sum.paidAmount || 0;
-          const outstanding = Math.max(0, amount - discountAmount - paidAmount);
+          const outstanding = Math.max(0, amount - discountAmount + taxAmount - paidAmount);
           return [row.userId, outstanding] as const;
         })
       );

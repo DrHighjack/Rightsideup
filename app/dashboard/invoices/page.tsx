@@ -11,6 +11,7 @@ interface Invoice {
   invoiceNumber: string;
   amount: number;
   discountAmount: number;
+  taxAmount: number;
   status: "DRAFT" | "SENT" | "VIEWED" | "PAID" | "VOIDED" | "OVERDUE";
   dueDate: string | null;
   paidAt: string | null;
@@ -105,7 +106,10 @@ export default function InvoicesPage() {
 
   const outstandingAmount = invoices
     .filter((inv) => ["SENT", "VIEWED", "OVERDUE"].includes(inv.status))
-    .reduce((sum, inv) => sum + (inv.amount - inv.discountAmount), 0);
+    .reduce(
+      (sum, inv) => sum + inv.amount - inv.discountAmount + inv.taxAmount - (inv.paidAmount || 0),
+      0
+    );
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
@@ -256,7 +260,11 @@ export default function InvoicesPage() {
                 <tbody>
                   {invoices.map((invoice) => {
                     const colors = statusColors[invoice.status];
-                    const balance = invoice.amount - invoice.discountAmount - (invoice.paidAmount || 0);
+                    const balance =
+                      invoice.amount -
+                      invoice.discountAmount +
+                      invoice.taxAmount -
+                      (invoice.paidAmount || 0);
                     return (
                       <tr
                         key={invoice.id}
@@ -280,7 +288,7 @@ export default function InvoicesPage() {
                           </Link>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                          {formatCurrency(invoice.amount)}
+                          {formatCurrency(invoice.amount - invoice.discountAmount + invoice.taxAmount)}
                         </td>
                         {isTC && (
                           <td className="px-6 py-4 text-gray-700">

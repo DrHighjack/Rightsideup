@@ -56,7 +56,14 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         id: { in: statement.invoiceIds },
         user: { brokerageId: statement.brokerageId, role: "REALTOR" },
       },
-      select: { id: true, amount: true, discountAmount: true, paidAmount: true, status: true },
+      select: {
+        id: true,
+        amount: true,
+        discountAmount: true,
+        taxAmount: true,
+        paidAmount: true,
+        status: true,
+      },
     });
     const currentById = new Map(currentInvoices.map((invoice) => [invoice.id, invoice]));
     const balancesMatch = snapshot.invoices.every((snapshotInvoice) => {
@@ -66,7 +73,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
         0,
         Math.round(invoice.amount || 0) -
           Math.round(invoice.discountAmount || 0) -
-          Math.round(invoice.paidAmount || 0)
+          Math.round(invoice.paidAmount || 0) +
+          invoice.taxAmount
       );
       return balance === snapshotInvoice.balanceCents;
     });

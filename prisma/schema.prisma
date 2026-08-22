@@ -218,6 +218,8 @@ model Invoice {
   qboInvoiceId      String?          // QB Online invoice ID
   amount            Float?
   discountAmount    Float?           @default(0)
+  taxRateBps        Int              @default(0)
+  taxAmount         Int              @default(0)
   status            InvoiceStatus    @default(DRAFT)
   dueDate           DateTime?
   paidAt            DateTime?

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { calculateInvoiceBalance } from "@/lib/invoice-totals";
 import { sendEmail } from "@/lib/email";
 import { invoicePaySchema } from "@/lib/schemas";
 import { ZodError } from "zod";
@@ -93,7 +94,7 @@ export async function POST(
       return NextResponse.json({ error: "Payment method not found" }, { status: 404 });
     }
 
-    const totalDue = Math.max(0, (invoice.amount || 0) - (invoice.discountAmount || 0) - (invoice.paidAmount || 0));
+    const totalDue = calculateInvoiceBalance(invoice);
     if (totalDue <= 0) {
       return NextResponse.json({ error: "Invoice is already paid" }, { status: 400 });
     }

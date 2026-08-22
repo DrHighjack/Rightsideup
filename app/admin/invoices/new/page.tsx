@@ -79,6 +79,7 @@ export default function NewInvoicePage() {
   const [openCatalogLineId, setOpenCatalogLineId] = useState<string | null>(null);
   const [lines, setLines] = useState<InvoiceLine[]>([createLine()]);
   const [discount, setDiscount] = useState("");
+  const [taxRate, setTaxRate] = useState("10.4");
   const [dueDate, setDueDate] = useState(defaultDueDate);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -170,7 +171,11 @@ export default function NewInvoicePage() {
     0
   );
   const discountCents = dollarsToCents(discount);
-  const totalCents = Math.max(0, subtotalCents - discountCents);
+  const taxableSubtotalCents = Math.max(0, subtotalCents - discountCents);
+  const parsedTaxRate = Number(taxRate);
+  const taxRateBps = Number.isFinite(parsedTaxRate) ? Math.round(parsedTaxRate * 100) : 0;
+  const taxCents = Math.round((taxableSubtotalCents * taxRateBps) / 10000);
+  const totalCents = taxableSubtotalCents + taxCents;
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -198,6 +203,10 @@ export default function NewInvoicePage() {
       setError("Discount cannot exceed the subtotal");
       return;
     }
+    if (!Number.isFinite(parsedTaxRate) || parsedTaxRate < 0 || parsedTaxRate > 100) {
+      setError("Sales tax rate must be between 0% and 100%");
+      return;
+    }
 
     try {
       setSubmitting(true);
@@ -208,6 +217,7 @@ export default function NewInvoicePage() {
           userId: selectedCustomer.id,
           dueDate: dueDate || undefined,
           discountAmount: discountCents,
+          taxRateBps,
           lineItems,
         }),
       });
@@ -463,6 +473,26 @@ export default function NewInvoicePage() {
                   />
                 </span>
               </label>
+              <label className="flex items-center justify-between gap-4">
+                <span className="text-gray-600">Sales tax</span>
+                <span className="relative w-36">
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={taxRate}
+                    onChange={(event) => setTaxRate(event.target.value)}
+                    className="w-full rounded-md border border-gray-300 py-2 pl-3 pr-8 text-right text-gray-900"
+                    aria-label="Sales tax rate"
+                  />
+                  <span className="absolute right-3 top-2 text-gray-500">%</span>
+                </span>
+              </label>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-gray-600">Tax amount</span>
+                <span className="font-medium text-gray-900">${(taxCents / 100).toFixed(2)}</span>
+              </div>
               <div className="flex items-center justify-between gap-4 border-t border-gray-200 pt-3 text-lg">
                 <span className="font-semibold text-gray-900">Total</span>
                 <span className="font-bold text-gray-900">${(totalCents / 100).toFixed(2)}</span>

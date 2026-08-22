@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adminInvoiceCreateSchema, adminInvoiceListQuerySchema } from "@/lib/schemas";
+import { calculateTaxAmount } from "@/lib/invoice-totals";
 import { ZodError } from "zod";
 
 /**
@@ -70,11 +71,11 @@ export async function GET(request: NextRequest) {
           status: { in: ["DRAFT", "SENT", "VIEWED", "OVERDUE"] },
         },
         _count: true,
-        _sum: { amount: true, discountAmount: true, paidAmount: true },
+        _sum: { amount: true, discountAmount: true, taxAmount: true, paidAmount: true },
       }),
       prisma.invoice.aggregate({
         where: statsWhere,
-        _avg: { amount: true },
+        _sum: { amount: true, discountAmount: true, taxAmount: true },
       }),
     ]);
 
@@ -99,10 +100,15 @@ export async function GET(request: NextRequest) {
         outstandingAmount:
           (unpaidStats._sum.amount || 0) -
           (unpaidStats._sum.discountAmount || 0) -
-          (unpaidStats._sum.paidAmount || 0),
+          (unpaidStats._sum.paidAmount || 0) +
+          (unpaidStats._sum.taxAmount || 0),
         paidInvoices: paidStats._count,
         unpaidInvoices: unpaidStats._count,
-        averageInvoice: averageStats._avg.amount || 0,
+        averageInvoice: statsTotal > 0
+          ? ((averageStats._sum.amount || 0) -
+              (averageStats._sum.discountAmount || 0) +
+              (averageStats._sum.taxAmount || 0)) / statsTotal
+          : 0,
       },
     });
   } catch (error) {
@@ -129,7 +135,7 @@ export async function POST(request: NextRequest) {
     }
 
     const parsedBody = adminInvoiceCreateSchema.parse(await request.json());
-    const { userId, orderId, amount: requestedAmount, discountAmount, dueDate, lineItems } = parsedBody;
+    const { userId, orderId, amount: requestedAmount, discountAmount, taxRateBps, dueDate, lineItems } = parsedBody;
     const normalizedLineItems = lineItems?.map((item) => ({
       description: item.description,
       quantity: item.quantity,
@@ -146,6 +152,7 @@ export async function POST(request: NextRequest) {
     if (discountAmount > amount) {
       return NextResponse.json({ error: "Discount cannot exceed the invoice subtotal" }, { status: 400 });
     }
+    const taxAmount = calculateTaxAmount(amount, discountAmount, taxRateBps);
 
     // Verify user exists
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -167,6 +174,8 @@ export async function POST(request: NextRequest) {
         invoiceNumber,
         amount,
         discountAmount: discountAmount || 0,
+        taxRateBps,
+        taxAmount,
         dueDate: dueDate ? new Date(dueDate) : undefined,
         status: "DRAFT",
         lineItems: {

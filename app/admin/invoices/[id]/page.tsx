@@ -9,6 +9,8 @@ interface Invoice {
   invoiceNumber: string;
   amount: number;
   discountAmount: number;
+  taxRateBps: number;
+  taxAmount: number;
   status: "DRAFT" | "SENT" | "VIEWED" | "PAID" | "VOIDED" | "OVERDUE";
   dueDate: string | null;
   paidAt: string | null;
@@ -42,6 +44,7 @@ export default function InvoiceDetailPage() {
   const [editForm, setEditForm] = useState({
     status: "",
     dueDate: "",
+    taxRate: "",
     paidAmount: "",
     paidAt: "",
   });
@@ -67,6 +70,7 @@ export default function InvoiceDetailPage() {
         setEditForm({
           status: data.status,
           dueDate: data.dueDate?.split("T")[0] || "",
+          taxRate: (data.taxRateBps / 100).toString(),
           paidAmount: data.paidAmount ? String(data.paidAmount) : "",
           paidAt: data.paidAt?.split("T")[0] || "",
         });
@@ -109,6 +113,7 @@ export default function InvoiceDetailPage() {
       const updateData: any = {};
       if (editForm.status) updateData.status = editForm.status;
       if (editForm.dueDate) updateData.dueDate = editForm.dueDate;
+      if (editForm.taxRate) updateData.taxRateBps = Math.round(Number(editForm.taxRate) * 100);
       if (editForm.paidAmount) updateData.paidAmount = parseFloat(editForm.paidAmount);
       if (editForm.paidAt) updateData.paidAt = editForm.paidAt;
 
@@ -160,7 +165,7 @@ export default function InvoiceDetailPage() {
 
   const openRefundModal = () => {
     if (!invoice) return;
-    const fullAmountDollars = ((invoice.amount - invoice.discountAmount) / 100).toFixed(2);
+    const fullAmountDollars = ((invoice.amount - invoice.discountAmount + invoice.taxAmount) / 100).toFixed(2);
     setRefundAmountDollars(fullAmountDollars);
     setRefundError("");
     setShowRefundModal(true);
@@ -246,7 +251,7 @@ export default function InvoiceDetailPage() {
             <div className="mb-6 pb-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoice Details</h2>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-2 gap-4 mb-4 sm:grid-cols-4">
                 <div>
                   <p className="text-sm text-gray-600">Amount</p>
                   <p className="text-2xl font-bold text-gray-900">
@@ -257,6 +262,18 @@ export default function InvoiceDetailPage() {
                   <p className="text-sm text-gray-600">Discount</p>
                   <p className="text-2xl font-bold text-gray-900">
                     ${(invoice.discountAmount / 100).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Sales Tax ({(invoice.taxRateBps / 100).toFixed(2)}%)</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${(invoice.taxAmount / 100).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Total</p>
+                  <p className="text-2xl font-bold text-gray-900">
+                    ${((invoice.amount - invoice.discountAmount + invoice.taxAmount) / 100).toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -382,6 +399,23 @@ export default function InvoiceDetailPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
+
+                {invoice.status === "DRAFT" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-900 mb-1">
+                      Sales Tax (%)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={editForm.taxRate}
+                      onChange={(e) => setEditForm({ ...editForm, taxRate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                )}
 
                 {editForm.status === "PAID" && (
                   <>

@@ -23,6 +23,8 @@ interface Invoice {
   invoiceNumber: string;
   amount: number;
   discountAmount: number;
+  taxRateBps: number;
+  taxAmount: number;
   status: "DRAFT" | "SENT" | "VIEWED" | "PAID" | "VOIDED" | "OVERDUE";
   dueDate: string | null;
   paidAt: string | null;
@@ -153,7 +155,7 @@ export default function InvoiceDetailPage() {
         ...previous,
         status: "PAID",
         paidAt: new Date().toISOString(),
-        paidAmount: previous.amount - previous.discountAmount,
+        paidAmount: previous.amount - previous.discountAmount + previous.taxAmount,
       };
     });
   }, []);
@@ -359,7 +361,8 @@ export default function InvoiceDetailPage() {
   }
 
   const colors = statusColors[invoice.status];
-  const balance = invoice.amount - invoice.discountAmount - (invoice.paidAmount || 0);
+  const balance =
+    invoice.amount - invoice.discountAmount + invoice.taxAmount - (invoice.paidAmount || 0);
   const isOverdue =
     invoice.status === "OVERDUE" ||
     (invoice.dueDate && new Date(invoice.dueDate) < new Date());
@@ -459,10 +462,17 @@ export default function InvoiceDetailPage() {
                     </div>
                   )}
 
+                  {invoice.taxAmount > 0 && (
+                    <div className="flex justify-between">
+                      <p className="text-gray-700">Sales tax ({(invoice.taxRateBps / 100).toFixed(2)}%)</p>
+                      <p className="text-gray-700">${(invoice.taxAmount / 100).toFixed(2)}</p>
+                    </div>
+                  )}
+
                   <div className="pt-4 border-t border-gray-200 flex justify-between">
                     <p className="text-lg font-semibold text-gray-900">Total Amount Due</p>
                     <p className="text-2xl font-bold text-gray-900">
-                      ${((invoice.amount - invoice.discountAmount) / 100).toFixed(2)}
+                      ${((invoice.amount - invoice.discountAmount + invoice.taxAmount) / 100).toFixed(2)}
                     </p>
                   </div>
                 </div>

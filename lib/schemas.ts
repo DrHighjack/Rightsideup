@@ -100,6 +100,7 @@ export const adminInvoiceCreateSchema = z.object({
   orderId: z.string().optional(),
   amount: z.number().finite().positive("amount must be greater than 0").optional(),
   discountAmount: z.number().finite().min(0).optional().default(0),
+  taxRateBps: z.number().int().min(0).max(10000).optional().default(1040),
   dueDate: z.string().optional(),
   lineItems: z.array(z.object({
     description: z.string().trim().min(1, "Line item description is required").max(200),
@@ -116,6 +117,7 @@ export const adminInvoiceUpdateSchema = z
     status: z.enum(["DRAFT", "SENT", "VIEWED", "PAID", "VOIDED", "OVERDUE"]).optional(),
     amount: z.number().finite().positive().optional(),
     discountAmount: z.number().finite().min(0).optional(),
+    taxRateBps: z.number().int().min(0).max(10000).optional(),
     dueDate: z.string().nullable().optional(),
     paidAmount: z.number().finite().min(0).optional(),
     paidAt: z.string().nullable().optional(),

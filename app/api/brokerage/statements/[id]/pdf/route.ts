@@ -59,6 +59,7 @@ function StatementPdf({ statement, snapshot }: {
         React.createElement(View, { style: styles.summary },
           React.createElement(View, { style: styles.summaryRow }, React.createElement(Text, null, "Subtotal"), React.createElement(Text, null, money(invoice.subtotalCents))),
           invoice.discountCents > 0 ? React.createElement(View, { style: styles.summaryRow }, React.createElement(Text, null, "Discount"), React.createElement(Text, null, `-${money(invoice.discountCents)}`)) : null,
+          invoice.taxCents > 0 ? React.createElement(View, { style: styles.summaryRow }, React.createElement(Text, null, `Sales tax (${(invoice.taxRateBps / 100).toFixed(2)}%)`), React.createElement(Text, null, money(invoice.taxCents))) : null,
           invoice.previouslyPaidCents > 0 ? React.createElement(View, { style: styles.summaryRow }, React.createElement(Text, null, "Previously paid"), React.createElement(Text, null, `-${money(invoice.previouslyPaidCents)}`)) : null,
           React.createElement(View, { style: styles.summaryRow }, React.createElement(Text, { style: { fontWeight: 700 } }, "Balance"), React.createElement(Text, { style: { fontWeight: 700 } }, money(invoice.balanceCents)))
         )

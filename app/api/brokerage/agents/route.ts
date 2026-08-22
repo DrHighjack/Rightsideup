@@ -79,6 +79,7 @@ export async function GET() {
             _sum: {
               amount: true,
               discountAmount: true,
+              taxAmount: true,
               paidAmount: true,
             },
           })
@@ -104,6 +105,7 @@ export async function GET() {
           invoiceCount: row._count._all,
           totalAmount: row._sum.amount || 0,
           totalDiscount: row._sum.discountAmount || 0,
+          totalTax: row._sum.taxAmount || 0,
           totalPaid: row._sum.paidAmount || 0,
         },
       ])
@@ -118,11 +120,12 @@ export async function GET() {
         invoiceCount: 0,
         totalAmount: 0,
         totalDiscount: 0,
+        totalTax: 0,
         totalPaid: 0,
       };
       const outstanding = Math.max(
         0,
-        totals.totalAmount - totals.totalDiscount - totals.totalPaid
+        totals.totalAmount - totals.totalDiscount + totals.totalTax - totals.totalPaid
       );
       const isInactive = Array.isArray(agent.tags) && agent.tags.includes("INACTIVE");
 
@@ -130,7 +133,7 @@ export async function GET() {
         ...agent,
         isInactive,
         invoiceCount: totals.invoiceCount,
-        totalAmount: totals.totalAmount,
+        totalAmount: totals.totalAmount - totals.totalDiscount + totals.totalTax,
         totalPaid: totals.totalPaid,
         outstanding,
         overdueCount: overdueByUser.get(agent.id) || 0,

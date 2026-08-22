@@ -14,7 +14,7 @@ const HARDCODED_INVENTORY_IMAGE_BY_NAME: Record<string, string> = {
   'custom rider change': '/uploads/inventory/forleaserider.png',
   'white flyer box': '/uploads/inventory/whiteflyerbox.png',
   // HEIC may fail in browser rendering on some clients; use safe fallback for now.
-  'white signpost': '/uploads/inventory/black_signpost.png',
+  'white signpost': '/uploads/inventory/sign-11.jpg',
 };
 
 function resolveInventoryImageUrl(name: string, imageUrl: string | null): string | null {

@@ -3,6 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import PageSkeleton from "../../components/PageSkeleton";
 
 interface Invoice {
   id: string;
@@ -33,6 +35,7 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 
 export default function InvoicesPage() {
   const { data: session } = useSession();
+  const router = useRouter();
   const isTC = (session?.user as any)?.role === "TC";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
@@ -156,7 +159,7 @@ export default function InvoicesPage() {
         {/* Invoices Table */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {loading ? (
-            <div className="p-8 text-center text-gray-500">Loading invoices...</div>
+            <PageSkeleton variant="list" />
           ) : error ? (
             <div className="p-8 text-center">
               <p className="font-medium text-red-700">{error}</p>
@@ -207,7 +210,19 @@ export default function InvoicesPage() {
                     const colors = statusColors[invoice.status];
                     const balance = invoice.amount - invoice.discountAmount - (invoice.paidAmount || 0);
                     return (
-                      <tr key={invoice.id} className="border-b border-gray-200 hover:bg-gray-50">
+                      <tr
+                        key={invoice.id}
+                        className="cursor-pointer border-b border-gray-200 hover:bg-gray-50"
+                        role="link"
+                        tabIndex={0}
+                        onClick={() => router.push(`/dashboard/invoices/${invoice.id}`)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            router.push(`/dashboard/invoices/${invoice.id}`);
+                          }
+                        }}
+                      >
                         <td className="px-6 py-4 font-mono text-gray-900 font-medium">
                           <Link
                             href={`/dashboard/invoices/${invoice.id}`}
@@ -217,7 +232,7 @@ export default function InvoicesPage() {
                           </Link>
                         </td>
                         <td className="px-6 py-4 text-right font-semibold text-gray-900">
-                          {formatCurrency(invoice.amount * 100)}
+                          {formatCurrency(invoice.amount)}
                         </td>
                         {isTC && (
                           <td className="px-6 py-4 text-gray-700">
@@ -237,11 +252,11 @@ export default function InvoicesPage() {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right font-medium text-green-600">
-                          {invoice.paidAmount ? formatCurrency(invoice.paidAmount * 100) : "—"}
+                          {invoice.paidAmount ? formatCurrency(invoice.paidAmount) : "—"}
                         </td>
                         <td className="px-6 py-4 text-right font-medium">
                           <span className={balance > 0 ? "text-orange-600" : "text-green-600"}>
-                            {formatCurrency(balance * 100)}
+                            {formatCurrency(balance)}
                           </span>
                         </td>
                       </tr>

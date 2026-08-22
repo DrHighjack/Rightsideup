@@ -34,6 +34,7 @@ export async function GET(
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
+      include: { lineItems: true },
     });
 
     if (!invoice) {

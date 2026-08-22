@@ -86,9 +86,9 @@ export default function AdminInvoicesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: createForm.userId,
-          amount: parseFloat(createForm.amount),
+          amount: Math.round(parseFloat(createForm.amount) * 100),
           discountAmount: createForm.discountAmount
-            ? parseFloat(createForm.discountAmount)
+            ? Math.round(parseFloat(createForm.discountAmount) * 100)
             : 0,
           dueDate: createForm.dueDate || undefined,
         }),
@@ -322,7 +322,7 @@ export default function AdminInvoicesPage() {
             <div className="space-y-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-gray-900 mb-1">
-                  User Email *
+                  User ID *
                 </label>
                 <input
                   type="email"
@@ -334,7 +334,7 @@ export default function AdminInvoicesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Note: Enter the user ID (for now, use test value)
+                  Enter the realtor's account ID.
                 </p>
               </div>
 

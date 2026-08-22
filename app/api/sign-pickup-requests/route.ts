@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { location, dateNeeded, description } = body;
+    const { location, dateNeeded, description, deliveryMethod } = body;
 
     // Validation
     if (!location || !dateNeeded) {
@@ -29,6 +29,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!['PICKUP_QUOTE', 'MAIL_TO_US'].includes(deliveryMethod || 'PICKUP_QUOTE')) {
+      return NextResponse.json({ error: 'Invalid delivery method' }, { status: 400 });
+    }
+
     // Create the pickup request
     const pickupRequest = await prisma.signPickupRequest.create({
       data: {
@@ -36,6 +40,7 @@ export async function POST(request: NextRequest) {
         location,
         dateNeeded: new Date(dateNeeded),
         description: description || null,
+        deliveryMethod: deliveryMethod || 'PICKUP_QUOTE',
         status: 'PENDING',
       },
       include: {

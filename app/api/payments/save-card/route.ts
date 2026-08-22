@@ -20,32 +20,42 @@ export async function POST(request: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, vaultId: true },
+      select: { id: true, vaultId: true, paymentCardLast4: true, paymentCardNickname: true },
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (user.vaultId) {
-      return NextResponse.json({ success: true, hasCard: true });
-    }
-
     const { token } = saveCardSchema.parse(await request.json());
 
-    const vaultId = await createVaultRecord(token, user.id);
+    const vaultRecord = await createVaultRecord(token, user.id);
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { vaultId },
+    const card = await prisma.savedPaymentMethod.create({
+      data: {
+        userId: user.id,
+        fluidpayPaymentMethodId: vaultRecord.paymentMethodId,
+        last4: vaultRecord.last4,
+      },
+      select: { id: true, last4: true, nickname: true },
     });
 
-    return NextResponse.json({ success: true, hasCard: true });
+    if (!user.vaultId) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { vaultId: vaultRecord.paymentMethodId, paymentCardLast4: vaultRecord.last4 },
+      });
+    }
+
+    return NextResponse.json({ success: true, hasCard: true, card });
   } catch (error) {
     if (error instanceof ZodError) {
       return NextResponse.json({ error: "Invalid input", details: error.flatten() }, { status: 400 });
     }
     console.error("Failed to save card:", error);
-    return NextResponse.json({ error: "Failed to save card" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Failed to save card" },
+      { status: 500 }
+    );
   }
 }

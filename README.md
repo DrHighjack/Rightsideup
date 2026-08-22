@@ -25,6 +25,12 @@ Required environment variables:
 - `NEXT_PUBLIC_GOOGLE_MAPS_KEY` — Google Maps API key
 - `RESEND_API_KEY` — From resend.com
 - `RESEND_FROM_EMAIL` — Verified sender email
+- `FLUIDPAY_SECRET_KEY` — Server-only FluidPay API key
+- `FLUIDPAY_BASE_URL` — `https://sandbox.fluidpay.com` for testing, or the FluidPay production URL
+- `NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY` — FluidPay tokenizer public key
+- `NEXT_PUBLIC_FLUIDPAY_BASE_URL` — `https://sandbox.fluidpay.com` for testing, matching the server base URL
+
+FluidPay is used for invoice payments. The customer payment page tokenizes card details in the browser, then the server charges the token or the customer's saved vault record. Never expose `FLUIDPAY_SECRET_KEY` to the browser or commit it to the repository.
 
 ### 3. Database Setup
 

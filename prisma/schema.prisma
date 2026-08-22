@@ -111,6 +111,8 @@ model User {
   paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
   qboCustomerId  String?    // QuickBooks customer ID for this realtor
   vaultId        String?    @unique // FluidPay vault record ID for saved card on file
+  paymentCardLast4 String?
+  paymentCardNickname String?
   twoFactorSecret String?
   twoFactorEnabled Boolean   @default(false)
   createdAt      DateTime   @default(now())
@@ -120,6 +122,7 @@ model User {
   orders         Order[]
   invoices       Invoice[]
   paymentCards   PaymentCard[]
+  savedPaymentMethods SavedPaymentMethod[]
   invoicePayments InvoicePayment[]
   paymentSchedules InvoicePaymentSchedule[]
   assignedCredits Coupon[]     @relation("CouponAssignedUser")
@@ -159,6 +162,7 @@ model User {
   // Sign pickup requests
   signPickupRequests SignPickupRequest[] @relation("SignPickupRequests")
   approvedPickupRequests SignPickupRequest[] @relation("ApprovedSignPickupRequests")
+  printerPartnershipRequests PrinterPartnershipRequest[]
   
   @@map("users")
   @@index([brokerageId])
@@ -229,6 +233,7 @@ model Invoice {
   reminderCount     Int              @default(0)
   payments          InvoicePayment[]
   paymentSchedules  InvoicePaymentSchedule[]
+  lineItems         InvoiceLineItem[]
   
   @@map("invoices")
   @@index([userId])
@@ -236,6 +241,20 @@ model Invoice {
   @@index([dueDate])
   @@index([qboInvoiceId])
   @@index([fluidpayTransactionId])
+}
+
+model InvoiceLineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description String
+  quantity    Int      @default(1)
+  unitAmount  Int
+  totalAmount Int
+  createdAt   DateTime @default(now())
+
+  @@map("invoice_line_items")
+  @@index([invoiceId])
 }
 
 model Sign {
@@ -370,6 +389,20 @@ model PaymentCard {
   paymentSchedules      InvoicePaymentSchedule[]
 
   @@map("payment_cards")
+  @@index([userId])
+}
+
+model SavedPaymentMethod {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fluidpayPaymentMethodId String @unique
+  last4              String?
+  nickname           String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@map("saved_payment_methods")
   @@index([userId])
 }
 
@@ -701,6 +734,21 @@ model SignPrinter {
   @@index([isActive])
 }
 
+model PrinterPartnershipRequest {
+  id              String   @id @default(cuid())
+  requestedByUserId String
+  requestedByUser User     @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  name            String
+  website         String
+  status          String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("printer_partnership_requests")
+  @@index([requestedByUserId])
+  @@index([status])
+}
+
 model InventoryItemPrinter {
   id              String        @id @default(cuid())
   inventoryItemId String
@@ -745,6 +793,7 @@ model SignPickupRequest {
   location        String    // Where the sign should be picked up from
   dateNeeded      DateTime  // When the sign is needed
   description     String?   // Optional details about the sign
+  deliveryMethod  String    @default("PICKUP_QUOTE") // PICKUP_QUOTE or MAIL_TO_US
   status          String    @default("PENDING") // PENDING, APPROVED, REJECTED, PICKED_UP
   approvedByUserId String?
   approvedByUser  User?     @relation("ApprovedSignPickupRequests", fields: [approvedByUserId], references: [id], onDelete: SetNull)

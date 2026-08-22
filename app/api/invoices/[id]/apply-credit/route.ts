@@ -1,0 +1,106 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const role = (session.user as { role?: string }).role;
+    const invoice = await prisma.invoice.findUnique({ where: { id: params.id } });
+    if (!invoice) {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+    if (role !== "ADMIN" && invoice.userId !== session.user.id) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    if (!["SENT", "VIEWED", "OVERDUE"].includes(invoice.status)) {
+      return NextResponse.json({ error: "Invoice is not payable" }, { status: 409 });
+    }
+
+    const balanceCents = Math.max(
+      0,
+      (invoice.amount || 0) - (invoice.discountAmount || 0) - (invoice.paidAmount || 0)
+    );
+    if (balanceCents <= 0) {
+      return NextResponse.json({ error: "Invoice has no balance due" }, { status: 400 });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const credit = await tx.coupon.findFirst({
+        where: {
+          assignedUserId: invoice.userId,
+          isCredit: true,
+          isActive: true,
+          remainingValue: { gt: 0 },
+          OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+        },
+        orderBy: { createdAt: "asc" },
+      });
+
+      if (!credit) {
+        throw new Error("No active credit is available for this invoice");
+      }
+
+      const creditCents = Math.round((credit.remainingValue || 0) * 100);
+      const appliedCents = Math.min(balanceCents, creditCents);
+      const appliedDollars = appliedCents / 100;
+      const remainingCredit = Math.max(0, (credit.remainingValue || 0) - appliedDollars);
+      const newDiscountAmount = (invoice.discountAmount || 0) + appliedCents;
+      const newBalance = balanceCents - appliedCents;
+
+      await tx.coupon.update({
+        where: { id: credit.id },
+        data: {
+          remainingValue: remainingCredit,
+          usedCount: { increment: 1 },
+          isActive: remainingCredit > 0,
+        },
+      });
+
+      const updatedInvoice = await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          discountAmount: newDiscountAmount,
+          ...(newBalance === 0
+            ? { status: "PAID", paidAt: new Date(), paidAmount: (invoice.paidAmount || 0) + appliedCents }
+            : {}),
+        },
+      });
+
+      await tx.invoicePayment.create({
+        data: {
+          invoiceId: invoice.id,
+          userId: invoice.userId,
+          amount: appliedDollars,
+          status: "PAID",
+          payerType: "AGENT",
+          notes: `Paid with credit ${credit.code}`,
+        },
+      });
+
+      return { updatedInvoice, appliedCents, creditCode: credit.code, remainingCredit };
+    });
+
+    return NextResponse.json({
+      success: true,
+      invoice: result.updatedInvoice,
+      appliedAmount: result.appliedCents,
+      creditCode: result.creditCode,
+      remainingCredit: result.remainingCredit,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to apply credit";
+    if (message === "No active credit is available for this invoice") {
+      return NextResponse.json({ error: message }, { status: 409 });
+    }
+    console.error("Failed to apply invoice credit:", error);
+    return NextResponse.json({ error: "Failed to apply credit" }, { status: 500 });
+  }
+}

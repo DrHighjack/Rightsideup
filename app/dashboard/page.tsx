@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import GoogleMapReact from "google-map-react";
 import RealtorOnboardingBanner, { OnboardingStatus } from "./components/RealtorOnboardingBanner";
+import PageSkeleton from "../components/PageSkeleton";
 
 interface OrderData {
   id: string;
@@ -127,6 +128,7 @@ export default function DashboardPage() {
     allOrders: [],
   });
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [readyCardHidden, setReadyCardHidden] = useState(false);
   const [mapKey, setMapKey] = useState("");
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
@@ -160,6 +162,9 @@ export default function DashboardPage() {
       try {
         const response = await fetch("/api/orders?limit=200");
         const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || `Unable to load dashboard (HTTP ${response.status})`);
+        }
 
         if (data.orders) {
           const allOrders: OrderData[] = Array.isArray(data.orders) ? data.orders : [];
@@ -201,6 +206,7 @@ export default function DashboardPage() {
         }
       } catch (error) {
         console.error("Failed to fetch stats:", error);
+        setLoadError(error instanceof Error ? error.message : "Unable to load dashboard");
       } finally {
         setLoading(false);
       }
@@ -373,7 +379,17 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return <div className="text-center text-slate-500">Loading...</div>;
+    return <PageSkeleton variant="dashboard" />;
+  }
+
+  if (loadError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+        <h1 className="font-display text-lg font-semibold text-red-900">Dashboard unavailable</h1>
+        <p className="mt-2 text-sm text-red-800">{loadError}</p>
+        <button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-lg bg-navy-900 px-4 py-2 text-sm font-medium text-white hover:bg-navy-700">Try again</button>
+      </div>
+    );
   }
 
   const userRole = (session?.user as any)?.role;
@@ -422,6 +438,22 @@ export default function DashboardPage() {
           </Link>
         </div>
       )}
+
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Active Orders</p>
+          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.active}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Completed This Month</p>
+          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.completedThisMonth}</p>
+        </div>
+        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</p>
+          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.pending}</p>
+        </div>
+      </div>
 
       {/* Orders map */}
       <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
@@ -548,22 +580,6 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
-      </div>
-
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Active Orders</p>
-          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.active}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Completed This Month</p>
-          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.completedThisMonth}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</p>
-          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.pending}</p>
-        </div>
       </div>
 
       {/* Recent orders */}

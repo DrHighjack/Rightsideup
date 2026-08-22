@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invoice has no balance due" }, { status: 400 });
     }
 
-    const amountCents = Math.round(totalDue * 100);
+    const amountCents = Math.round(totalDue);
 
     const chargeResult = useVault
       ? await (async () => {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           if (!vaultId) {
             throw new Error("No card on file for this user");
           }
-          return chargeVaultRecord(vaultId, amountCents, invoice.id);
+          return chargeVaultRecord(invoice.user.id, vaultId, amountCents, invoice.id);
         })()
       : await (async () => {
           if (!token) {

@@ -6,8 +6,8 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB in bytes
-const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
-const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp'];
+const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'application/pdf'];
+const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'pdf'];
 
 const getBlobToken = () => process.env.BLOB_READ_WRITE_TOKEN || process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN;
 const shouldUseLocalUploads = () => process.env.UPLOAD_STORAGE === 'local' || process.env.NODE_ENV !== 'production';
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     // Validate file type
     if (!ALLOWED_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Only JPG, PNG, and WebP images are allowed' },
+        { error: 'Only JPG, JPEG, PNG, and PDF files are allowed' },
         { status: 400 }
       );
     }
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     const fileExtension = fileName.split('.').pop();
     if (!fileExtension || !ALLOWED_EXTENSIONS.includes(fileExtension)) {
       return NextResponse.json(
-        { error: 'Invalid file extension. Only .jpg, .png, .webp allowed' },
+        { error: 'Invalid file extension. Only .jpg, .jpeg, .png, and .pdf are allowed' },
         { status: 400 }
       );
     }
@@ -62,6 +62,19 @@ export async function POST(request: NextRequest) {
     // Convert file to buffer
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    const isPng = buffer.length >= 8 && buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const isJpeg = buffer.length >= 3 && buffer.subarray(0, 3).equals(Buffer.from([255, 216, 255]));
+    const isPdf = buffer.subarray(0, 5).toString('ascii') === '%PDF-';
+    const hasValidSignature = (file.type === 'image/png' && isPng) ||
+      (file.type === 'image/jpeg' && isJpeg) ||
+      (file.type === 'application/pdf' && isPdf);
+
+    if (!hasValidSignature) {
+      return NextResponse.json(
+        { error: 'File contents do not match the selected PNG, JPEG, or PDF type' },
+        { status: 400 }
+      );
+    }
 
     // Generate unique filename with timestamp
     const timestamp = Date.now();

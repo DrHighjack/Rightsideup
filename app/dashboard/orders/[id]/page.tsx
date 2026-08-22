@@ -43,6 +43,7 @@ export default function OrderDetailPage() {
   const id = params.id as string;
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [creditCode, setCreditCode] = useState("");
   const [applyingCredit, setApplyingCredit] = useState(false);
   const [creditMessage, setCreditMessage] = useState("");
@@ -64,7 +65,8 @@ export default function OrderDetailPage() {
       try {
         const response = await fetch(`/api/orders/${id}`);
         if (!response.ok) {
-          throw new Error("Failed to fetch order");
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `Unable to load order (HTTP ${response.status})`);
         }
         const data = await response.json();
         const normalizedOrder = normalizeOrder(data);
@@ -72,6 +74,7 @@ export default function OrderDetailPage() {
         setRequestedDate(calendarDateValue(normalizedOrder.scheduledDate));
       } catch (error) {
         console.error("Error fetching order:", error);
+        setLoadError(error instanceof Error ? error.message : "Unable to load order");
       } finally {
         setLoading(false);
       }
@@ -202,7 +205,7 @@ export default function OrderDetailPage() {
   }
 
   if (!order) {
-    return <div className="rounded-xl border border-slate-200 bg-white py-12 text-center text-slate-500 shadow-sm">Order not found</div>;
+    return <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center"><p className="font-semibold text-red-900">Unable to load order</p><p className="mt-2 text-sm text-red-800">{loadError || "The order could not be loaded."}</p><button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-lg bg-navy-900 px-4 py-2 text-sm font-medium text-white">Try again</button></div>;
   }
 
   return (

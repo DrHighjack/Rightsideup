@@ -125,7 +125,7 @@ export async function POST(
         updated.dueDate ? new Date(updated.dueDate).toLocaleDateString() : "Not specified",
         "Service provided",
         ((updated.amount || 0) / 100).toFixed(2),
-        `${appUrl}/admin/invoices/${updated.id}`
+        `${appUrl}/dashboard/invoices/${updated.id}`
       );
 
       await sendEmail({

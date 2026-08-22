@@ -23,7 +23,7 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
   const [customPostForm, setCustomPostForm] = useState({
     postName: 'Custom Sign Post',
     colorHex: '#1d4ed8',
-    material: 'METAL',
+    material: 'WOOD',
     postHeight: '72',
     notes: '',
   });
@@ -245,7 +245,6 @@ export function SignSelector({ selectedSignId, onSelectSign }: SignSelectorProps
                     onChange={(e) => setCustomPostForm((prev) => ({ ...prev, material: e.target.value }))}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
                   >
-                    <option value="METAL">Metal</option>
                     <option value="WOOD">Wood</option>
                   </select>
                 </div>

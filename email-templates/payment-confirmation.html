@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Confirmation</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 24px 12px; background: #f3f4f6; color: #334155; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; }
+    .container { max-width: 600px; margin: 0 auto; overflow: hidden; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 10px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); }
+    .header { padding: 36px 28px; color: #ffffff; text-align: center; background: linear-gradient(135deg, #047857 0%, #065f46 100%); }
+    .header h1 { margin: 0 0 8px; font-size: 28px; line-height: 1.2; }
+    .header p { margin: 0; font-size: 15px; opacity: 0.95; }
+    .content { padding: 32px 28px; }
+    .greeting { margin: 0 0 22px; font-size: 16px; line-height: 1.6; }
+    .confirmation { margin: 22px 0; padding: 16px; border: 1px solid #a7f3d0; border-left: 4px solid #059669; border-radius: 7px; background: #ecfdf5; color: #065f46; font-size: 14px; line-height: 1.6; }
+    .details { margin: 22px 0; padding: 18px; border: 1px solid #dbeafe; border-radius: 7px; background: #f8fbff; }
+    .row { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+    .row:first-child { padding-top: 0; }
+    .row:last-child { padding-bottom: 0; border-bottom: 0; }
+    .label { color: #64748b; }
+    .value { color: #0f172a; font-weight: 600; text-align: right; }
+    .total { margin-top: 14px; padding: 14px; border-radius: 6px; background: #d1fae5; }
+    .total .label, .total .value { color: #065f46; font-size: 16px; font-weight: 700; }
+    .button-wrap { margin: 26px 0 8px; text-align: center; }
+    .button { display: inline-block; padding: 13px 22px; border-radius: 6px; color: #ffffff !important; background: #047857; font-size: 15px; font-weight: 700; text-decoration: none; }
+    .support { margin-top: 28px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #64748b; font-size: 13px; line-height: 1.6; }
+    .support a { color: #2563eb; text-decoration: none; }
+    .footer { padding: 22px 28px; border-top: 1px solid #e2e8f0; background: #f8fafc; color: #64748b; font-size: 12px; line-height: 1.6; text-align: center; }
+    @media (max-width: 600px) {
+      body { padding: 0; }
+      .container { border-radius: 0; }
+      .content { padding: 26px 20px; }
+      .header { padding: 32px 20px; }
+      .footer { padding: 20px; }
+      .row { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .value { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Payment Received</h1>
+      <p>Thank you for your payment to North Shore Sign Co.</p>
+    </div>
+
+    <div class="content">
+      <div class="greeting">
+        <p style="margin: 0;">Hi {{CUSTOMER_NAME}},</p>
+        <p style="margin: 12px 0 0;">Your payment was successfully received. Keep this email for your records.</p>
+      </div>
+
+      <div class="confirmation">
+        <strong>Your payment is confirmed.</strong><br />
+        Invoice {{INVOICE_NUMBER}} has been paid.
+      </div>
+
+      <div class="details">
+        <div class="row"><span class="label">Invoice number</span><span class="value">{{INVOICE_NUMBER}}</span></div>
+        <div class="row"><span class="label">Payment date</span><span class="value">{{PAYMENT_DATE}}</span></div>
+        <div class="row"><span class="label">Payment method</span><span class="value">{{PAYMENT_METHOD}}</span></div>
+        <div class="row"><span class="label">Transaction ID</span><span class="value">{{TRANSACTION_ID}}</span></div>
+        <div class="row total"><span class="label">Amount paid</span><span class="value">{{AMOUNT_PAID}}</span></div>
+      </div>
+
+      <div class="button-wrap">
+        <a class="button" href="{{INVOICE_LINK}}">View Invoice</a>
+      </div>
+
+      <div class="support">
+        Questions about this payment? Contact us at
+        <a href="mailto:billing@northshoresignco.com">billing@northshoresignco.com</a>
+        or call <a href="tel:2066596323">(206) 659-6323</a>.
+      </div>
+    </div>
+
+    <div class="footer">
+      <strong>North Shore Sign Co</strong><br />
+      6189 NE Radford Dr Apt 1911, Seattle, WA 98115<br />
+      This is an automated payment confirmation. Please do not reply to this email.
+    </div>
+  </div>
+</body>
+</html>

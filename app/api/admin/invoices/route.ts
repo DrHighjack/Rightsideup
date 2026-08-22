@@ -120,6 +120,14 @@ export async function POST(request: NextRequest) {
         discountAmount: discountAmount || 0,
         dueDate: dueDate ? new Date(dueDate) : undefined,
         status: "DRAFT",
+        lineItems: {
+          create: {
+            description: "Service charge",
+            quantity: 1,
+            unitAmount: Math.round(amount),
+            totalAmount: Math.round(amount),
+          },
+        },
       },
       include: {
         user: {

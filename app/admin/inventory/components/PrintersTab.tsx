@@ -14,15 +14,58 @@ interface Printer {
   createdAt: string;
 }
 
+interface PartnershipRequest {
+  id: string;
+  name: string;
+  website: string;
+  createdAt: string;
+  requestedByUser: { firstName: string; lastName: string; email: string };
+}
+
 export function PrintersTab() {
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<Printer | null>(null);
+  const [requests, setRequests] = useState<PartnershipRequest[]>([]);
+  const [requestError, setRequestError] = useState('');
+  const [reviewingRequestId, setReviewingRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPrinters();
+    fetchRequests();
   }, []);
+
+  const fetchRequests = async () => {
+    try {
+      const response = await fetch('/api/admin/printer-partnership-requests');
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to load printer requests');
+      setRequests(data.requests || []);
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'Failed to load printer requests');
+    }
+  };
+
+  const reviewRequest = async (requestId: string, decision: 'APPROVED' | 'REJECTED') => {
+    setReviewingRequestId(requestId);
+    setRequestError('');
+    try {
+      const response = await fetch('/api/admin/printer-partnership-requests', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId, decision }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to review printer request');
+      setRequests((previous) => previous.filter((request) => request.id !== requestId));
+      if (decision === 'APPROVED') await fetchPrinters();
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'Failed to review printer request');
+    } finally {
+      setReviewingRequestId(null);
+    }
+  };
 
   const fetchPrinters = async () => {
     try {
@@ -59,6 +102,27 @@ export function PrintersTab() {
 
   return (
     <div>
+      {requests.length > 0 && (
+        <div className="mb-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-lg font-bold text-amber-950">Pending printer requests</h2>
+          <div className="mt-3 space-y-3">
+            {requests.map((request) => (
+              <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-white p-4">
+                <div>
+                  <p className="font-semibold text-gray-900">{request.name}</p>
+                  <a href={request.website} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline">{request.website}</a>
+                  <p className="mt-1 text-xs text-gray-500">Requested by {request.requestedByUser.firstName} {request.requestedByUser.lastName} ({request.requestedByUser.email})</p>
+                </div>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => void reviewRequest(request.id, 'REJECTED')} disabled={reviewingRequestId === request.id} className="rounded-md border border-red-200 px-3 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50">Reject</button>
+                  <button type="button" onClick={() => void reviewRequest(request.id, 'APPROVED')} disabled={reviewingRequestId === request.id} className="rounded-md bg-green-700 px-3 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50">Approve</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {requestError && <p className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{requestError}</p>}
       {/* Add Printer Button */}
       <button
         onClick={() => {

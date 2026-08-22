@@ -29,6 +29,14 @@ interface TCPendingInvite {
   expiresAt: string;
 }
 
+interface RemovableSign {
+  id: string;
+  signNumber: string | null;
+  type: string;
+  status: string;
+  deployedAddress: string | null;
+}
+
 export default function NewOrderPage() {
   return (
     <Suspense fallback={<div className="text-sm text-slate-600">Loading order form...</div>}>
@@ -52,12 +60,20 @@ function NewOrderPageContent() {
     notes: '',
   });
   const [selectedSignId, setSelectedSignId] = useState<string | null>(null);
+  const [removableSigns, setRemovableSigns] = useState<RemovableSign[]>([]);
+  const [loadingRemovableSigns, setLoadingRemovableSigns] = useState(false);
   const [signSetup, setSignSetup] = useState<"CLIENT_INVENTORY_SIGN" | "SELF_HANG">("CLIENT_INVENTORY_SIGN");
   const [postColor, setPostColor] = useState<'WHITE' | 'BLACK' | 'CUSTOM'>('WHITE');
   const [selectedAddOns, setSelectedAddOns] = useState<{ [key: string]: number }>({});
   const [use811Service, setUse811Service] = useState(true);
   const [self811Accepted, setSelf811Accepted] = useState(false);
   const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [showNoLedModal, setShowNoLedModal] = useState(false);
+  const [noLedOptOut, setNoLedOptOut] = useState(false);
+  const [rfidListingUrl, setRfidListingUrl] = useState('');
+  const [showRfidModal, setShowRfidModal] = useState(false);
+  const [pendingRfidQuantity, setPendingRfidQuantity] = useState(0);
+  const [rfidModalError, setRfidModalError] = useState('');
   const [hasAcceptedOrderPolicies, setHasAcceptedOrderPolicies] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
   const [error, setError] = useState('');
@@ -85,6 +101,24 @@ function NewOrderPageContent() {
   const is811Relevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
   const isSignSetupRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
   const isPlacementRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
+
+  useEffect(() => {
+    if (formData.type !== 'REMOVAL') return;
+    const fetchRemovableSigns = async () => {
+      try {
+        setLoadingRemovableSigns(true);
+        const response = await fetch('/api/signs/mine');
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Unable to load removable signs');
+        setRemovableSigns(data.signs || []);
+      } catch (error) {
+        setError(error instanceof Error ? error.message : 'Unable to load removable signs');
+      } finally {
+        setLoadingRemovableSigns(false);
+      }
+    };
+    void fetchRemovableSigns();
+  }, [formData.type]);
 
   useEffect(() => {
     async function fetchTCRealtors() {
@@ -338,6 +372,13 @@ function NewOrderPageContent() {
   };
 
   const handleAddOnChange = (addOnId: string, quantity: number) => {
+    const rfidItem = inventoryItems.find((item) => item.name.toLowerCase().includes('rfid'));
+    if (rfidItem?.id === addOnId && quantity > 0) {
+      setPendingRfidQuantity(quantity);
+      setRfidModalError('');
+      setShowRfidModal(true);
+      return;
+    }
     setSelectedAddOns((prev) => {
       const updated = { ...prev };
       if (quantity === 0) {
@@ -372,7 +413,19 @@ function NewOrderPageContent() {
     }
 
     if (!formData.address) {
-      setError('Address is required');
+      if (formData.type !== 'REMOVAL') {
+        setError('Address is required');
+        return;
+      }
+    }
+
+    if (formData.type === 'REMOVAL' && !selectedSignId) {
+      setError('Select a listing sign to remove');
+      return;
+    }
+
+    if (!formData.scheduledDate) {
+      setError('Requested date is required');
       return;
     }
 
@@ -405,10 +458,13 @@ function NewOrderPageContent() {
         scheduledDate: formData.scheduledDate || undefined,
         notes: formData.notes || undefined,
         selectedSignId: signSetup !== 'SELF_HANG' ? selectedSignId || undefined : undefined,
+        removalSignId: formData.type === 'REMOVAL' ? selectedSignId || undefined : undefined,
         addons: addons,
         self811Accepted: is811Relevant && !use811Service ? self811Accepted : false,
         signSetup: isSignSetupRelevant ? signSetup : undefined,
         postColor: isSignSetupRelevant ? postColor : undefined,
+        noLedOptOut,
+        rfidListingUrl: rfidListingUrl || undefined,
         realtorId: isTC ? selectedRealtorId : undefined,
       };
 
@@ -522,7 +578,7 @@ function NewOrderPageContent() {
   const selectedSignPriceCents =
     selectedSign && typeof selectedSign.pricePerUnit === 'number' ? selectedSign.pricePerUnit : 0;
   const addOnsTotalCents = selectedAddOnRows.reduce((sum, row) => sum + row.lineTotalCents, 0);
-  const postColorAdjustmentCents = !isSignSetupRelevant || postColor === 'WHITE' ? 0 : 500;
+  const postColorAdjustmentCents = !isSignSetupRelevant || postColor !== 'CUSTOM' ? 0 : 1500;
   const conciergeAdjustmentCents = !is811Relevant ? 0 : use811Service ? 2000 : -1000;
   const totalEstimatedPriceCents =
     selectedSignPriceCents + addOnsTotalCents + postColorAdjustmentCents + conciergeAdjustmentCents;
@@ -690,8 +746,28 @@ function NewOrderPageContent() {
           </div>
         </div>
 
-        {/* Address */}
-        <div>
+        {/* Address / removal listing */}
+        {formData.type === 'REMOVAL' ? (
+          <div>
+            <label htmlFor="removalSign" className="block text-sm font-medium text-slate-700 mb-1">Listing to remove *</label>
+            <select
+              id="removalSign"
+              value={selectedSignId || ''}
+              disabled={loadingRemovableSigns}
+              onChange={(event) => {
+                const sign = removableSigns.find((item) => item.id === event.target.value);
+                setSelectedSignId(event.target.value || null);
+                setFormData((previous) => ({ ...previous, address: sign?.deployedAddress || '' }));
+              }}
+              required
+              className="block h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900"
+            >
+              <option value="">{loadingRemovableSigns ? 'Loading listings...' : 'Select a listing to remove'}</option>
+              {removableSigns.map((sign) => <option key={sign.id} value={sign.id}>{sign.signNumber || sign.type} — {sign.deployedAddress || 'Address not recorded'}</option>)}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">Only signs currently assigned to your account are shown.</p>
+          </div>
+        ) : <div>
           <label htmlFor="address" className="block text-sm font-medium text-slate-700 mb-1">
             Address *
           </label>
@@ -713,7 +789,7 @@ function NewOrderPageContent() {
               ? "Start typing to search for addresses"
               : "Loading address search..."}
           </p>
-        </div>
+        </div>}
 
         {isPlacementRelevant && (
           <StreetViewPlacement
@@ -729,7 +805,7 @@ function NewOrderPageContent() {
         {/* Requested date */}
         <div>
           <label htmlFor="scheduledDate" className="block text-sm font-medium text-slate-700 mb-1">
-            Requested Date
+            Requested Date *
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
@@ -738,6 +814,7 @@ function NewOrderPageContent() {
               name="scheduledDate"
               value={formData.scheduledDate}
               onChange={handleChange}
+              required
               min={new Date().toISOString().split("T")[0]}
               className="block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 placeholder-slate-400 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             />
@@ -780,8 +857,8 @@ function NewOrderPageContent() {
             <div className="space-y-2">
               {([
                 { value: 'WHITE', label: 'White' },
-                { value: 'BLACK', label: 'Black (+$5)' },
-                { value: 'CUSTOM', label: 'Custom (+$5)' },
+                { value: 'BLACK', label: 'Black' },
+                { value: 'CUSTOM', label: 'Custom (+$15)' },
               ] as const).map((color) => (
                 <label
                   key={color.value}
@@ -799,6 +876,9 @@ function NewOrderPageContent() {
                     className="h-4 w-4 accent-navy-900"
                   />
                   <span className="ml-3 text-sm font-medium text-slate-700">{color.label}</span>
+                  {color.value === 'CUSTOM' && (
+                    <span title="In order to keep your post color in storage and in good inventory we charge an extra fee per custom order" aria-label="Custom post fee information" className="ml-2 inline-flex h-4 w-4 cursor-help items-center justify-center rounded-full border border-slate-400 text-[10px] font-bold text-slate-600">i</span>
+                  )}
                 </label>
               ))}
             </div>
@@ -848,7 +928,7 @@ function NewOrderPageContent() {
             </div>
           ) : (
             <>
-              {(!isSignSetupRelevant || signSetup !== 'SELF_HANG') && (
+              {formData.type !== 'REMOVAL' && (!isSignSetupRelevant || signSetup !== 'SELF_HANG') && (
                 <SignSelector selectedSignId={selectedSignId} onSelectSign={setSelectedSignId} />
               )}
 
@@ -870,9 +950,9 @@ function NewOrderPageContent() {
           <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="font-display font-semibold tracking-tight text-slate-900">811 Concierge Service</h3>
+                <h3 className="font-display font-semibold tracking-tight text-slate-900">811 Concierge</h3>
                 <p className="text-sm text-slate-600 mt-1">
-                  We will contact 811 to mark utilities before installation
+                  We flag the dig site, file the ticket, and follow up with utilities. NO scheduling can be concrete for these orders until we get the 811 ticket number from you.
                 </p>
               </div>
               <button
@@ -895,6 +975,19 @@ function NewOrderPageContent() {
                 ⚠️ You have opted out of 811 service and accepted the Self 811 Policy
               </div>
             )}
+          </div>
+        )}
+
+        {/* No-LED opt-out */}
+        {isSignSetupRelevant && (
+          <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+            <label className="flex items-start gap-3 text-sm text-slate-700">
+              <input type="checkbox" checked={noLedOptOut} onChange={(event) => {
+                if (event.target.checked) setShowNoLedModal(true);
+                else setNoLedOptOut(false);
+              }} className="mt-0.5 h-4 w-4 accent-navy-900" />
+              <span><strong>No LEDs (opt out)</strong><br /><span className="text-xs text-slate-500">Choose this if you do not want LED lighting on the post.</span></span>
+            </label>
           </div>
         )}
 
@@ -968,7 +1061,7 @@ function NewOrderPageContent() {
                 Post color adjustment: {formatMoneyFromCents(postColorAdjustmentCents)}
               </p>
               <p className="pt-1 text-base font-semibold text-slate-900">
-                811 adjustment: {formatMoneyFromCents(conciergeAdjustmentCents)}
+                  811 Concierge: {formatMoneyFromCents(conciergeAdjustmentCents)}
               </p>
               <p className="pt-1 text-base font-semibold text-slate-900">
                 Total estimated price: {formatMoneyFromCents(totalEstimatedPriceCents)}
@@ -1027,6 +1120,33 @@ function NewOrderPageContent() {
         onAccept={handlePolicyAccepted}
         onCancel={handlePolicyCancel}
       />
+      {showRfidModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold text-slate-900">Add RFID tags</h2>
+            <p className="mt-2 text-sm text-slate-600">Enter the listing website that customers should reach when they tap the tags.</p>
+            <label htmlFor="rfidListingUrl" className="mt-4 block text-sm font-medium text-slate-700">Listing website URL *</label>
+            <input id="rfidListingUrl" type="url" value={rfidListingUrl} onChange={(event) => setRfidListingUrl(event.target.value)} placeholder="https://your-listing.example.com" className="mt-1 block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900" required />
+            {rfidModalError && <p className="mt-2 text-sm text-red-700">{rfidModalError}</p>}
+            <div className="mt-6 flex gap-3">
+              <button type="button" onClick={() => { setShowRfidModal(false); setPendingRfidQuantity(0); }} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700">Cancel</button>
+              <button type="button" onClick={() => { try { new URL(rfidListingUrl); } catch { setRfidModalError('Enter a valid website URL, including https://'); return; } const rfidItem = inventoryItems.find((item) => item.name.toLowerCase().includes('rfid')); if (rfidItem) setSelectedAddOns((prev) => ({ ...prev, [rfidItem.id]: pendingRfidQuantity })); setShowRfidModal(false); setPendingRfidQuantity(0); }} className="flex-1 rounded-lg bg-navy-900 px-4 py-2 font-medium text-white">Add RFID tags</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showNoLedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+            <h2 className="text-xl font-semibold text-slate-900">Are you sure?</h2>
+            <p className="mt-2 text-sm text-slate-600">You are opting out of LEDs for this order. Confirm to continue.</p>
+            <div className="mt-6 flex gap-3">
+              <button type="button" onClick={() => setShowNoLedModal(false)} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700">Cancel</button>
+              <button type="button" onClick={() => { setNoLedOptOut(true); setShowNoLedModal(false); }} className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-medium text-white">Yes, opt out</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

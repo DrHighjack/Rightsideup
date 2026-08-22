@@ -48,6 +48,7 @@ export default function DashboardSignsPage() {
   const isTC = userRole === "TC";
   const [signs, setSigns] = useState<Sign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [activeAgent, setActiveAgent] = useState<ActiveAgent | null>(null);
 
   // Report Issue Modal
@@ -109,6 +110,7 @@ export default function DashboardSignsPage() {
   const fetchSigns = async () => {
     try {
       setLoading(true);
+      setLoadError("");
       const searchParams = new URLSearchParams();
       if (isTC && activeAgent?.id) {
         searchParams.set("realtorId", activeAgent.id);
@@ -119,12 +121,14 @@ export default function DashboardSignsPage() {
         : "/api/signs/mine";
 
       const res = await fetch(requestUrl);
-      if (res.ok) {
-        const data = await res.json();
-        setSigns(data.signs || []);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Unable to load signs (HTTP ${res.status})`);
       }
+      setSigns(data.signs || []);
     } catch (err) {
       console.error("Error fetching signs:", err);
+      setLoadError(err instanceof Error ? err.message : "Unable to load signs");
     } finally {
       setLoading(false);
     }
@@ -348,6 +352,18 @@ export default function DashboardSignsPage() {
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           {loading ? (
             <div className="p-8 text-center text-gray-500">Loading signs...</div>
+          ) : loadError ? (
+            <div className="p-6 text-center">
+              <p className="font-semibold text-red-900">Unable to load signs</p>
+              <p className="mt-2 text-sm text-red-700">{loadError}</p>
+              <button
+                type="button"
+                onClick={() => void fetchSigns()}
+                className="mt-4 rounded-lg bg-navy-900 px-4 py-2 text-sm font-medium text-white hover:bg-navy-700"
+              >
+                Try again
+              </button>
+            </div>
           ) : signs.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <p className="mb-2">You don't have any deployed signs yet.</p>

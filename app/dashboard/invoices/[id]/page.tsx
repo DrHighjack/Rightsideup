@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Script from "next/script";
+import PageSkeleton from "../../../components/PageSkeleton";
 
 declare global {
   interface Window {
@@ -27,7 +28,9 @@ interface Invoice {
   paidAt: string | null;
   paidAmount: number | null;
   availableCreditAmount?: number;
+  availableCredits?: Array<{ id: string; code: string; remainingValue: number | null }>;
   createdAt: string;
+  lineItems?: Array<{ id: string; description: string; quantity: number; unitAmount: number; totalAmount: number }>;
 }
 
 const statusColors: Record<string, { bg: string; text: string }> = {
@@ -51,6 +54,7 @@ export default function InvoiceDetailPage() {
 
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [loading, setLoading] = useState(true);
+  const [invoiceError, setInvoiceError] = useState("");
 
   const [cardOnFile, setCardOnFile] = useState<boolean | null>(null);
   const [cardOnFileLoading, setCardOnFileLoading] = useState(true);
@@ -66,6 +70,8 @@ export default function InvoiceDetailPage() {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState("");
   const [paymentError, setPaymentError] = useState("");
+  const [applyingCredit, setApplyingCredit] = useState(false);
+  const [creditMessage, setCreditMessage] = useState("");
 
   useEffect(() => {
     saveCardForFutureRef.current = saveCardForFuture;
@@ -76,13 +82,15 @@ export default function InvoiceDetailPage() {
       setLoading(true);
       const res = await fetch(`/api/invoices/${invoiceId}`);
       if (!res.ok) {
-        return;
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || `Unable to load invoice (HTTP ${res.status})`);
       }
 
       const data = (await res.json()) as Invoice;
       setInvoice(data);
     } catch (error) {
       console.error("Failed to fetch invoice:", error);
+      setInvoiceError(error instanceof Error ? error.message : "Unable to load invoice");
     } finally {
       setLoading(false);
     }
@@ -298,18 +306,37 @@ export default function InvoiceDetailPage() {
     tokenizerRef.current.submit();
   };
 
+  const handlePayWithCredit = async () => {
+    try {
+      setApplyingCredit(true);
+      setPaymentError("");
+      setCreditMessage("");
+      const response = await fetch(`/api/invoices/${invoiceId}/apply-credit`, { method: "POST" });
+      const data = (await response.json()) as { error?: string; invoice?: Invoice; appliedAmount?: number };
+      if (!response.ok || !data.invoice) {
+        throw new Error(data.error || "Unable to apply credit");
+      }
+      setInvoice(data.invoice);
+      setCreditMessage(`Credit applied: $${((data.appliedAmount || 0) / 100).toFixed(2)}`);
+    } catch (error) {
+      setPaymentError(error instanceof Error ? error.message : "Unable to apply credit");
+    } finally {
+      setApplyingCredit(false);
+    }
+  };
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <p className="text-gray-600">Loading invoice...</p>
-      </div>
-    );
+    return <PageSkeleton variant="detail" />;
   }
 
   if (!invoice) {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
-        <p className="text-gray-600">Invoice not found</p>
+        <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+          <p className="font-semibold text-red-900">Unable to load invoice</p>
+          <p className="mt-2 text-sm text-red-800">{invoiceError || "The invoice could not be loaded."}</p>
+          <button type="button" onClick={() => window.location.reload()} className="mt-4 rounded-lg bg-navy-900 px-4 py-2 text-sm font-medium text-white">Try again</button>
+        </div>
       </div>
     );
   }
@@ -324,7 +351,7 @@ export default function InvoiceDetailPage() {
     <>
       {sessionStatus === "authenticated" && !isTC && (
         <Script
-          src="https://sandbox.fluidpay.com/tokenizer/tokenizer.js"
+          src={`${fluidPayBaseUrl}/tokenizer/tokenizer.js`}
           strategy="afterInteractive"
           onLoad={() => setTokenizerScriptLoaded(true)}
           onError={() => setPaymentError("Failed to load payment form script")}
@@ -343,9 +370,17 @@ export default function InvoiceDetailPage() {
               </Link>
               <h1 className="text-3xl font-bold text-gray-900">{invoice.invoiceNumber}</h1>
             </div>
-            <span className={`px-4 py-2 rounded-lg font-semibold ${colors.bg} ${colors.text}`}>
-              {invoice.status}
-            </span>
+            <div className="flex flex-col items-end gap-3">
+              <span className={`px-4 py-2 rounded-lg font-semibold ${colors.bg} ${colors.text}`}>
+                {invoice.status}
+              </span>
+              <a
+                href={`/api/invoices/${invoice.id}/pdf`}
+                className="inline-flex items-center rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Download Invoice
+              </a>
+            </div>
           </div>
 
           {paymentMessage && (
@@ -366,6 +401,29 @@ export default function InvoiceDetailPage() {
             <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoice Details</h2>
+
+                <div className="mb-5 overflow-x-auto rounded-lg border border-gray-200">
+                  <table className="w-full text-left text-sm">
+                    <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                      <tr>
+                        <th className="px-4 py-3">Description</th>
+                        <th className="px-4 py-3 text-right">Qty</th>
+                        <th className="px-4 py-3 text-right">Unit price</th>
+                        <th className="px-4 py-3 text-right">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(invoice.lineItems?.length ? invoice.lineItems : [{ id: "fallback", description: "Service charge", quantity: 1, unitAmount: invoice.amount, totalAmount: invoice.amount }]).map((item) => (
+                        <tr key={item.id} className="border-b border-gray-100 last:border-0">
+                          <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
+                          <td className="px-4 py-3 text-right text-gray-700">{item.quantity}</td>
+                          <td className="px-4 py-3 text-right text-gray-700">${(item.unitAmount / 100).toFixed(2)}</td>
+                          <td className="px-4 py-3 text-right font-medium text-gray-900">${(item.totalAmount / 100).toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
                 <div className="space-y-4">
                   <div className="flex justify-between items-end">
@@ -456,8 +514,34 @@ export default function InvoiceDetailPage() {
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">Pay Invoice</h3>
 
+                  {Boolean(invoice.availableCreditAmount && invoice.availableCreditAmount > 0) && (
+                    <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
+                      <p className="font-semibold text-green-900">Account credit available</p>
+                      <p className="mt-1 text-sm text-green-800">
+                        ${invoice.availableCreditAmount?.toFixed(2)} can be applied to this invoice.
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => void handlePayWithCredit()}
+                        disabled={applyingCredit || processingPayment}
+                        className="mt-3 w-full rounded-lg bg-green-700 px-4 py-2 font-medium text-white hover:bg-green-800 disabled:opacity-50"
+                      >
+                        {applyingCredit ? "Applying credit..." : "Pay with credit"}
+                      </button>
+                    </div>
+                  )}
+
+                  {creditMessage && <p className="mb-4 text-sm font-medium text-green-700">{creditMessage}</p>}
+
                   {cardOnFileLoading ? (
                     <p className="text-sm text-gray-600">Checking saved payment method...</p>
+                  ) : cardOnFile === false ? (
+                    <div className="rounded-lg border border-orange-200 bg-orange-50 p-4">
+                      <h4 className="font-semibold text-orange-900">Payment method required</h4>
+                      <p className="mt-1 text-sm text-orange-800">
+                        You cannot pay this invoice until a card is saved to your account.
+                      </p>
+                    </div>
                   ) : (
                     <div className="space-y-4">
                       {cardOnFile && !showDifferentCard && (

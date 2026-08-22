@@ -26,8 +26,32 @@ interface InventoryItem {
   showQuantity?: boolean;
 }
 
+interface AssignedSign {
+  id: string;
+  signNumber: string | null;
+  type: string;
+  status: string;
+  deployedAddress: string | null;
+}
+
+interface CustomInventoryItem {
+  id: string;
+  signNumber: string | null;
+  type: string;
+  status: string;
+  notes: string | null;
+}
+
 export default function InventoryPage() {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [signs, setSigns] = useState<AssignedSign[]>([]);
+  const [signsLoading, setSignsLoading] = useState(true);
+  const [signsError, setSignsError] = useState('');
+  const [customItems, setCustomItems] = useState<CustomInventoryItem[]>([]);
+  const [customItemsLoading, setCustomItemsLoading] = useState(false);
+  const [customItemsError, setCustomItemsError] = useState('');
+  const [customType, setCustomType] = useState('Custom');
+  const [showCustomItemsModal, setShowCustomItemsModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
@@ -40,9 +64,16 @@ export default function InventoryPage() {
     location: '',
     dateNeeded: '',
     description: '',
+    deliveryMethod: 'PICKUP_QUOTE',
   });
   const [printers, setPrinters] = useState<Printer[]>([]);
   const [customSignLoading, setCustomSignLoading] = useState(false);
+  const [showCustomSignModal, setShowCustomSignModal] = useState(false);
+  const [showPrinterRequestModal, setShowPrinterRequestModal] = useState(false);
+  const [printerRequestForm, setPrinterRequestForm] = useState({ name: '', website: '' });
+  const [printerRequestLoading, setPrinterRequestLoading] = useState(false);
+  const [printerRequestError, setPrinterRequestError] = useState('');
+  const [printerRequestMessage, setPrinterRequestMessage] = useState('');
   const [customSignError, setCustomSignError] = useState<string | null>(null);
   const [customSignForm, setCustomSignForm] = useState({
     signName: '',
@@ -56,7 +87,37 @@ export default function InventoryPage() {
   useEffect(() => {
     fetchInventoryItems();
     fetchPrinters();
+    fetchSigns();
+    fetchCustomItems();
   }, []);
+
+  const fetchCustomItems = async () => {
+    try {
+      setCustomItemsLoading(true);
+      const response = await fetch('/api/custom-signs');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Unable to load custom items (HTTP ${response.status})`);
+      setCustomItems(data.signs || []);
+    } catch (error) {
+      setCustomItemsError(error instanceof Error ? error.message : 'Unable to load custom items');
+    } finally {
+      setCustomItemsLoading(false);
+    }
+  };
+
+  const fetchSigns = async () => {
+    try {
+      setSignsLoading(true);
+      const response = await fetch('/api/signs/mine');
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || `Unable to load signs (HTTP ${response.status})`);
+      setSigns(data.signs || []);
+    } catch (error) {
+      setSignsError(error instanceof Error ? error.message : 'Unable to load signs');
+    } finally {
+      setSignsLoading(false);
+    }
+  };
 
   const fetchPrinters = async () => {
     try {
@@ -96,6 +157,13 @@ export default function InventoryPage() {
     setModalOpen(true);
   };
 
+  const openCustomItems = (item: InventoryItem) => {
+    setCustomType(item.name);
+    setCustomItemsError('');
+    setShowCustomItemsModal(true);
+    void fetchCustomItems();
+  };
+
   const handleModalClose = () => {
     setModalOpen(false);
     setSelectedItem(null);
@@ -129,9 +197,11 @@ export default function InventoryPage() {
         throw new Error(data.error || 'Failed to submit request');
       }
 
-      setPickupForm({ location: '', dateNeeded: '', description: '' });
+      setPickupForm({ location: '', dateNeeded: '', description: '', deliveryMethod: 'PICKUP_QUOTE' });
       setShowPickupModal(false);
-      alert('Sign pickup request submitted successfully! An admin will review and notify you.');
+      alert(pickupForm.deliveryMethod === 'MAIL_TO_US'
+        ? 'Mail request submitted. We will send shipping details and the shipping cost.'
+        : 'Pickup request submitted. We will get you a quote for the pickup trip and contact you to confirm.');
     } catch (err) {
       setPickupError(err instanceof Error ? err.message : 'Failed to submit request');
     } finally {
@@ -194,6 +264,28 @@ export default function InventoryPage() {
     }
   };
 
+  const handlePrinterRequestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPrinterRequestError('');
+    setPrinterRequestMessage('');
+    setPrinterRequestLoading(true);
+    try {
+      const response = await fetch('/api/printer-partnership-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(printerRequestForm),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to submit printer request');
+      setPrinterRequestMessage('Request submitted. We will attempt to establish a new partnership so you can print with this printer.');
+      setPrinterRequestForm({ name: '', website: '' });
+    } catch (error) {
+      setPrinterRequestError(error instanceof Error ? error.message : 'Failed to submit printer request');
+    } finally {
+      setPrinterRequestLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -209,7 +301,7 @@ export default function InventoryPage() {
               onClick={() => setShowPickupModal(true)}
               className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors whitespace-nowrap"
             >
-              + Request New Sign for Pickup
+              Schedule a Sign to Be Picked Up
             </button>
           )}
         </div>
@@ -239,6 +331,39 @@ export default function InventoryPage() {
           </div>
         )}
 
+        {/* Assigned signs */}
+        <section className="mb-10">
+          <div className="mb-4 flex items-end justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">My Signs</h2>
+              <p className="mt-1 text-sm text-gray-600">Your assigned sign posts appear here.</p>
+            </div>
+            <button type="button" onClick={() => setShowCustomSignModal(true)} className="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+              Print a New Sign
+            </button>
+          </div>
+          <div className="overflow-hidden rounded-lg border border-gray-200 bg-white">
+            {signsLoading ? (
+              <div className="h-40 animate-pulse bg-slate-50" aria-label="Loading signs" />
+            ) : signsError ? (
+              <div className="p-6 text-center text-sm text-red-700">{signsError}</div>
+            ) : signs.length === 0 ? (
+              <div className="p-6 text-center text-sm text-gray-500">No assigned signs yet.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr><th className="px-5 py-3">Sign</th><th className="px-5 py-3">Type</th><th className="px-5 py-3">Status</th><th className="px-5 py-3">Location</th></tr>
+                  </thead>
+                  <tbody>
+                    {signs.map((sign) => <tr key={sign.id} className="border-b border-gray-100 last:border-0"><td className="px-5 py-4 font-mono font-medium text-gray-900">{sign.signNumber || '—'}</td><td className="px-5 py-4 text-gray-700">{sign.type}</td><td className="px-5 py-4 text-gray-700">{sign.status}</td><td className="px-5 py-4 text-gray-700">{sign.deployedAddress || '—'}</td></tr>)}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* Grid of Inventory Items */}
         {!loading && items.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -255,9 +380,28 @@ export default function InventoryPage() {
                 lowStockThreshold={item.lowStockThreshold}
                 printers={item.printers}
                 onOrderClick={() => handleOrderClick(item)}
+                onViewCustom={() => openCustomItems(item)}
                 showQuantity={item.showQuantity ?? true}
               />
             ))}
+          </div>
+        )}
+
+        {customItemsError && <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{customItemsError}</div>}
+
+        {customItemsLoading && <div className="mt-4 h-12 animate-pulse rounded-lg bg-slate-100" aria-label="Loading custom items" />}
+
+        {showCustomItemsModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+            <div className="max-h-[80vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div><h2 className="text-xl font-bold text-gray-900">{customType} items</h2><p className="mt-1 text-sm text-gray-600">Inventory count: {customItems.length}</p></div>
+                <button type="button" onClick={() => setShowCustomItemsModal(false)} aria-label="Close custom items" className="text-2xl text-gray-500">×</button>
+              </div>
+              <div className="mt-4 overflow-hidden rounded-lg border border-gray-200">
+                <table className="w-full text-left text-sm"><thead className="bg-gray-50 text-xs uppercase text-gray-500"><tr><th className="px-4 py-3">Sign</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Details</th></tr></thead><tbody>{customItems.length === 0 ? <tr><td colSpan={3} className="px-4 py-6 text-center text-gray-500">No custom items found.</td></tr> : customItems.map((customItem) => { let details: { name?: string; width?: string; height?: string } = {}; try { details = customItem.notes ? JSON.parse(customItem.notes) : {}; } catch {} return <tr key={customItem.id} className="border-t border-gray-100"><td className="px-4 py-3 font-medium">{customItem.signNumber || customItem.type}</td><td className="px-4 py-3">{customItem.status}</td><td className="px-4 py-3 text-gray-600">{details.width && details.height ? `${details.width} x ${details.height}` : details.name || 'Custom sign'}</td></tr>; })}</tbody></table>
+              </div>
+            </div>
           </div>
         )}
 
@@ -274,13 +418,13 @@ export default function InventoryPage() {
           />
         )}
 
-        {/* Custom Sign Order */}
-        {userRole && userRole !== 'ADMIN' && (
-          <div className="mt-12 rounded-xl border border-gray-200 bg-white p-6 sm:p-8">
-            <h2 className="text-2xl font-bold text-gray-900">Order a New Sign</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              Upload artwork, enter dimensions and material, then choose a pre-vetted printer.
-            </p>
+        {showCustomSignModal && userRole && userRole !== 'ADMIN' && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+            <div className="my-8 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-xl bg-white p-6 shadow-2xl sm:p-8">
+              <div className="flex items-start justify-between gap-4">
+                <div><h2 className="text-2xl font-bold text-gray-900">Print a New Sign</h2><p className="mt-2 text-sm text-gray-600">We will contact you within 24 hours to clarify and verify information and pricing, unless this is an exact reprint of a previously printed sign.</p></div>
+                <button type="button" onClick={() => setShowCustomSignModal(false)} aria-label="Close print new sign dialog" className="text-2xl text-gray-500 hover:text-gray-900">×</button>
+              </div>
 
             {customSignError && (
               <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -359,7 +503,16 @@ export default function InventoryPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Pre-vetted Printer *</label>
                 <select
                   value={customSignForm.printerId}
-                  onChange={(e) => setCustomSignForm((prev) => ({ ...prev, printerId: e.target.value }))}
+                    onChange={(e) => {
+                      if (e.target.value === 'REQUEST_NEW_PRINTER') {
+                        setPrinterRequestError('');
+                        setPrinterRequestMessage('');
+                        setShowPrinterRequestModal(true);
+                        setCustomSignForm((prev) => ({ ...prev, printerId: '' }));
+                      } else {
+                        setCustomSignForm((prev) => ({ ...prev, printerId: e.target.value }));
+                      }
+                    }}
                   disabled={customSignLoading}
                   className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900"
                 >
@@ -374,6 +527,7 @@ export default function InventoryPage() {
                       {printer.name}
                     </option>
                   ))}
+                  <option value="REQUEST_NEW_PRINTER">Request new printer</option>
                 </select>
               </div>
 
@@ -384,7 +538,26 @@ export default function InventoryPage() {
               >
                 {customSignLoading ? 'Submitting...' : 'Submit New Sign Request'}
               </button>
-            </form>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {showPrinterRequestModal && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
+            <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl">
+              <div className="flex items-start justify-between gap-4">
+                <div><h2 className="text-xl font-bold text-gray-900">Request new printer</h2><p className="mt-1 text-sm text-gray-600">Tell us which printer you would like to use.</p></div>
+                <button type="button" onClick={() => setShowPrinterRequestModal(false)} aria-label="Close printer request" className="text-2xl text-gray-500">×</button>
+              </div>
+              <form onSubmit={handlePrinterRequestSubmit} className="mt-5 space-y-4">
+                <div><label className="block text-sm font-medium text-gray-700">Printer name *</label><input required value={printerRequestForm.name} onChange={(e) => setPrinterRequestForm({ ...printerRequestForm, name: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" /></div>
+                <div><label className="block text-sm font-medium text-gray-700">Website *</label><input required type="url" placeholder="https://example.com" value={printerRequestForm.website} onChange={(e) => setPrinterRequestForm({ ...printerRequestForm, website: e.target.value })} className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-900" /></div>
+                {printerRequestError && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{printerRequestError}</p>}
+                {printerRequestMessage && <p className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-700">{printerRequestMessage}</p>}
+                <div className="flex gap-3 pt-2"><button type="button" onClick={() => setShowPrinterRequestModal(false)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700">Close</button><button type="submit" disabled={printerRequestLoading} className="flex-1 rounded-lg bg-green-700 px-4 py-2 font-medium text-white disabled:opacity-50">{printerRequestLoading ? 'Submitting...' : 'Submit request'}</button></div>
+              </form>
+            </div>
           </div>
         )}
 
@@ -393,7 +566,7 @@ export default function InventoryPage() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
               <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-4">Request New Sign for Pickup</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">Schedule a Sign to Be Picked Up</h2>
 
                 {pickupError && (
                   <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -415,6 +588,25 @@ export default function InventoryPage() {
                       className="w-full rounded-lg border border-gray-300 px-4 py-2 text-gray-900 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-600/30"
                       disabled={pickupLoading}
                     />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">How should we get the sign to you?</label>
+                    <div className="space-y-2 rounded-lg border border-gray-200 p-3">
+                      <label className="flex items-start gap-2 text-sm text-gray-700">
+                        <input type="radio" name="deliveryMethod" value="PICKUP_QUOTE" checked={pickupForm.deliveryMethod === 'PICKUP_QUOTE'} onChange={(e) => setPickupForm({ ...pickupForm, deliveryMethod: e.target.value })} disabled={pickupLoading} />
+                        <span><strong>Schedule pickup</strong><br /><span className="text-xs text-gray-500">We will send you a quote for the pickup trip before confirming.</span></span>
+                      </label>
+                      <label className="flex items-start gap-2 text-sm text-gray-700">
+                        <input type="radio" name="deliveryMethod" value="MAIL_TO_US" checked={pickupForm.deliveryMethod === 'MAIL_TO_US'} onChange={(e) => setPickupForm({ ...pickupForm, deliveryMethod: e.target.value })} disabled={pickupLoading} />
+                        <span><strong>Mail the sign to us</strong><br /><span className="text-xs text-gray-500">The sign is free; you cover shipping. Buy a label at <a href="https://www.pirateship.com/" target="_blank" rel="noreferrer" className="text-blue-600 underline">Pirate Ship</a>.</span></span>
+                      </label>
+                    </div>
+                    {pickupForm.deliveryMethod === 'MAIL_TO_US' && (
+                      <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                        <strong>Ship to:</strong><br />North Shore Sign Co<br />6189 NE Radford Dr Apt 1911<br />Seattle, WA 98115
+                      </div>
+                    )}
                   </div>
 
                   <div>
@@ -452,7 +644,7 @@ export default function InventoryPage() {
                       onClick={() => {
                         setShowPickupModal(false);
                         setPickupError(null);
-                        setPickupForm({ location: '', dateNeeded: '', description: '' });
+                        setPickupForm({ location: '', dateNeeded: '', description: '', deliveryMethod: 'PICKUP_QUOTE' });
                       }}
                       disabled={pickupLoading}
                       className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"

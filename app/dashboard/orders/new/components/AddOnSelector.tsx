@@ -60,7 +60,7 @@ export function AddOnSelector({ selectedAddOns, onAddOnChange }: AddOnSelectorPr
 
       const data = payload;
       const addOnItems = (data.items || []).filter(
-        (item: any) => (item.category === 'FLYER_BOX' || item.category === 'RIDER') && item.isOrderable
+        (item: any) => (item.category === 'FLYER_BOX' || item.category === 'RIDER' || item.category === 'OTHER') && item.isOrderable
       );
       setAddOns(addOnItems);
     } catch (err) {
@@ -110,76 +110,45 @@ export function AddOnSelector({ selectedAddOns, onAddOnChange }: AddOnSelectorPr
     );
   }
 
+  const renderAddOn = (addOn: AddOnItem, fullWidthImage = false) => {
+    const quantity = selectedAddOns[addOn.id] || 0;
+    const categoryLabel = addOn.category === 'FLYER_BOX' ? '📦 Flyer Box' : addOn.category === 'RIDER' ? '🏷️ Rider' : '📡 RFID';
+
+    return (
+      <div key={addOn.id} className="rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition">
+        <div className={fullWidthImage ? 'space-y-4' : 'flex gap-4'}>
+          <div className={fullWidthImage ? 'w-full' : 'flex-shrink-0'}>
+            <div className={`${fullWidthImage ? 'w-full aspect-[4/1]' : 'w-20 h-20'} rounded-md bg-gray-100 flex items-center justify-center text-2xl overflow-hidden`}>
+              {addOn.imageUrl ? <img src={addOn.imageUrl} alt={addOn.name} className="w-full h-full object-contain" /> : <span>{addOn.category === 'FLYER_BOX' ? '📦' : '🏷️'}</span>}
+            </div>
+          </div>
+          <div className="flex flex-1 flex-col justify-between">
+            <div>
+              <p className="text-xs text-gray-500 mb-1">{categoryLabel}</p>
+              <h4 className="font-medium text-gray-900">{addOn.name}</h4>
+              <p className="text-sm text-gray-600 mt-1">{formatPrice(addOn.pricePerUnit)} per unit</p>
+            </div>
+            <div className="flex items-center gap-2 mt-3">
+              <button type="button" onClick={() => handleQuantityChange(addOn.id, quantity - 1)} disabled={quantity === 0} className="px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">−</button>
+              <input type="number" min="0" value={quantity} onChange={(e) => handleQuantityChange(addOn.id, parseInt(e.target.value) || 0)} className="w-12 text-center border border-gray-300 rounded px-2 py-1" />
+              <button type="button" onClick={() => handleQuantityChange(addOn.id, quantity + 1)} className="px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const flyerBoxes = addOns.filter((addOn) => addOn.category === 'FLYER_BOX');
+  const riders = addOns.filter((addOn) => addOn.category === 'RIDER');
+  const otherAddOns = addOns.filter((addOn) => addOn.category !== 'FLYER_BOX' && addOn.category !== 'RIDER');
+
   return (
     <div>
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Add-Ons</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {addOns.map((addOn) => {
-          const quantity = selectedAddOns[addOn.id] || 0;
-          const categoryLabel = addOn.category === 'FLYER_BOX' ? '📦 Flyer Box' : '🏷️ Rider';
-          
-          return (
-            <div
-              key={addOn.id}
-              className="rounded-lg border border-gray-200 p-4 hover:border-gray-300 transition"
-            >
-              <div className="flex gap-4">
-                {/* Image */}
-                <div className="flex-shrink-0">
-                  <div className="w-20 h-20 rounded-md bg-gray-100 flex items-center justify-center text-2xl">
-                    {addOn.imageUrl ? (
-                      <img
-                        src={addOn.imageUrl}
-                        alt={addOn.name}
-                        className="w-full h-full object-cover rounded-md"
-                      />
-                    ) : (
-                      <span>{addOn.category === 'FLYER_BOX' ? '📦' : '🏷️'}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 flex flex-col justify-between">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">{categoryLabel}</p>
-                    <h4 className="font-medium text-gray-900">{addOn.name}</h4>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {formatPrice(addOn.pricePerUnit)} per unit
-                    </p>
-                  </div>
-
-                  {/* Quantity selector */}
-                  <div className="flex items-center gap-2 mt-3">
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(addOn.id, quantity - 1)}
-                      disabled={quantity === 0}
-                      className="px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      −
-                    </button>
-                    <input
-                      type="number"
-                      min="0"
-                      value={quantity}
-                      onChange={(e) => handleQuantityChange(addOn.id, parseInt(e.target.value) || 0)}
-                      className="w-12 text-center border border-gray-300 rounded px-2 py-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => handleQuantityChange(addOn.id, quantity + 1)}
-                      className="px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {flyerBoxes.length > 0 && <section className="mb-6"><h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Flyer Boxes</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{flyerBoxes.map((addOn) => renderAddOn(addOn))}</div></section>}
+      {otherAddOns.length > 0 && <section className="mb-6"><h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Other Add-Ons</h4><div className="grid grid-cols-1 md:grid-cols-2 gap-4">{otherAddOns.map((addOn) => renderAddOn(addOn))}</div></section>}
+      {riders.length > 0 && <section><h4 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-500">Riders</h4><div className="grid grid-cols-1 gap-4 md:grid-cols-3">{riders.map((addOn) => renderAddOn(addOn, true))}</div></section>}
     </div>
   );
 }

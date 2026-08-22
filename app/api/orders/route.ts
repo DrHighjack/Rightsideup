@@ -193,6 +193,9 @@ export async function POST(request: NextRequest) {
       self811Accepted,
       signSetup,
       postColor,
+      removalSignId,
+      noLedOptOut,
+      rfidListingUrl,
       realtorId,
     } = body;
 
@@ -276,6 +279,17 @@ export async function POST(request: NextRequest) {
     if (typeof self811Accepted === 'boolean') {
       metadataLines.push(`811 concierge opted out: ${self811Accepted ? 'Yes' : 'No'}`);
     }
+    if (noLedOptOut === true) {
+      metadataLines.push('LEDs: Customer opted out');
+    }
+    if (typeof rfidListingUrl === 'string' && rfidListingUrl.trim()) {
+      try {
+        new URL(rfidListingUrl);
+      } catch {
+        return NextResponse.json({ error: 'RFID listing website URL must be valid' }, { status: 400 });
+      }
+      metadataLines.push(`RFID listing website: ${rfidListingUrl.trim()}`);
+    }
 
     const combinedNotes = [
       typeof notes === 'string' && notes.trim() ? notes.trim() : null,
@@ -292,13 +306,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (type === 'REMOVAL') {
+      if (!removalSignId || typeof removalSignId !== 'string') {
+        return NextResponse.json({ error: 'A sign must be selected for removal' }, { status: 400 });
+      }
+      const removableSign = await prisma.sign.findFirst({
+        where: { id: removalSignId, assignedToUserId: targetRealtorId, status: 'DEPLOYED' },
+        select: { id: true, deployedAddress: true },
+      });
+      if (!removableSign) {
+        return NextResponse.json({ error: 'Selected sign is not available for removal' }, { status: 409 });
+      }
+    }
+
     const orderNumber = await generateOrderNumber();
 
     // Prepare addons data - fetch prices before creating order
     let addonData = [];
     
     // Add selected sign as an addon with quantity 1
-    if (selectedSignId) {
+    if (selectedSignId && type !== 'REMOVAL') {
       try {
         console.log(`   Fetching sign: ${selectedSignId}`);
         const signItem = await prisma.inventoryItem.findUnique({
@@ -374,6 +401,12 @@ export async function POST(request: NextRequest) {
         },
       });
       console.log(`✅ Order created: ${order.orderNumber}`);
+      if (type === 'REMOVAL' && removalSignId) {
+        await prisma.sign.update({
+          where: { id: removalSignId },
+          data: { assignedToOrderId: order.id },
+        });
+      }
     } catch (createErr: any) {
       console.error('❌ Prisma create failed:', {
         message: createErr.message,

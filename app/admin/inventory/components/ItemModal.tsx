@@ -71,8 +71,11 @@ export function ItemModal({ item, onClose, onSave }: ItemModalProps) {
   };
 
   const handleImageUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      setError('Please select an image file');
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
+    const extension = file.name.toLowerCase().split('.').pop();
+    if (!allowedTypes.includes(file.type) || !extension || !allowedExtensions.includes(extension)) {
+      setError('Please select a JPG, JPEG, PNG, or PDF file');
       return;
     }
 
@@ -198,11 +201,13 @@ export function ItemModal({ item, onClose, onSave }: ItemModalProps) {
             >
               {imagePreview ? (
                 <div className="space-y-3">
-                  <img
-                    src={imagePreview}
-                    alt="Preview"
-                    className="h-40 mx-auto object-cover rounded"
-                  />
+                  {formData.imageUrl?.toLowerCase().endsWith('.pdf') ? (
+                    <a href={imagePreview} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-800">
+                      Open PDF preview
+                    </a>
+                  ) : (
+                    <img src={imagePreview} alt="Preview" className="h-40 mx-auto object-cover rounded" />
+                  )}
                   <button
                     type="button"
                     onClick={() => {
@@ -223,7 +228,7 @@ export function ItemModal({ item, onClose, onSave }: ItemModalProps) {
                   <label className="inline-block">
                     <input
                       type="file"
-                      accept="image/*"
+                      accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
                       onChange={(e) => {
                         if (e.target.files?.[0]) {
                           handleImageUpload(e.target.files[0]);
@@ -236,7 +241,7 @@ export function ItemModal({ item, onClose, onSave }: ItemModalProps) {
                       Browse Files
                     </span>
                   </label>
-                  <p className="text-xs text-gray-500 mt-3">JPG, PNG, WebP • Max 5MB</p>
+                  <p className="text-xs text-gray-500 mt-3">JPG, JPEG, PNG, or PDF • Max 5MB</p>
                 </div>
               )}
             </div>

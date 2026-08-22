@@ -560,11 +560,13 @@ export async function sendSignPickupRequestNotification(adminEmail: string, requ
     const locationText = request.location;
     const dateText = new Date(request.dateNeeded).toLocaleString();
     const description = request.description || 'No additional details provided';
+    const deliveryMethod = request.deliveryMethod === 'MAIL_TO_US' ? 'Mail to North Shore Sign Co' : 'Pickup quote';
     const safeRequesterName = escapeHtml(requesterName);
     const safeRequesterEmail = escapeHtml(requesterEmail);
     const safeLocationText = escapeHtml(locationText);
     const safeDateText = escapeHtml(dateText);
     const safeDescription = escapeHtml(description);
+    const safeDeliveryMethod = escapeHtml(deliveryMethod);
 
     const emailBody = `
 <!DOCTYPE html>
@@ -589,6 +591,11 @@ export async function sendSignPickupRequestNotification(adminEmail: string, requ
     <div class="content">
       <p>A sign pickup request has been submitted and is pending your approval.</p>
       
+      <div class="field">
+        <div class="label">Delivery Method:</div>
+        <div class="value">${safeDeliveryMethod}</div>
+      </div>
+
       <div class="field">
         <div class="label">Requested By:</div>
         <div class="value">${safeRequesterName} (${safeRequesterEmail})</div>

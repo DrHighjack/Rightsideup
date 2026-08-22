@@ -19,6 +19,7 @@ interface InventoryCardProps {
   lowStockThreshold: number;
   printers: Printer[];
   onOrderClick: () => void;
+  onViewCustom?: () => void;
   showQuantity?: boolean;
 }
 
@@ -32,9 +33,11 @@ export function InventoryCard({
   lowStockThreshold,
   printers,
   onOrderClick,
+  onViewCustom,
   showQuantity = true,
 }: InventoryCardProps) {
   const isLowStock = availableQuantity < lowStockThreshold;
+  const isCustomSign = name.toLowerCase().includes('custom');
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
@@ -52,12 +55,12 @@ export function InventoryCard({
   return (
     <div className="bg-white rounded-lg border border-gray-200 hover:shadow-lg transition-shadow overflow-hidden flex flex-col">
       {/* Image Section */}
-      <div className="w-full h-40 bg-gray-100 flex items-center justify-center text-5xl overflow-hidden">
+      <div className="w-full aspect-[4/3] bg-gray-100 flex items-center justify-center text-5xl overflow-hidden">
         {imageUrl ? (
           <img
             src={imageUrl}
             alt={name}
-            className="w-full h-full object-cover"
+            className={`w-full h-full ${isCustomSign ? 'object-contain object-bottom p-2' : 'object-cover'}`}
           />
         ) : (
           <span className="text-gray-400">{getCategoryIcon(category)}</span>
@@ -68,6 +71,12 @@ export function InventoryCard({
       <div className="p-4 flex flex-col flex-1">
         {/* Name */}
         <h3 className="font-bold text-gray-900 text-base mb-2">{name}</h3>
+
+        {availableQuantity > 0 && (
+          <span className="mb-3 inline-flex w-fit rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+            Available
+          </span>
+        )}
 
         {/* Category Badge */}
         <div className="mb-3">
@@ -114,6 +123,16 @@ export function InventoryCard({
             className="mt-auto px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
           >
             Order More
+          </button>
+        )}
+
+        {isCustomSign && onViewCustom && (
+          <button
+            type="button"
+            onClick={onViewCustom}
+            className="mt-auto px-4 py-2 bg-slate-100 text-slate-700 rounded-lg font-medium hover:bg-slate-200 transition-colors text-sm"
+          >
+            View custom items
           </button>
         )}
 

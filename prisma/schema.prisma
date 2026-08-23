@@ -310,6 +310,13 @@ model Brokerage {
   email          String?
   billingType    String     @default("AGENT") // AGENT | BROKERAGE
   basePriceCents Int?       // null = use master pricing
+  autoInvoiceStatus String  @default("DISABLED") // DISABLED | PENDING | APPROVED | DENIED
+  autoInvoiceInterval String? // MONTHLY | BIWEEKLY
+  autoInvoiceRequestedAt DateTime?
+  autoInvoiceApprovedAt DateTime?
+  autoInvoiceApprovedById String?
+  autoInvoicePeriodStart DateTime?
+  autoInvoiceNextRunAt DateTime?
   isActive       Boolean    @default(true)
   adminId        String
   admin          User       @relation("BrokerageAdmin", fields: [adminId], references: [id], onDelete: Cascade)
@@ -321,6 +328,7 @@ model Brokerage {
   
   @@map("brokerages")
   @@index([adminId])
+  @@index([autoInvoiceStatus, autoInvoiceNextRunAt])
 }
 
 model BrokerageStatement {

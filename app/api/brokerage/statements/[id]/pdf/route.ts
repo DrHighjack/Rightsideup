@@ -34,7 +34,7 @@ function StatementPdf({ statement, snapshot }: {
     React.createElement(Page, { size: "LETTER", style: styles.page },
       React.createElement(View, { style: styles.header },
         React.createElement(Text, { style: styles.brand }, "North Shore Sign Co"),
-        React.createElement(Text, { style: styles.title }, "Monthly Brokerage Invoice"),
+        React.createElement(Text, { style: styles.title }, "Brokerage Billing Statement"),
         React.createElement(Text, { style: styles.meta }, `${snapshot.brokerageName} | ${statement.statementNumber}`),
         React.createElement(Text, { style: styles.meta }, `${statement.periodStart.toLocaleDateString()} - ${statement.periodEnd.toLocaleDateString()} | Due ${statement.dueDate.toLocaleDateString()}`)
       ),

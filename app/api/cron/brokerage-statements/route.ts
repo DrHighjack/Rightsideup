@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { generateMonthlyBrokerageStatements } from "@/lib/brokerage-statements";
+import { generateScheduledBrokerageStatements } from "@/lib/brokerage-statements";
 
 export async function GET(request: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const results = await generateMonthlyBrokerageStatements();
+    const results = await generateScheduledBrokerageStatements();
     const failures = results.filter((result) => result.error);
     return NextResponse.json({
       processed: results.length,
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       })),
     }, { status: failures.length ? 500 : 200 });
   } catch (error) {
-    console.error("Monthly brokerage statement generation failed:", error);
+    console.error("Scheduled brokerage statement generation failed:", error);
     return NextResponse.json({ error: "Statement generation failed" }, { status: 500 });
   }
 }

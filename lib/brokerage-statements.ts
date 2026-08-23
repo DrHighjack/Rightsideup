@@ -2,6 +2,10 @@ import { prisma } from "@/lib/prisma";
 import { getBrokerageStatementEmail, sendEmail } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { OUTSTANDING_INVOICE_STATUSES } from "@/lib/invoice-totals";
+import {
+  getNextAutoInvoiceRun,
+  isAutoInvoiceInterval,
+} from "@/lib/brokerage-auto-invoicing";
 
 export interface BrokerageStatementSnapshot {
   brokerageName: string;
@@ -41,7 +45,8 @@ export function getCurrentMonthRange(now = new Date()) {
 export async function generateBrokerageStatement(
   brokerageId: string,
   periodStart: Date,
-  periodEnd: Date
+  periodEnd: Date,
+  includeEarlierInvoices = true
 ) {
   const existing = await prisma.brokerageStatement.findUnique({
     where: { brokerageId_periodStart: { brokerageId, periodStart } },
@@ -67,7 +72,9 @@ export async function generateBrokerageStatement(
     where: {
       qboInvoiceId: null,
       id: previouslyCapturedIds.length ? { notIn: previouslyCapturedIds } : undefined,
-      createdAt: { lte: periodEnd },
+      createdAt: includeEarlierInvoices
+        ? { lte: periodEnd }
+        : { gte: periodStart, lte: periodEnd },
       status: { in: [...OUTSTANDING_INVOICE_STATUSES] },
       user: { brokerageId, role: "REALTOR" },
     },
@@ -125,7 +132,7 @@ export async function generateBrokerageStatement(
   const totalCents = snapshotInvoices.reduce((sum, invoice) => sum + invoice.balanceCents, 0);
   const dueDate = new Date(periodEnd);
   dueDate.setUTCDate(dueDate.getUTCDate() + 15);
-  const periodKey = `${periodStart.getUTCFullYear()}${String(periodStart.getUTCMonth() + 1).padStart(2, "0")}`;
+  const periodKey = `${periodStart.getUTCFullYear()}${String(periodStart.getUTCMonth() + 1).padStart(2, "0")}${String(periodStart.getUTCDate()).padStart(2, "0")}`;
   const snapshot: BrokerageStatementSnapshot = {
     brokerageName: brokerage.name,
     invoices: snapshotInvoices,
@@ -200,7 +207,12 @@ export async function generateMonthlyBrokerageStatements(now = new Date()) {
   }> = [];
   for (const brokerage of brokerages) {
     try {
-      const result = await generateBrokerageStatement(brokerage.id, periodStart, periodEnd);
+      const result = await generateBrokerageStatement(
+        brokerage.id,
+        periodStart,
+        periodEnd,
+        false
+      );
       results.push({
         brokerageId: brokerage.id,
         created: result.created,
@@ -215,5 +227,76 @@ export async function generateMonthlyBrokerageStatements(now = new Date()) {
       });
     }
   }
+  return results;
+}
+
+export async function generateScheduledBrokerageStatements(now = new Date()) {
+  const brokerages = await prisma.brokerage.findMany({
+    where: {
+      isActive: true,
+      billingType: "BROKERAGE",
+      autoInvoiceStatus: "APPROVED",
+      autoInvoiceNextRunAt: { lte: now },
+    },
+    select: {
+      id: true,
+      autoInvoiceInterval: true,
+      autoInvoicePeriodStart: true,
+      autoInvoiceNextRunAt: true,
+    },
+  });
+
+  const results: Array<{
+    brokerageId: string;
+    created: boolean;
+    statementId?: string;
+    error?: string;
+  }> = [];
+
+  for (const brokerage of brokerages) {
+    if (
+      !isAutoInvoiceInterval(brokerage.autoInvoiceInterval) ||
+      !brokerage.autoInvoicePeriodStart ||
+      !brokerage.autoInvoiceNextRunAt
+    ) {
+      results.push({
+        brokerageId: brokerage.id,
+        created: false,
+        error: "Approved schedule is incomplete",
+      });
+      continue;
+    }
+
+    const periodStart = brokerage.autoInvoicePeriodStart;
+    const periodEnd = brokerage.autoInvoiceNextRunAt;
+    try {
+      const result = await generateBrokerageStatement(brokerage.id, periodStart, periodEnd);
+      const nextRunAt = getNextAutoInvoiceRun(brokerage.autoInvoiceInterval, periodEnd);
+      await prisma.brokerage.updateMany({
+        where: {
+          id: brokerage.id,
+          autoInvoiceStatus: "APPROVED",
+          autoInvoiceNextRunAt: periodEnd,
+        },
+        data: {
+          autoInvoicePeriodStart: periodEnd,
+          autoInvoiceNextRunAt: nextRunAt,
+        },
+      });
+      results.push({
+        brokerageId: brokerage.id,
+        created: result.created,
+        statementId: result.statement?.id,
+      });
+    } catch (error) {
+      console.error(`Scheduled statement generation failed for brokerage ${brokerage.id}:`, error);
+      results.push({
+        brokerageId: brokerage.id,
+        created: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+  }
+
   return results;
 }

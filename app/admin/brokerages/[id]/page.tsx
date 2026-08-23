@@ -26,6 +26,11 @@ interface Brokerage {
   phone?: string | null;
   billingType: "AGENT" | "BROKERAGE";
   basePriceCents?: number | null;
+  autoInvoiceStatus: "DISABLED" | "PENDING" | "APPROVED" | "DENIED";
+  autoInvoiceInterval: "MONTHLY" | "BIWEEKLY" | null;
+  autoInvoiceRequestedAt: string | null;
+  autoInvoiceApprovedAt: string | null;
+  autoInvoiceNextRunAt: string | null;
   isActive: boolean;
   admin: {
     firstName: string;
@@ -180,6 +185,8 @@ export default function BrokeragePage() {
   const [csvImporting, setCsvImporting] = useState(false);
   const [csvError, setCsvError] = useState("");
   const [csvResult, setCsvResult] = useState<RealtorImportResult | null>(null);
+  const [scheduleInterval, setScheduleInterval] = useState<"MONTHLY" | "BIWEEKLY">("MONTHLY");
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -199,6 +206,7 @@ export default function BrokeragePage() {
     setPendingOrders(data.pendingOrders || []);
     setMappedOrders(data.mappedOrders || []);
     setStats(data.stats || emptyStats);
+    setScheduleInterval(data.brokerage.autoInvoiceInterval || "MONTHLY");
     setEditForm({
       name: data.brokerage.name || "",
       address: data.brokerage.address || "",
@@ -345,6 +353,25 @@ export default function BrokeragePage() {
     }
   };
 
+  const handleInvoiceSchedule = async (action: "APPROVE" | "DENY" | "DISABLE") => {
+    try {
+      setScheduleSubmitting(true);
+      setPageError("");
+      const response = await fetch(`/api/admin/brokerages/${brokerageId}/invoice-schedule`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, interval: scheduleInterval }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update automatic invoicing");
+      await fetchBrokerage();
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : "Failed to update automatic invoicing");
+    } finally {
+      setScheduleSubmitting(false);
+    }
+  };
+
   const handleCsvImport = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!csvFile) {
@@ -482,6 +509,78 @@ export default function BrokeragePage() {
               <div><p className="text-xs uppercase text-gray-500">Agents</p><p className="mt-1 font-medium text-gray-900">{brokerage.agents.length}</p></div>
             </div>
           )}
+        </section>
+
+        <section className="mb-6 border-y border-gray-200 bg-white p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="flex flex-wrap items-center gap-3">
+                <h2 className="text-xl font-semibold text-gray-900">Automatic Invoicing Permission</h2>
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                  brokerage.autoInvoiceStatus === "APPROVED"
+                    ? "bg-green-100 text-green-800"
+                    : brokerage.autoInvoiceStatus === "PENDING"
+                      ? "bg-amber-100 text-amber-800"
+                      : brokerage.autoInvoiceStatus === "DENIED"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-700"
+                }`}>
+                  {brokerage.autoInvoiceStatus}
+                </span>
+              </div>
+              <p className="mt-2 text-sm text-gray-600">
+                {brokerage.autoInvoiceStatus === "PENDING"
+                  ? `Requested ${brokerage.autoInvoiceInterval === "BIWEEKLY" ? "every two weeks" : "monthly"}${brokerage.autoInvoiceRequestedAt ? ` on ${new Date(brokerage.autoInvoiceRequestedAt).toLocaleDateString()}` : ""}.`
+                  : brokerage.autoInvoiceStatus === "APPROVED" && brokerage.autoInvoiceNextRunAt
+                    ? `Next statement runs ${new Date(brokerage.autoInvoiceNextRunAt).toLocaleDateString()}.`
+                    : "No approved automatic statement schedule."}
+              </p>
+              {brokerage.billingType !== "BROKERAGE" && (
+                <p className="mt-2 text-sm font-medium text-orange-700">Set Billing Type to Brokerage pays before approval.</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Interval
+                <select
+                  value={scheduleInterval}
+                  onChange={(event) => setScheduleInterval(event.target.value as "MONTHLY" | "BIWEEKLY")}
+                  className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+                >
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="BIWEEKLY">Every two weeks</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleInvoiceSchedule("APPROVE")}
+                disabled={scheduleSubmitting || brokerage.billingType !== "BROKERAGE"}
+                className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
+              >
+                {brokerage.autoInvoiceStatus === "APPROVED" ? "Update Approval" : "Approve"}
+              </button>
+              {brokerage.autoInvoiceStatus === "PENDING" && (
+                <button
+                  type="button"
+                  onClick={() => void handleInvoiceSchedule("DENY")}
+                  disabled={scheduleSubmitting}
+                  className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+                >
+                  Deny
+                </button>
+              )}
+              {brokerage.autoInvoiceStatus === "APPROVED" && (
+                <button
+                  type="button"
+                  onClick={() => void handleInvoiceSchedule("DISABLE")}
+                  disabled={scheduleSubmitting}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Disable
+                </button>
+              )}
+            </div>
+          </div>
         </section>
 
         <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">

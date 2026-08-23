@@ -32,6 +32,8 @@ interface Brokerage {
   address?: string;
   billingType: "AGENT" | "BROKERAGE";
   basePriceCents?: number | null;
+  autoInvoiceStatus: "DISABLED" | "PENDING" | "APPROVED" | "DENIED";
+  autoInvoiceInterval: "MONTHLY" | "BIWEEKLY" | null;
   isActive: boolean;
   agentCount: number;
   email?: string;
@@ -1071,6 +1073,7 @@ export default function ManagementPage() {
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Phone</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Brokerage Login</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Billing Type</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Auto Invoicing</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Base Price</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Agent Count</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Actions</th>
@@ -1101,6 +1104,21 @@ export default function ManagementPage() {
                           }`}
                         >
                           {brokerage.billingType}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <span className={`inline-block rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          brokerage.autoInvoiceStatus === "APPROVED"
+                            ? "bg-green-100 text-green-800"
+                            : brokerage.autoInvoiceStatus === "PENDING"
+                              ? "bg-amber-100 text-amber-800"
+                              : brokerage.autoInvoiceStatus === "DENIED"
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-700"
+                        }`}>
+                          {brokerage.autoInvoiceStatus === "APPROVED"
+                            ? brokerage.autoInvoiceInterval === "BIWEEKLY" ? "Every 2 weeks" : "Monthly"
+                            : brokerage.autoInvoiceStatus}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">

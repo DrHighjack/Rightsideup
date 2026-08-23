@@ -27,6 +27,11 @@ interface BrokerageProfile {
   email?: string | null;
   billingType: "AGENT" | "BROKERAGE";
   basePriceCents?: number | null;
+  autoInvoiceStatus: "DISABLED" | "PENDING" | "APPROVED" | "DENIED";
+  autoInvoiceInterval: "MONTHLY" | "BIWEEKLY" | null;
+  autoInvoiceRequestedAt: string | null;
+  autoInvoiceApprovedAt: string | null;
+  autoInvoiceNextRunAt: string | null;
   agentCount: number;
 }
 
@@ -156,6 +161,8 @@ function BrokerageDashboardContent() {
   const [paymentFormReady, setPaymentFormReady] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
   const [paymentTokenizer, setPaymentTokenizer] = useState<{ submit?: () => void } | null>(null);
+  const [scheduleInterval, setScheduleInterval] = useState<"MONTHLY" | "BIWEEKLY">("MONTHLY");
+  const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -210,6 +217,7 @@ function BrokerageDashboardContent() {
       const statementsData = statementsRes.ok ? await statementsRes.json() : { statements: [] };
       const cardsData = cardsRes.ok ? await cardsRes.json() : { cards: [] };
       setBrokerage(profileData.brokerage);
+      setScheduleInterval(profileData.brokerage.autoInvoiceInterval || "MONTHLY");
       setAgents(agentsData.agents || []);
       setAgentSummary(agentsData.summary || null);
       setInvoices(invoicesData.invoices || []);
@@ -306,6 +314,40 @@ function BrokerageDashboardContent() {
       setError(statementError instanceof Error ? statementError.message : "Failed to generate statement");
     } finally {
       setGeneratingStatement(false);
+    }
+  };
+
+  const handleScheduleRequest = async () => {
+    try {
+      setScheduleSubmitting(true);
+      setError("");
+      const response = await fetch("/api/brokerage/invoice-schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ interval: scheduleInterval }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to request automatic invoicing");
+      await loadData();
+    } catch (scheduleError) {
+      setError(scheduleError instanceof Error ? scheduleError.message : "Failed to request automatic invoicing");
+    } finally {
+      setScheduleSubmitting(false);
+    }
+  };
+
+  const handleCancelScheduleRequest = async () => {
+    try {
+      setScheduleSubmitting(true);
+      setError("");
+      const response = await fetch("/api/brokerage/invoice-schedule", { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to cancel request");
+      await loadData();
+    } catch (scheduleError) {
+      setError(scheduleError instanceof Error ? scheduleError.message : "Failed to cancel request");
+    } finally {
+      setScheduleSubmitting(false);
     }
   };
 
@@ -694,10 +736,76 @@ function BrokerageDashboardContent() {
       />
 
       <section className="rounded-lg border border-gray-200 bg-white p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-3">
+              <h3 className="text-xl font-semibold text-gray-900">Automatic invoicing</h3>
+              <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                brokerage?.autoInvoiceStatus === "APPROVED"
+                  ? "bg-green-100 text-green-800"
+                  : brokerage?.autoInvoiceStatus === "PENDING"
+                    ? "bg-amber-100 text-amber-800"
+                    : brokerage?.autoInvoiceStatus === "DENIED"
+                      ? "bg-red-100 text-red-800"
+                      : "bg-gray-100 text-gray-700"
+              }`}>
+                {brokerage?.autoInvoiceStatus || "DISABLED"}
+              </span>
+            </div>
+            <p className="mt-2 max-w-2xl text-sm text-gray-600">
+              Consolidate office-paid member invoices into a scheduled brokerage statement. An administrator must approve every request.
+            </p>
+            {brokerage?.autoInvoiceStatus === "APPROVED" && brokerage.autoInvoiceNextRunAt && (
+              <p className="mt-2 text-sm font-medium text-green-800">
+                {brokerage.autoInvoiceInterval === "BIWEEKLY" ? "Biweekly" : "Monthly"} · next statement {new Date(brokerage.autoInvoiceNextRunAt).toLocaleDateString()}
+              </p>
+            )}
+          </div>
+          {brokerage?.billingType !== "BROKERAGE" ? (
+            <p className="text-sm font-medium text-orange-700">Brokerage-paid billing must be enabled by an admin first.</p>
+          ) : brokerage.autoInvoiceStatus === "APPROVED" ? (
+            <p className="text-sm text-gray-600">Contact an administrator to change or disable this schedule.</p>
+          ) : (
+            <div className="flex flex-wrap items-end gap-2">
+              <label className="text-sm font-medium text-gray-700">
+                Interval
+                <select
+                  value={scheduleInterval}
+                  onChange={(event) => setScheduleInterval(event.target.value as "MONTHLY" | "BIWEEKLY")}
+                  className="mt-1 block rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+                >
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="BIWEEKLY">Every two weeks</option>
+                </select>
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleScheduleRequest()}
+                disabled={scheduleSubmitting}
+                className="rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50"
+              >
+                {scheduleSubmitting ? "Submitting..." : brokerage.autoInvoiceStatus === "PENDING" ? "Update Request" : "Request Approval"}
+              </button>
+              {brokerage.autoInvoiceStatus === "PENDING" && (
+                <button
+                  type="button"
+                  onClick={() => void handleCancelScheduleRequest()}
+                  disabled={scheduleSubmitting}
+                  className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel Request
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-xl font-semibold text-gray-900">Company payment method</h3>
-            <p className="mt-1 text-sm text-gray-600">Used only when you approve a monthly statement payment.</p>
+            <p className="mt-1 text-sm text-gray-600">Used only when you approve a brokerage statement payment.</p>
           </div>
           <button
             type="button"
@@ -741,8 +849,8 @@ function BrokerageDashboardContent() {
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-xl font-semibold text-gray-900">Monthly statements</h3>
-            <p className="mt-1 text-sm text-gray-600">Generated automatically on the first day of each month for unpaid member invoices.</p>
+            <h3 className="text-xl font-semibold text-gray-900">Brokerage statements</h3>
+            <p className="mt-1 text-sm text-gray-600">Approved schedules generate statements from unpaid member invoices at the selected interval.</p>
           </div>
           <button
             type="button"
@@ -828,7 +936,7 @@ function BrokerageDashboardContent() {
             </div>
           ))}
           {statements.length === 0 && (
-            <p className="py-4 text-center text-sm text-gray-500">No monthly statements yet.</p>
+            <p className="py-4 text-center text-sm text-gray-500">No brokerage statements yet.</p>
           )}
         </div>
       </section>

@@ -70,7 +70,7 @@ export function getBrokerageStatementEmail(input: {
     const total = `$${(input.totalCents / 100).toFixed(2)}`;
 
     return {
-        subject: `${brokerageName} monthly invoice ${statementNumber} is ready`,
+        subject: `${brokerageName} billing statement ${statementNumber} is ready`,
         html: `<!DOCTYPE html>
 <html lang="en">
 <body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937">
@@ -78,11 +78,11 @@ export function getBrokerageStatementEmail(input: {
         <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
             <div style="background:#0f3d5e;color:#ffffff;padding:24px 28px">
                 <div style="font-size:13px;font-weight:700;text-transform:uppercase">North Shore Sign Co</div>
-                <h1 style="margin:8px 0 0;font-size:24px">Your monthly invoice is ready</h1>
+                <h1 style="margin:8px 0 0;font-size:24px">Your billing statement is ready</h1>
             </div>
             <div style="padding:28px">
                 <p>Hi ${recipientName},</p>
-                <p>The monthly invoice for <strong>${brokerageName}</strong> is ready to review and pay.</p>
+                <p>The billing statement for <strong>${brokerageName}</strong> is ready to review and pay.</p>
                 <div style="margin:24px 0;padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
                     <p style="margin:0 0 8px"><strong>Statement:</strong> ${statementNumber}</p>
                     <p style="margin:0 0 8px"><strong>Period:</strong> ${escapeHtml(period)}</p>

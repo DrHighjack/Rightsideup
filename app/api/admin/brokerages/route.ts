@@ -69,6 +69,8 @@ export async function GET(_request: NextRequest) {
         email: brokerage.email,
         billingType: brokerage.billingType,
         basePriceCents: brokerage.basePriceCents,
+        autoInvoiceStatus: brokerage.autoInvoiceStatus,
+        autoInvoiceInterval: brokerage.autoInvoiceInterval,
         isActive: brokerage.isActive,
         createdAt: brokerage.createdAt,
         updatedAt: brokerage.updatedAt,

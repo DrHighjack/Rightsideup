@@ -297,13 +297,20 @@ export async function PUT(
 
     const existing = await prisma.brokerage.findUnique({
       where: { id: params.id },
-      select: { id: true },
+      select: { id: true, autoInvoiceStatus: true },
     });
 
     if (!existing) {
       return NextResponse.json(
         { error: "Brokerage not found" },
         { status: 404 }
+      );
+    }
+
+    if (parsed.billingType === "AGENT" && existing.autoInvoiceStatus === "APPROVED") {
+      return NextResponse.json(
+        { error: "Disable automatic invoicing before switching to agent-paid billing" },
+        { status: 409 }
       );
     }
 

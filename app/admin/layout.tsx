@@ -78,6 +78,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/orders/map", label: "Orders Map", icon: MapIcon },
       { href: "/admin/orders/new", label: "Create Order", icon: PlusCircleIcon },
       { href: "/admin/jobs", label: "Jobs", icon: WrenchIcon },
+      { href: "/admin/installers", label: "Installers", icon: UsersIcon },
       { href: "/admin/811", label: "811 Tickets", icon: ShieldIcon, badge: Ticket811Badge },
     ],
   },

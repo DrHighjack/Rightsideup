@@ -165,7 +165,7 @@ export default function InvoicesPage() {
           <div className="bg-white rounded-lg border border-gray-200 p-6">
             <p className="text-gray-600 text-sm font-medium">Available Credit</p>
             <p className="text-3xl font-bold text-blue-600 mt-2">
-              ${availableCreditAmount.toFixed(2)}
+              {formatCurrency(availableCreditAmount)}
             </p>
           </div>
 

@@ -55,7 +55,7 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 
 const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
 const fluidPayBaseUrl =
-  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
+  (process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com").replace(/\/api\/?$/, "");
 
 export default function InvoiceDetailPage() {
   const { data: session, status: sessionStatus } = useSession();
@@ -547,7 +547,7 @@ export default function InvoiceDetailPage() {
                     <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-4">
                       <p className="font-semibold text-green-900">Account credit available</p>
                       <p className="mt-1 text-sm text-green-800">
-                        ${invoice.availableCreditAmount?.toFixed(2)} can be applied to this invoice.
+                        ${((invoice.availableCreditAmount ?? 0) / 100).toFixed(2)} can be applied to this invoice.
                       </p>
                       <button
                         type="button"

@@ -156,7 +156,7 @@ export default function TCAgentProfilePage() {
     return { lat: 47.6062, lng: -122.3321 };
   }, [profile, selectedPost]);
 
-  const formatMoney = (amount: number | null | undefined) => `$${(Number(amount || 0) * 100 / 100).toFixed(2)}`;
+  const formatMoney = (amount: number | null | undefined) => `$${(Number(amount || 0) / 100).toFixed(2)}`;
   const formatDate = (dateValue: string | null) => (dateValue ? new Date(dateValue).toLocaleDateString() : "-");
 
   if (loading) {

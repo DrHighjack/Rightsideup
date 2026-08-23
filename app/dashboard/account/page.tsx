@@ -18,7 +18,7 @@ declare global {
 
 const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
 const fluidPayBaseUrl =
-  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
+  (process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com").replace(/\/api\/?$/, "");
 
 interface TCAgent {
   linkId: string;
@@ -382,7 +382,7 @@ export default function AccountPage() {
             />
             <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
               <p className="text-sm font-medium text-green-900">Available account credit</p>
-              <p className="mt-1 text-2xl font-bold text-green-700">${accountCreditAmount.toFixed(2)}</p>
+              <p className="mt-1 text-2xl font-bold text-green-700">${(accountCreditAmount / 100).toFixed(2)}</p>
             </div>
             {cardOnFile === null ? (
               <p className="text-sm text-slate-600">Checking saved payment method...</p>

@@ -17,7 +17,7 @@ declare global {
 }
 
 const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
-const fluidPayBaseUrl = (process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com").replace(/\/api\/?$/, "");
+const fluidPayBaseUrl = process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
 
 interface BrokerageProfile {
   id: string;

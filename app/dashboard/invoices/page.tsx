@@ -187,7 +187,7 @@ export default function InvoicesPage() {
 
         {/* Status Filter */}
         <div className="mb-6 flex gap-2 flex-wrap">
-          {["", "PAID", "SENT", "OVERDUE", "VIEWED", "DRAFT"].map((status) => (
+          {["", "PAID", "SENT", "OVERDUE", "VIEWED"].map((status) => (
             <button
               key={status || "all"}
               onClick={() => {

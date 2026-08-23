@@ -967,7 +967,6 @@ function BrokerageDashboardContent() {
               <option value="VIEWED">Viewed</option>
               <option value="PAID">Paid</option>
               <option value="OVERDUE">Overdue</option>
-              <option value="DRAFT">Draft</option>
               <option value="VOIDED">Voided</option>
             </select>
           </div>

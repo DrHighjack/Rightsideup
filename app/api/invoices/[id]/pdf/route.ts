@@ -93,6 +93,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     const role = (session.user as { role?: string }).role || "";
     const invoice = await prisma.invoice.findUnique({ where: { id: params.id }, include: { lineItems: true, user: { select: { firstName: true, lastName: true, email: true } } } });
     if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    if (invoice.status === "DRAFT" && role !== "ADMIN") return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     if (!(await canAccessInvoice(session.user.id, role, invoice.userId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     const pdfElement = React.createElement(InvoicePdf, { invoice }) as unknown as React.ReactElement;
     const buffer = await renderToBuffer(pdfElement as React.ReactElement<React.ComponentProps<typeof Document>>);

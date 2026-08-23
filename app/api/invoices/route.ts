@@ -39,7 +39,11 @@ export async function GET(request: NextRequest) {
 
     const where: any = {
       userId: { in: invoiceUserIds },
+      status: { not: "DRAFT" },
     };
+    if (status === "DRAFT") {
+      return NextResponse.json({ error: "Draft invoices are not available" }, { status: 403 });
+    }
     if (status) where.status = status;
 
     const periodStart = new Date();

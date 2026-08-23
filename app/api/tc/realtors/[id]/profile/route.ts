@@ -70,7 +70,7 @@ export async function GET(
         take: 300,
       }),
       prisma.invoice.findMany({
-        where: { userId: realtorId },
+        where: { userId: realtorId, status: { not: "DRAFT" } },
         orderBy: { createdAt: "desc" },
         select: {
           id: true,

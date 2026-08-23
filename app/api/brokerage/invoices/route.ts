@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
 
     const baseWhere: any = {
+      status: { not: "DRAFT" },
       user: {
         brokerageId,
         role: "REALTOR",
@@ -42,6 +43,10 @@ export async function GET(request: NextRequest) {
     const where: any = {
       ...baseWhere,
     };
+
+    if (status === "DRAFT") {
+      return NextResponse.json({ error: "Draft invoices are not available" }, { status: 403 });
+    }
 
     if (status) {
       where.status = status;

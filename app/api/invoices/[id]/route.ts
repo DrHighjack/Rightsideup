@@ -41,7 +41,12 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (!(await canAccessInvoice(session.user.id, (session.user as any).role, invoice.userId))) {
+    const role = (session.user as any).role;
+    if (invoice.status === "DRAFT" && role !== "ADMIN") {
+      return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+    }
+
+    if (!(await canAccessInvoice(session.user.id, role, invoice.userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

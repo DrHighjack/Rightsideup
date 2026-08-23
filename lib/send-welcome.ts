@@ -35,11 +35,15 @@ export async function sendWelcomeEmailWithMagicLink(
       options?.termsUrl
     );
 
-    await sendEmail({
+    const result = await sendEmail({
       to: email,
       subject: emailTemplate.subject,
       html: emailTemplate.html,
     });
+
+    if (!result.success) {
+      throw new Error("Welcome email was not sent");
+    }
 
     console.log(`Welcome email sent to ${email} with magic login link`);
     return { success: true, loginLink };

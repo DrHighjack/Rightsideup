@@ -72,6 +72,13 @@ interface BrokerageStats {
   mappedPostCount: number;
 }
 
+interface RealtorImportResult {
+  created: number;
+  emailsSent: number;
+  failed: number;
+  results: Array<{ rowNumber: number; error: string }>;
+}
+
 const emptyStats: BrokerageStats = {
   lifetimeInvoiceTotal: 0,
   lifetimePaidTotal: 0,
@@ -168,6 +175,11 @@ export default function BrokeragePage() {
   });
   const [formError, setFormError] = useState("");
   const [formLoading, setFormLoading] = useState(false);
+  const [showCsvImport, setShowCsvImport] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
+  const [csvImporting, setCsvImporting] = useState(false);
+  const [csvError, setCsvError] = useState("");
+  const [csvResult, setCsvResult] = useState<RealtorImportResult | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -333,6 +345,35 @@ export default function BrokeragePage() {
     }
   };
 
+  const handleCsvImport = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!csvFile) {
+      setCsvError("Select a CSV file");
+      return;
+    }
+
+    try {
+      setCsvImporting(true);
+      setCsvError("");
+      setCsvResult(null);
+      const upload = new FormData();
+      upload.append("file", csvFile);
+      const response = await fetch(`/api/admin/brokerages/${brokerageId}/agents/import`, {
+        method: "POST",
+        body: upload,
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to import realtors");
+      setCsvResult(data);
+      setCsvFile(null);
+      await fetchBrokerage();
+    } catch (error) {
+      setCsvError(error instanceof Error ? error.message : "Failed to import realtors");
+    } finally {
+      setCsvImporting(false);
+    }
+  };
+
   if (status === "loading" || loading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -489,15 +530,85 @@ export default function BrokeragePage() {
         </section>
 
         <div className="bg-white border-y border-gray-200 p-6">
-          <div className="flex justify-between items-center mb-6">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-2xl font-bold text-gray-900">Agents ({brokerage.agents.length})</h2>
-            <button
-              onClick={() => setShowAddAgent(!showAddAgent)}
-              className="bg-primary text-white px-4 py-2 rounded-md hover:bg-primary-dark transition"
-            >
-              {showAddAgent ? "Cancel" : "Add Agent"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCsvImport((current) => !current);
+                  setShowAddAgent(false);
+                }}
+                className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                {showCsvImport ? "Cancel Import" : "Import CSV"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAddAgent((current) => !current);
+                  setShowCsvImport(false);
+                }}
+                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary-dark"
+              >
+                {showAddAgent ? "Cancel" : "Add Agent"}
+              </button>
+            </div>
           </div>
+
+          {showCsvImport && (
+            <form onSubmit={handleCsvImport} className="mb-6 border-y border-gray-200 bg-gray-50 p-5">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                <div>
+                  <label htmlFor="realtor-csv" className="block text-sm font-medium text-gray-700">
+                    Realtor CSV
+                  </label>
+                  <input
+                    id="realtor-csv"
+                    type="file"
+                    accept=".csv,text/csv"
+                    onChange={(event) => {
+                      setCsvFile(event.target.files?.[0] || null);
+                      setCsvError("");
+                      setCsvResult(null);
+                    }}
+                    className="mt-1 block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-gray-200 file:px-4 file:py-2 file:font-medium file:text-gray-800 hover:file:bg-gray-300"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <a
+                    href="data:text/csv;charset=utf-8,name%2Cemail%2Cphone%0AJane%20Realtor%2Cjane%40example.com%2C555-0100"
+                    download="realtor-import-template.csv"
+                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    Download Template
+                  </a>
+                  <button
+                    type="submit"
+                    disabled={!csvFile || csvImporting}
+                    className="rounded-md bg-green-700 px-5 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {csvImporting ? "Importing..." : "Import Realtors"}
+                  </button>
+                </div>
+              </div>
+              {csvError && <p className="mt-4 text-sm font-medium text-red-700">{csvError}</p>}
+              {csvResult && (
+                <div className="mt-4 border-t border-gray-200 pt-4 text-sm">
+                  <p className="font-medium text-gray-900">
+                    {csvResult.created} created · {csvResult.emailsSent} welcome emails sent · {csvResult.failed} issues
+                  </p>
+                  {csvResult.results.length > 0 && (
+                    <ul className="mt-2 max-h-40 overflow-y-auto text-red-700">
+                      {csvResult.results.map((result, index) => (
+                        <li key={`${result.rowNumber}-${index}`}>Row {result.rowNumber}: {result.error}</li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </form>
+          )}
 
           {showAddAgent && (
             <form onSubmit={handleAddAgent} className="bg-gray-50 p-6 rounded-md mb-6">

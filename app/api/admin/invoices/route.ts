@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { adminInvoiceCreateSchema, adminInvoiceListQuerySchema } from "@/lib/schemas";
-import { calculateTaxAmount } from "@/lib/invoice-totals";
+import { calculateTaxAmount, OUTSTANDING_INVOICE_STATUSES } from "@/lib/invoice-totals";
 import { ZodError } from "zod";
 
 /**
@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.aggregate({
         where: {
           ...statsWhere,
-          status: { in: ["DRAFT", "SENT", "VIEWED", "OVERDUE"] },
+          status: { in: [...OUTSTANDING_INVOICE_STATUSES] },
         },
         _count: true,
         _sum: { amount: true, discountAmount: true, taxAmount: true, paidAmount: true },

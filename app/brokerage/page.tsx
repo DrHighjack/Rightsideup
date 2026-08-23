@@ -335,7 +335,7 @@ function BrokerageDashboardContent() {
   };
 
   const countOpenInvoices = useMemo(() => {
-    return invoices.filter((invoice) => ["SENT", "VIEWED", "OVERDUE", "DRAFT"].includes(invoice.status)).length;
+    return invoices.filter((invoice) => ["SENT", "VIEWED", "OVERDUE"].includes(invoice.status)).length;
   }, [invoices]);
 
   const handleAddAgent = async (e: FormEvent) => {

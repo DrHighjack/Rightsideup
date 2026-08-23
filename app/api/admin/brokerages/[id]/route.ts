@@ -3,7 +3,11 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
-import { calculateInvoiceBalance, calculateInvoiceTotal } from "@/lib/invoice-totals";
+import {
+  calculateInvoiceBalance,
+  calculateInvoiceTotal,
+  isOutstandingInvoiceStatus,
+} from "@/lib/invoice-totals";
 
 const addAgentSchema = z.object({
   email: z.string().email(),
@@ -139,7 +143,7 @@ export async function GET(
         const total = calculateInvoiceTotal(invoice);
         stats.lifetimeInvoiceTotal += total;
         stats.lifetimePaidTotal += Math.round(invoice.paidAmount || 0);
-        if (invoice.status !== "PAID") {
+        if (isOutstandingInvoiceStatus(invoice.status)) {
           stats.outstandingBalance += calculateInvoiceBalance(invoice);
           stats.outstandingInvoiceCount += 1;
         }

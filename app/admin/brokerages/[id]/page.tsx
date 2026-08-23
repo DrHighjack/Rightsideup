@@ -6,6 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import GoogleMapReact from "google-map-react";
 import { sendAdminPasswordReset } from "@/lib/admin-password-reset";
+import { isOutstandingInvoiceStatus } from "@/lib/invoice-totals";
 
 interface Agent {
   id: string;
@@ -220,7 +221,7 @@ export default function BrokeragePage() {
   }, [status, brokerageId]);
 
   const outstandingInvoices = useMemo(
-    () => invoices.filter((invoice) => !["PAID", "VOIDED"].includes(invoice.status)),
+    () => invoices.filter((invoice) => isOutstandingInvoiceStatus(invoice.status)),
     [invoices]
   );
   const selectedOrder = mappedOrders.find((order) => order.id === selectedOrderId) || null;

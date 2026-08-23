@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isOutstandingInvoiceStatus } from "@/lib/invoice-totals";
 
 /**
  * GET /api/invoices
@@ -103,7 +104,7 @@ export async function GET(request: NextRequest) {
       period,
       stats: {
         paidInvoices: periodInvoices.filter((invoice) => invoice.status === "PAID").length,
-        unpaidInvoices: periodInvoices.filter((invoice) => ["DRAFT", "SENT", "VIEWED", "OVERDUE"].includes(invoice.status)).length,
+        unpaidInvoices: periodInvoices.filter((invoice) => isOutstandingInvoiceStatus(invoice.status)).length,
         averageInvoice: periodInvoices.length > 0
           ? periodInvoices.reduce(
               (sum, invoice) =>

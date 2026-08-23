@@ -5,6 +5,12 @@ export interface InvoiceMoney {
   paidAmount?: number | null;
 }
 
+export const OUTSTANDING_INVOICE_STATUSES = ["SENT", "VIEWED", "OVERDUE"] as const;
+
+export function isOutstandingInvoiceStatus(status: string): boolean {
+  return OUTSTANDING_INVOICE_STATUSES.some((outstandingStatus) => outstandingStatus === status);
+}
+
 export function calculateTaxAmount(
   subtotalCents: number,
   discountCents: number,

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isOutstandingInvoiceStatus } from "@/lib/invoice-totals";
 
-const PENDING_INVOICE_STATUSES = new Set(["DRAFT", "SENT", "VIEWED", "OVERDUE"]);
 
 export async function GET(
   _request: NextRequest,
@@ -90,8 +90,8 @@ export async function GET(
       return NextResponse.json({ error: "Realtor not found" }, { status: 404 });
     }
 
-    const pendingInvoices = invoices.filter((invoice) => PENDING_INVOICE_STATUSES.has(invoice.status));
-    const pastInvoices = invoices.filter((invoice) => !PENDING_INVOICE_STATUSES.has(invoice.status));
+    const pendingInvoices = invoices.filter((invoice) => isOutstandingInvoiceStatus(invoice.status));
+    const pastInvoices = invoices.filter((invoice) => !isOutstandingInvoiceStatus(invoice.status));
 
     return NextResponse.json({
       realtor,

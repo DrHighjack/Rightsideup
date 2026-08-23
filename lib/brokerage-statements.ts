@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { getBrokerageStatementEmail, sendEmail } from "@/lib/email";
 import { Prisma } from "@prisma/client";
+import { OUTSTANDING_INVOICE_STATUSES } from "@/lib/invoice-totals";
 
 export interface BrokerageStatementSnapshot {
   brokerageName: string;
@@ -67,7 +68,7 @@ export async function generateBrokerageStatement(
       qboInvoiceId: null,
       id: previouslyCapturedIds.length ? { notIn: previouslyCapturedIds } : undefined,
       createdAt: { lte: periodEnd },
-      status: { in: ["DRAFT", "SENT", "VIEWED", "OVERDUE"] },
+      status: { in: [...OUTSTANDING_INVOICE_STATUSES] },
       user: { brokerageId, role: "REALTOR" },
     },
     include: {

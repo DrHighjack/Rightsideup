@@ -153,7 +153,7 @@ export default function RealtorDetailPage() {
         setOrders(ordersData.orders || []);
 
         // Fetch realtor's invoices
-        const invoicesRes = await fetch(`/api/admin/invoices?realtorId=${realtorId}`);
+        const invoicesRes = await fetch(`/api/admin/invoices?userId=${realtorId}`);
         if (invoicesRes.ok) {
           const invoicesData = await invoicesRes.json();
           setInvoices(invoicesData.invoices || []);
@@ -526,7 +526,9 @@ export default function RealtorDetailPage() {
   // Financial calculations
   const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.total, 0);
   const totalPaid = invoices.reduce((sum, inv) => sum + inv.paid, 0);
-  const outstandingBalance = totalInvoiced - totalPaid;
+  const outstandingBalance = invoices
+    .filter((invoice) => ["SENT", "VIEWED", "OVERDUE"].includes(invoice.status))
+    .reduce((sum, invoice) => sum + Math.max(0, invoice.total - invoice.paid), 0);
   const avgOrderValue = orders.length > 0 ? totalInvoiced / orders.length : 0;
 
   if (status === "loading" || loading) {

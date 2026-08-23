@@ -5,6 +5,7 @@ import { logActivity } from "@/lib/activityLog";
 import { createNotification } from "@/lib/notifications";
 import { ActivityAction } from "@prisma/client";
 import { sendEmail, getOrderStatusUpdateEmail } from "@/lib/email";
+import { isOrderReadyToSchedule, ORDER_STATUSES } from "@/lib/order-status";
 
 export async function GET(
   _request: NextRequest,
@@ -86,12 +87,18 @@ export async function PUT(
         realtor: {
           select: { id: true, email: true, firstName: true, lastName: true },
         },
+        ticket811: { select: { utilityLines: true } },
       },
     });
 
     if (!order) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+
+    const readinessTicket = order.ticket811 || await prisma.ticket811.findFirst({
+      where: { matchedOrderIds: { has: order.id } },
+      select: { utilityLines: true },
+    });
 
     const body = await request.json();
 
@@ -113,15 +120,33 @@ export async function PUT(
 
     // Validate status is a valid enum value
     if (updateData.status) {
-      const validStatuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'IN_GROUND', 'COMPLETED', 'CANCELLED'];
-      if (!validStatuses.includes(updateData.status)) {
+      if (!ORDER_STATUSES.some((status) => status === updateData.status)) {
         return NextResponse.json({ error: `Invalid status: ${updateData.status}` }, { status: 400 });
       }
-    }
 
-    // If status is changing to something other than PENDING, reset stale flags
-    if (updateData.status && updateData.status !== 'PENDING') {
-      updateData.staleAt = null;
+      if (
+        ['READY_TO_SCHEDULE', 'SCHEDULED'].includes(updateData.status) &&
+        !isOrderReadyToSchedule({ ...order, ticket811: readinessTicket })
+      ) {
+        return NextResponse.json(
+          { error: 'All 811 utility lines must be clear before this order can be scheduled.' },
+          { status: 409 }
+        );
+      }
+
+      if (updateData.status === 'SCHEDULED' && !(updateData.scheduledDate || order.scheduledDate)) {
+        return NextResponse.json(
+          { error: 'A scheduled date is required before an order can be scheduled.' },
+          { status: 400 }
+        );
+      }
+
+      if (updateData.status === 'EXTENDED_LISTING' && order.status !== 'IN_GROUND') {
+        return NextResponse.json(
+          { error: 'Only an in-ground order can become an extended listing.' },
+          { status: 409 }
+        );
+      }
     }
 
     const updatedOrder = await prisma.order.update({

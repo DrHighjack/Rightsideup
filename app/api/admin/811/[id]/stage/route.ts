@@ -8,6 +8,7 @@
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
+import { areAllUtilityLinesClear } from '@/lib/order-status';
 
 export async function PUT(
   request: Request,
@@ -50,20 +51,30 @@ export async function PUT(
       );
     }
 
-    // If advancing to CLEAR stage, release any orders on hold
-    if (stage === 'CLEAR' && ticket.matchedOrderIds && ticket.matchedOrderIds.length > 0) {
-      await Promise.all(
-        ticket.matchedOrderIds.map((orderId) =>
-          prisma.order.update({
-            where: { id: orderId },
-            data: {
-              status: 'SCHEDULED', // Release from hold
-              heldAt: null,
-              holdReason: null,
-            },
-          })
-        )
+    if (stage === 'CLEAR' && !areAllUtilityLinesClear(ticket.utilityLines)) {
+      return NextResponse.json(
+        { error: 'Every 811 utility line must be CLEAR before this ticket can be cleared.' },
+        { status: 409 }
       );
+    }
+
+    const relatedOrderIds = Array.from(
+      new Set([ticket.orderId, ...ticket.matchedOrderIds].filter((id): id is string => Boolean(id)))
+    );
+
+    if (stage === 'CLEAR' && relatedOrderIds.length > 0) {
+      await prisma.order.updateMany({
+        where: {
+          id: { in: relatedOrderIds },
+          type: { not: 'REMOVAL' },
+          status: { in: ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'] },
+        },
+        data: {
+          status: 'READY_TO_SCHEDULE',
+          heldAt: null,
+          holdReason: null,
+        },
+      });
     }
 
     const clearanceDate = stage === 'CLEAR' && !ticket.clearanceDate ? new Date() : ticket.clearanceDate;
@@ -85,7 +96,7 @@ export async function PUT(
       },
     });
 
-    const releasedOrders = stage === 'CLEAR' && ticket.matchedOrderIds ? ticket.matchedOrderIds.length : 0;
+    const releasedOrders = stage === 'CLEAR' ? relatedOrderIds.length : 0;
 
     return NextResponse.json({
       ticket: updatedTicket,

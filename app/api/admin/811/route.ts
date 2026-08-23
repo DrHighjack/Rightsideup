@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     if (searchParams.get('availableOrders') === '1') {
       const orders = await prisma.order.findMany({
         where: {
-          status: { in: ['PENDING', 'SCHEDULED', 'ON_HOLD'] },
+          status: { in: ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'] },
           self811Accepted: false,
           ticket811: null,
         },
@@ -124,7 +124,7 @@ export async function POST(request: NextRequest) {
       const order = await prisma.order.findFirst({
         where: {
           id: orderId,
-          status: { in: ['PENDING', 'SCHEDULED', 'ON_HOLD'] },
+          status: { in: ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'] },
           self811Accepted: false,
           ticket811: null,
         },

@@ -26,7 +26,7 @@ export const orderSchema = z.object({
 
 export const adminOrderSchema = orderSchema.extend({
   realtorId: z.string(),
-  status: z.string().refine((val) => ["PENDING", "SCHEDULED", "ON_HOLD", "IN_PROGRESS", "IN_GROUND", "COMPLETED", "CANCELLED"].includes(val), {
+  status: z.string().refine((val) => ["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED", "IN_GROUND", "EXTENDED_LISTING", "REMOVED", "CANCELLED"].includes(val), {
     message: "Invalid status",
   }).optional(),
   items: z.array(z.object({

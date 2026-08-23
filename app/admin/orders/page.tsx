@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import StatusBadge from "@/app/components/StatusBadge";
+import { formatOrderStatus, ORDER_STATUSES } from "@/lib/order-status";
 
 interface OrderData {
   id: string;
@@ -11,7 +13,6 @@ interface OrderData {
   status: string;
   scheduledDate?: string;
   createdAt: string;
-  isStale: boolean;
   realtor: {
     id: string;
     firstName: string;
@@ -86,19 +87,6 @@ export default function AdminOrdersPage() {
 
     fetchFieldTechs();
   }, []);
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "COMPLETED":
-        return "bg-green-100 text-green-800";
-      case "CANCELLED":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-blue-100 text-blue-800";
-    }
-  };
 
   async function handleExportCSV() {
     setExporting(true);
@@ -300,7 +288,7 @@ export default function AdminOrdersPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {["ALL", "PENDING", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map(
+            {["ALL", ...ORDER_STATUSES].map(
               (status) => (
                 <button
                   key={status}
@@ -314,7 +302,7 @@ export default function AdminOrdersPage() {
                       : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                   }`}
                 >
-                  {status}
+                  {status === "ALL" ? "All" : formatOrderStatus(status)}
                 </button>
               )
             )}
@@ -360,20 +348,11 @@ export default function AdminOrdersPage() {
                 {orders.map((order) => (
                   <tr
                     key={order.id}
-                    className={`border-b border-gray-200 cursor-pointer transition-colors ${
-                      order.isStale ? 'bg-yellow-50 hover:bg-yellow-100' : 'hover:bg-gray-50'
-                    }`}
+                    className="border-b border-gray-200 cursor-pointer transition-colors hover:bg-gray-50"
                     onClick={() => (window.location.href = `/admin/orders/${order.id}`)}
                   >
                     <td className="px-6 py-4 text-sm font-medium">
-                      <div className="flex items-center gap-2">
-                        <span className="text-primary">{order.orderNumber}</span>
-                        {order.isStale && (
-                          <span className="inline-flex items-center gap-1 bg-yellow-100 text-yellow-800 px-2 py-1 rounded text-xs font-semibold">
-                            ⚠️ Stale
-                          </span>
-                        )}
-                      </div>
+                      <span className="text-primary">{order.orderNumber}</span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {order.realtor.firstName} {order.realtor.lastName}
@@ -383,16 +362,14 @@ export default function AdminOrdersPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
+                      <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 text-sm" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
-                        {order.status === "COMPLETED" && (
+                        {order.status === "IN_GROUND" && (
                           <button
                             onClick={() => handleSendCompletionEmail(order.id)}
                             disabled={sendingId === order.id}
@@ -401,7 +378,7 @@ export default function AdminOrdersPage() {
                             {sendingId === order.id ? "Sending..." : "Send Email"}
                           </button>
                         )}
-                        {order.type === "INSTALL" && order.status === "COMPLETED" && (
+                        {order.type === "INSTALL" && ["IN_GROUND", "EXTENDED_LISTING"].includes(order.status) && (
                           <button
                             onClick={() => {
                               setRemovalModal({ isOpen: true, orderId: order.id });

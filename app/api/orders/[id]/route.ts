@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activityLog";
+import { isOrderReadyToSchedule, ORDER_STATUSES } from "@/lib/order-status";
 
 function serializeOrderPhotos<T extends { id: string; photos: unknown }>(order: T) {
   const photos = Array.isArray(order.photos) ? order.photos : [];
@@ -94,11 +95,17 @@ export async function PUT(
 
     const currentOrder = await prisma.order.findUnique({
       where: { id: params.id },
+      include: { ticket811: { select: { utilityLines: true } } },
     });
 
     if (!currentOrder) {
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
+
+    const readinessTicket = currentOrder.ticket811 || await prisma.ticket811.findFirst({
+      where: { matchedOrderIds: { has: currentOrder.id } },
+      select: { utilityLines: true },
+    });
 
     if (role !== "ADMIN") {
       let canReschedule = role === "REALTOR" && currentOrder.realtorId === session.user.id;
@@ -126,7 +133,7 @@ export async function PUT(
         );
       }
 
-      if (!["PENDING", "SCHEDULED", "ON_HOLD"].includes(currentOrder.status)) {
+      if (!["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED"].includes(currentOrder.status)) {
         return NextResponse.json(
           { error: "This order can no longer be rescheduled" },
           { status: 409 }
@@ -217,9 +224,22 @@ export async function PUT(
 
     // Validate status is a valid enum value
     if (updateData.status) {
-      const validStatuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'IN_GROUND', 'COMPLETED', 'CANCELLED'];
-      if (!validStatuses.includes(updateData.status)) {
+      if (!ORDER_STATUSES.some((status) => status === updateData.status)) {
         return NextResponse.json({ error: `Invalid status: ${updateData.status}` }, { status: 400 });
+      }
+
+      if (
+        ['READY_TO_SCHEDULE', 'SCHEDULED'].includes(updateData.status) &&
+        !isOrderReadyToSchedule({ ...currentOrder, ticket811: readinessTicket })
+      ) {
+        return NextResponse.json(
+          { error: 'All 811 utility lines must be clear before this order can be scheduled.' },
+          { status: 409 }
+        );
+      }
+
+      if (updateData.status === 'SCHEDULED' && !(updateData.scheduledDate || currentOrder.scheduledDate)) {
+        return NextResponse.json({ error: 'A scheduled date is required.' }, { status: 400 });
       }
     }
 

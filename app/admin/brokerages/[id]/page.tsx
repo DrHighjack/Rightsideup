@@ -98,11 +98,12 @@ const emptyStats: BrokerageStats = {
 const getStatusColor = (status: string) => {
   const colors: Record<string, string> = {
     PENDING: "bg-amber-100 text-amber-800",
+    CONFIRMED: "bg-sky-100 text-sky-800",
+    READY_TO_SCHEDULE: "bg-teal-100 text-teal-800",
     SCHEDULED: "bg-blue-100 text-blue-800",
-    ON_HOLD: "bg-orange-100 text-orange-800",
-    IN_PROGRESS: "bg-purple-100 text-purple-800",
     IN_GROUND: "bg-cyan-100 text-cyan-800",
-    COMPLETED: "bg-green-100 text-green-800",
+    EXTENDED_LISTING: "bg-indigo-100 text-indigo-800",
+    REMOVED: "bg-green-100 text-green-800",
     CANCELLED: "bg-red-100 text-red-800",
   };
   return colors[status] || "bg-gray-100 text-gray-800";
@@ -111,11 +112,12 @@ const getStatusColor = (status: string) => {
 const getMarkerColor = (status: string) => {
   const colors: Record<string, string> = {
     PENDING: "#f59e0b",
+    CONFIRMED: "#0ea5e9",
+    READY_TO_SCHEDULE: "#14b8a6",
     SCHEDULED: "#2563eb",
-    ON_HOLD: "#ea580c",
-    IN_PROGRESS: "#9333ea",
     IN_GROUND: "#0891b2",
-    COMPLETED: "#16a34a",
+    EXTENDED_LISTING: "#6366f1",
+    REMOVED: "#16a34a",
     CANCELLED: "#dc2626",
   };
   return colors[status] || "#64748b";

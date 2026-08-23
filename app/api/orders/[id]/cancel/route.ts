@@ -52,20 +52,25 @@ export async function PUT(
       }
     }
 
-    // Realtors and TCs can only cancel PENDING orders
+    // Realtors and TCs can cancel before 811 clearance or scheduling begins.
     if (
       ["REALTOR", "TC"].includes((session.user as any).role) &&
-      order.status !== "PENDING"
+      !["PENDING", "CONFIRMED"].includes(order.status)
     ) {
       return NextResponse.json(
-        { error: "Can only cancel PENDING orders" },
+        { error: "This order can no longer be cancelled online" },
         { status: 400 }
       );
     }
 
     if ((session.user as any).role === "REALTOR" || (session.user as any).role === "TC") {
       const existingTicket = await prisma.ticket811.findFirst({
-        where: { orderId: order.id },
+        where: {
+          OR: [
+            { orderId: order.id },
+            { matchedOrderIds: { has: order.id } },
+          ],
+        },
         select: { id: true, ticketNumber: true },
       });
 

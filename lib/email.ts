@@ -667,7 +667,7 @@ export function getOrderStatusUpdateEmail(
     const safeAddress = escapeHtml(address);
     const safeDashboardLink = escapeHtml(dashboardLink);
 
-  if (status === "COMPLETED") {
+    if (status === "IN_GROUND") {
     const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -683,7 +683,7 @@ export function getOrderStatusUpdateEmail(
                 <p style="margin-top:8px;opacity:0.95;">Your North Shore Sign Co order is complete</p>
             </div>
             <div style="padding:32px;">
-                <p style="margin-bottom:16px;">Hi ${safeCustomerName}, your order status is now <strong>COMPLETED</strong>.</p>
+                <p style="margin-bottom:16px;">Hi ${safeCustomerName}, your sign is now <strong>IN GROUND</strong>.</p>
                 <p style="margin-bottom:16px;"><strong>Order #:</strong> ${safeOrderNumber}</p>
                 <p style="margin-bottom:16px;"><strong>Address:</strong> ${safeAddress}</p>
                 <a href="${safeDashboardLink}" style="display:inline-block;background:#059669;color:#fff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:600;">View in Dashboard</a>

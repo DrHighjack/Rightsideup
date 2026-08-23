@@ -51,11 +51,12 @@ interface ProfileResponse {
 
 const markerColorByStatus: Record<string, string> = {
   PENDING: "#f59e0b",
+  CONFIRMED: "#0ea5e9",
+  READY_TO_SCHEDULE: "#14b8a6",
   SCHEDULED: "#3b82f6",
-  ON_HOLD: "#f97316",
-  IN_PROGRESS: "#8b5cf6",
   IN_GROUND: "#10b981",
-  COMPLETED: "#059669",
+  EXTENDED_LISTING: "#6366f1",
+  REMOVED: "#059669",
   CANCELLED: "#ef4444",
 };
 

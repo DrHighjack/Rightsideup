@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { logActivity } from '@/lib/activityLog';
 import { createNotification } from '@/lib/notifications';
 import { ActivityAction } from '@prisma/client';
+import { isOrderReadyToSchedule } from '@/lib/order-status';
 
 const assignmentSchema = z.object({
   orderId: z.string().min(1),
@@ -107,6 +108,7 @@ export async function POST(request: NextRequest) {
     // Validate order exists and is assignable
     const order = await prisma.order.findUnique({
       where: { id: orderId },
+      include: { ticket811: { select: { utilityLines: true } } },
     });
 
     if (!order) {
@@ -116,12 +118,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (order.status !== 'SCHEDULED' && order.status !== 'ON_HOLD') {
+    if (order.status !== 'SCHEDULED') {
       return NextResponse.json(
         {
-          error: `Order must be SCHEDULED or ON_HOLD. Current status: ${order.status}`,
+          error: `Order must be SCHEDULED before assigning an installer. Current status: ${order.status}`,
         },
         { status: 400 }
+      );
+    }
+
+    const readinessTicket = order.ticket811 || await prisma.ticket811.findFirst({
+      where: { matchedOrderIds: { has: order.id } },
+      select: { utilityLines: true },
+    });
+
+    if (!isOrderReadyToSchedule({ ...order, ticket811: readinessTicket })) {
+      return NextResponse.json(
+        { error: 'All 811 utility lines must be clear before assigning an installer.' },
+        { status: 409 }
       );
     }
 
@@ -152,6 +166,13 @@ export async function POST(request: NextRequest) {
     if (fieldTech.role !== 'FIELD_TECH') {
       return NextResponse.json(
         { error: 'User is not a FIELD_TECH' },
+        { status: 400 }
+      );
+    }
+
+    if (fieldTech.tags.includes('INACTIVE')) {
+      return NextResponse.json(
+        { error: 'Installer account is inactive' },
         { status: 400 }
       );
     }

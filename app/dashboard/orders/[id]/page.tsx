@@ -257,11 +257,11 @@ export default function OrderDetailPage() {
           <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Status</h2>
           <span
             className={`inline-flex rounded-full px-4 py-2 font-display text-sm font-semibold uppercase tracking-widest ${
-              order.status === "PENDING" || order.status === "ON_HOLD"
+              order.status === "PENDING" || order.status === "CONFIRMED"
                 ? "bg-amber-100 text-amber-800"
-                : order.status === "SCHEDULED" || order.status === "IN_PROGRESS"
+                : order.status === "READY_TO_SCHEDULE" || order.status === "SCHEDULED"
                 ? "bg-blue-100 text-blue-800"
-                : order.status === "COMPLETED" || order.status === "IN_GROUND"
+                : ["IN_GROUND", "EXTENDED_LISTING", "REMOVED"].includes(order.status)
                 ? "bg-green-100 text-green-800"
                 : order.status === "CANCELLED"
                 ? "bg-red-100 text-red-800"
@@ -306,7 +306,7 @@ export default function OrderDetailPage() {
           <div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Requested Date</p>
-              {["PENDING", "SCHEDULED", "ON_HOLD"].includes(order.status) && !editingDate && (
+              {["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED"].includes(order.status) && !editingDate && (
                 <button
                   type="button"
                   onClick={() => setEditingDate(true)}

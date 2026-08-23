@@ -676,7 +676,7 @@ function AdminNewOrderFormContent() {
             onChange={handleChange}
             className="w-full rounded-md border border-gray-300 px-4 py-2"
           >
-            {["PENDING", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map((s) => (
+            {["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED", "IN_GROUND", "EXTENDED_LISTING", "REMOVED", "CANCELLED"].map((s) => (
               <option key={s} value={s}>
                 {s}
               </option>

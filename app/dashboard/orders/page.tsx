@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import StatusBadge from "@/app/components/StatusBadge";
+import { formatOrderStatus, ORDER_STATUSES } from "@/lib/order-status";
 
 interface OrderData {
   id: string;
@@ -87,19 +89,6 @@ export default function OrdersPage() {
     fetchOrders();
   }, [filter, page, search, sortBy]);
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "PENDING":
-        return "bg-yellow-100 text-yellow-800";
-      case "COMPLETED":
-        return "bg-green-100 text-green-800";
-      case "CANCELLED":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-blue-100 text-blue-800";
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -136,7 +125,7 @@ export default function OrdersPage() {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-4">
-            {["ALL", "PENDING", "SCHEDULED", "IN_PROGRESS", "COMPLETED", "CANCELLED"].map(
+            {["ALL", ...ORDER_STATUSES].map(
               (status) => (
                 <button
                   key={status}
@@ -150,7 +139,7 @@ export default function OrdersPage() {
                       : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                   }`}
                 >
-                  {status}
+                  {status === "ALL" ? "All" : formatOrderStatus(status)}
                 </button>
               )
             )}
@@ -224,9 +213,7 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{order.type}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${getStatusColor(order.status)}`}>
-                        {order.status}
-                      </span>
+                      <StatusBadge status={order.status} />
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(order.createdAt).toLocaleDateString()}

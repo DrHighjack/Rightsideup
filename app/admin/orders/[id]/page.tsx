@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { formatOrderStatus, ORDER_STATUSES } from "@/lib/order-status";
 
 interface OrderDetail {
   id: string;
@@ -318,9 +319,9 @@ export default function AdminOrderDetailPage() {
                 }
                 className="w-full rounded-md border border-gray-300 px-4 py-2"
               >
-                {["PENDING", "SCHEDULED", "IN_PROGRESS", "IN_GROUND", "COMPLETED", "CANCELLED"].map((s) => (
+                {ORDER_STATUSES.map((s) => (
                   <option key={s} value={s}>
-                    {s}
+                    {formatOrderStatus(s)}
                   </option>
                 ))}
               </select>

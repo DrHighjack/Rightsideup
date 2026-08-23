@@ -97,7 +97,7 @@ export default function ElevenPage() {
           const uniqueMap = new Map<string, PropertyOption>();
 
           orderList.forEach((order: any) => {
-            if (!['PENDING', 'SCHEDULED', 'ON_HOLD'].includes(order?.status)) return;
+            if (!['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'].includes(order?.status)) return;
             if (!['INSTALL', 'CHANGE'].includes(order?.type)) return;
 
             const address = typeof order?.address === 'string' ? order.address.trim() : '';

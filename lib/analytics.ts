@@ -45,7 +45,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const [totalOrders, pendingOrders, completedOrders, cancelledOrders] = await Promise.all([
     prisma.order.count(),
     prisma.order.count({ where: { status: 'PENDING' } }),
-    prisma.order.count({ where: { status: { in: ['IN_GROUND', 'COMPLETED'] } } }),
+    prisma.order.count({ where: { status: { in: ['IN_GROUND', 'EXTENDED_LISTING', 'REMOVED'] } } }),
     prisma.order.count({ where: { status: 'CANCELLED' } }),
   ]);
 
@@ -56,7 +56,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   const getRevenueByDateRange = async (startDate: Date) => {
     const orders = await prisma.order.findMany({
       where: {
-        status: { in: ['IN_GROUND', 'COMPLETED'] },
+        status: { in: ['IN_GROUND', 'EXTENDED_LISTING', 'REMOVED'] },
         updatedAt: { gte: startDate },
       },
       include: {
@@ -247,7 +247,7 @@ export async function getRealtorPerformance() {
       const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
       totalRevenue += subtotal - discount;
 
-      if (order.status === 'COMPLETED' || order.status === 'IN_GROUND') completedCount++;
+      if (['IN_GROUND', 'EXTENDED_LISTING', 'REMOVED'].includes(order.status)) completedCount++;
     }
 
     const completionRate =
@@ -485,7 +485,7 @@ export async function getDashboardMetrics(
       const [totalOrders, completedOrders] = await Promise.all([
         prisma.order.count({ where: { createdAt: { gte: startDate, lte: endDate } } }),
         prisma.order.count({
-          where: { status: { in: ['IN_GROUND', 'COMPLETED'] }, createdAt: { gte: startDate, lte: endDate } },
+          where: { status: { in: ['IN_GROUND', 'EXTENDED_LISTING', 'REMOVED'] }, createdAt: { gte: startDate, lte: endDate } },
         }),
       ]);
 
@@ -665,7 +665,7 @@ export async function getStatusData(): Promise<StatusData[]> {
   return getOrSet(
     cacheKey,
     async () => {
-      const statuses = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
+      const statuses = ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE', 'SCHEDULED', 'IN_GROUND', 'EXTENDED_LISTING', 'REMOVED', 'CANCELLED'] as const;
 
       const counts = await Promise.all(
         statuses.map((status) =>

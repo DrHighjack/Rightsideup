@@ -51,7 +51,7 @@ export async function PUT(
       );
     }
 
-    // Update assignment and order status
+    // Starting field work is tracked on the assignment; the order remains scheduled.
     const updatedAssignment = await prisma.jobAssignment.update({
       where: { id },
       data: {
@@ -80,12 +80,6 @@ export async function PUT(
           },
         },
       },
-    });
-
-    // Update order status to IN_PROGRESS
-    await prisma.order.update({
-      where: { id: assignment.orderId },
-      data: { status: 'IN_PROGRESS' },
     });
 
     return NextResponse.json(updatedAssignment);

@@ -62,15 +62,15 @@ const getMarkerDimensionsForZoom = (zoom: number) => {
 
 const getMarkerVariant = (status: string): MarkerVariant => {
   switch (status) {
-    case "COMPLETED":
+    case "REMOVED":
       return "green";
     case "SCHEDULED":
       return "blue";
-    case "IN_PROGRESS":
+    case "READY_TO_SCHEDULE":
       return "orange";
     case "IN_GROUND":
       return "white";
-    case "ON_HOLD":
+    case "EXTENDED_LISTING":
       return "black";
     case "CANCELLED":
       return "red";
@@ -108,16 +108,18 @@ const getStatusLabel = (status: string): string => {
 
 const getStatusColor = (status: string): string => {
   switch (status) {
-    case "COMPLETED":
+    case "REMOVED":
       return "bg-green-100 text-green-800";
     case "SCHEDULED":
       return "bg-blue-100 text-blue-800";
-    case "IN_PROGRESS":
+    case "READY_TO_SCHEDULE":
       return "bg-purple-100 text-purple-800";
     case "IN_GROUND":
       return "bg-cyan-100 text-cyan-800";
-    case "ON_HOLD":
+    case "EXTENDED_LISTING":
       return "bg-orange-100 text-orange-800";
+    case "CONFIRMED":
+      return "bg-sky-100 text-sky-800";
     case "CANCELLED":
       return "bg-red-100 text-red-800";
     case "PENDING":
@@ -126,7 +128,7 @@ const getStatusColor = (status: string): string => {
   }
 };
 
-const STATUS_OPTIONS = ['PENDING', 'SCHEDULED', 'ON_HOLD', 'IN_PROGRESS', 'IN_GROUND', 'COMPLETED', 'CANCELLED'] as const;
+const STATUS_OPTIONS = ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE', 'SCHEDULED', 'IN_GROUND', 'EXTENDED_LISTING', 'REMOVED', 'CANCELLED'] as const;
 
 export default function OrdersMapPage() {
   const [orders, setOrders] = useState<OrderLocation[]>([]);
@@ -363,7 +365,7 @@ export default function OrdersMapPage() {
                   ...getMarkerSpriteStyle("green", 12, 16),
                 }}
               ></div>
-              <span className="text-gray-700">Completed</span>
+              <span className="text-gray-700">Removed</span>
             </div>
             <div className="flex items-center gap-2">
               <div
@@ -521,7 +523,7 @@ export default function OrdersMapPage() {
                       )}
 
                       <div className="pt-2 mt-3 border-t space-y-2">
-                        {order.type === "INSTALL" && order.status === "COMPLETED" && (
+                        {order.type === "INSTALL" && ["IN_GROUND", "EXTENDED_LISTING"].includes(order.status) && (
                           <button
                             onClick={() => {
                               setRemovalModal({ isOpen: true, orderId: order.id });

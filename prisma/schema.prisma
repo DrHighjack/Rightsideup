@@ -19,11 +19,12 @@ enum Role {
 
 enum OrderStatus {
   PENDING
+  CONFIRMED
+  READY_TO_SCHEDULE
   SCHEDULED
-  ON_HOLD
-  IN_PROGRESS
   IN_GROUND
-  COMPLETED
+  REMOVED
+  EXTENDED_LISTING
   CANCELLED
 }
 
@@ -187,8 +188,6 @@ model Order {
   cancelReason   String?
   holdReason     String?       // e.g. "811 ticket #12345"
   heldAt         DateTime?
-  isStale        Boolean       @default(false)
-  staleAt        DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   self811Accepted Boolean      @default(false) // true if realtor opted out of 811 service and accepted policy
@@ -206,7 +205,6 @@ model Order {
   @@index([placedByTCId])
   @@index([status])
   @@index([heldAt])
-  @@index([isStale])
 }
 
 model Invoice {

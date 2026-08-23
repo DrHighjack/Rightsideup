@@ -691,7 +691,7 @@ export default function Ticket811DetailPage() {
                   </div>
                   <span
                     className={`px-3 py-1 rounded text-sm font-medium ${
-                      order.status === 'ON_HOLD'
+                      order.status === 'CONFIRMED'
                         ? 'bg-red-100 text-red-800'
                         : 'bg-green-100 text-green-800'
                     }`}

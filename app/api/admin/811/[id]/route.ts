@@ -10,6 +10,7 @@ import { auth } from '@/lib/auth';
 import { logActivity } from '@/lib/activityLog';
 import { createNotification } from '@/lib/notifications';
 import { ActivityAction } from '@prisma/client';
+import { areAllUtilityLinesClear } from '@/lib/order-status';
 
 // GET /api/admin/811/[id] - Get ticket detail with matched orders
 export async function GET(
@@ -56,7 +57,7 @@ export async function GET(
 
 // PUT /api/admin/811/[id] - Update ticket (clear, dismiss, or general update)
 // Body: { action: 'clear' | 'dismiss' | 'update' }
-// For 'clear': { adminNotes? } - releases held orders back to SCHEDULED
+// For 'clear': { adminNotes? } - moves linked orders to READY_TO_SCHEDULE
 // For 'dismiss': { adminNotes? } - marks as false positive
 // For 'update': { parsedAddress?, adminNotes?, matchedOrderIds? }
 export async function PUT(
@@ -87,8 +88,14 @@ export async function PUT(
 
     if (action === 'clear') {
       console.log('[811API] Clearing ticket:', id);
-      // Clear the ticket and release held orders back to SCHEDULED
       const { adminNotes } = body;
+
+      if (!areAllUtilityLinesClear(ticket.utilityLines)) {
+        return NextResponse.json(
+          { error: 'Every 811 utility line must be CLEAR before this ticket can be cleared.' },
+          { status: 409 }
+        );
+      }
 
       // Get all matched orders
       const matchedOrders = await prisma.order.findMany({
@@ -98,16 +105,16 @@ export async function PUT(
 
       console.log('[811API] Found', matchedOrders.length, 'matched orders');
 
-      // Update all matched orders back to SCHEDULED and send confirmation emails
+      // Cleared installs are ready for the office to schedule.
       await Promise.all(
         matchedOrders.map(async (order) => {
           try {
             // Update order status
-            console.log('[811API] Updating order:', order.id, 'to SCHEDULED');
+            console.log('[811API] Updating order:', order.id, 'to READY_TO_SCHEDULE');
             await prisma.order.update({
               where: { id: order.id },
               data: {
-                status: 'SCHEDULED',
+                status: order.type === 'REMOVAL' ? order.status : 'READY_TO_SCHEDULE',
                 holdReason: null,
                 heldAt: null,
               },

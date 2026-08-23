@@ -170,8 +170,8 @@ export default function RealtorDetailPage() {
         const allOrders = ordersData.orders || [];
         setStats({
           totalOrders: allOrders.length,
-          activeOrders: allOrders.filter((o: Order) => ["PENDING", "SCHEDULED", "IN_PROGRESS"].includes(o.status)).length,
-          completedOrders: allOrders.filter((o: Order) => ["IN_GROUND", "COMPLETED"].includes(o.status)).length,
+          activeOrders: allOrders.filter((o: Order) => ["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED", "IN_GROUND", "EXTENDED_LISTING"].includes(o.status)).length,
+          completedOrders: allOrders.filter((o: Order) => ["IN_GROUND", "EXTENDED_LISTING", "REMOVED"].includes(o.status)).length,
           cancelledOrders: allOrders.filter((o: Order) => o.status === "CANCELLED").length,
         });
       } catch (err) {
@@ -482,11 +482,11 @@ export default function RealtorDetailPage() {
         return "bg-yellow-100 text-yellow-800";
       case "SCHEDULED":
         return "bg-blue-100 text-blue-800";
-      case "IN_PROGRESS":
+      case "READY_TO_SCHEDULE":
         return "bg-purple-100 text-purple-800";
       case "IN_GROUND":
         return "bg-cyan-100 text-cyan-800";
-      case "COMPLETED":
+      case "REMOVED":
         return "bg-green-100 text-green-800";
       case "CANCELLED":
         return "bg-red-100 text-red-800";
@@ -517,8 +517,8 @@ export default function RealtorDetailPage() {
 
   const filteredOrders = orders.filter((order) => {
     if (filterStatus === "all") return true;
-    if (filterStatus === "active") return ["PENDING", "SCHEDULED", "IN_PROGRESS"].includes(order.status);
-    if (filterStatus === "completed") return ["IN_GROUND", "COMPLETED"].includes(order.status);
+    if (filterStatus === "active") return ["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED", "IN_GROUND", "EXTENDED_LISTING"].includes(order.status);
+    if (filterStatus === "completed") return ["IN_GROUND", "EXTENDED_LISTING", "REMOVED"].includes(order.status);
     if (filterStatus === "cancelled") return order.status === "CANCELLED";
     return true;
   });

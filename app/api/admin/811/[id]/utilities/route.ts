@@ -3,7 +3,7 @@
  * Auth: ADMIN only
  * Body: { lineName, status, respondedAt? }
  * Updates the utilityLines JSON array
- * If all lines are CLEAR or RESPONDED, auto-update stage to LINES_RESPONDED
+ * Only all CLEAR lines advance the linked order to READY_TO_SCHEDULE.
  */
 
 import { auth } from '@/lib/auth';
@@ -88,14 +88,39 @@ export async function PUT(
       });
     }
 
-    // Check if all lines are CLEAR or RESPONDED
+    // A response is not clearance. Every listed line must explicitly be CLEAR.
     const allResponded = utilityLines.every((line) =>
       ['CLEAR', 'RESPONDED'].includes(line.status)
     );
+    const allClear = utilityLines.length > 0 && utilityLines.every((line) => line.status === 'CLEAR');
 
-    // Auto-update stage if all lines responded
-    const newStage = allResponded ? 'LINES_RESPONDED' : ticket.stage;
+    const newStage = allClear ? 'CLEAR' : allResponded ? 'LINES_RESPONDED' : 'TICKET_SUBMITTED';
     const allLinesRespondedAt = allResponded && !ticket.allLinesRespondedAt ? new Date() : ticket.allLinesRespondedAt;
+    const relatedOrderIds = Array.from(
+      new Set([ticket.orderId, ...ticket.matchedOrderIds].filter((id): id is string => Boolean(id)))
+    );
+
+    if (relatedOrderIds.length > 0) {
+      if (allClear) {
+        await prisma.order.updateMany({
+          where: {
+            id: { in: relatedOrderIds },
+            type: { not: 'REMOVAL' },
+            status: { in: ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'] },
+          },
+          data: { status: 'READY_TO_SCHEDULE', holdReason: null, heldAt: null },
+        });
+      } else {
+        await prisma.order.updateMany({
+          where: {
+            id: { in: relatedOrderIds },
+            type: { not: 'REMOVAL' },
+            status: { in: ['READY_TO_SCHEDULE', 'SCHEDULED'] },
+          },
+          data: { status: 'CONFIRMED' },
+        });
+      }
+    }
 
     const updatedTicket = await prisma.ticket811.update({
       where: { id: ticketId },
@@ -103,6 +128,9 @@ export async function PUT(
         utilityLines: utilityLines as any,
         stage: newStage,
         allLinesRespondedAt,
+        clearanceDate: allClear ? ticket.clearanceDate || new Date() : null,
+        status: allClear ? 'CLEARED' : ticket.status === 'CLEARED' ? 'ACTIVE' : ticket.status,
+        clearedAt: allClear ? ticket.clearedAt || new Date() : null,
         updatedAt: new Date(),
       },
       include: {
@@ -116,6 +144,7 @@ export async function PUT(
       ticket: updatedTicket,
       message: `Utility line '${lineName}' updated to ${status}`,
       stageUpdated: newStage !== ticket.stage ? `Auto-advanced to ${newStage}` : null,
+      orderReadyToSchedule: allClear,
     });
   } catch (error) {
     console.error('Error updating utility line:', error);

@@ -202,7 +202,7 @@ export async function POST(request: Request) {
 
     const isEligible =
       ['INSTALL', 'CHANGE'].includes(order.type) &&
-      ['PENDING', 'SCHEDULED', 'ON_HOLD'].includes(order.status) &&
+      ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'].includes(order.status) &&
       !order.self811Accepted &&
       !order.ticket811;
 

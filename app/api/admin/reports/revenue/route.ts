@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
           lte: endDate,
         },
         status: {
-          in: ['COMPLETED'],
+          in: ['IN_GROUND', 'EXTENDED_LISTING', 'REMOVED'],
         },
       },
       include: {

@@ -360,12 +360,12 @@ export async function pollAndProcess(): Promise<void> {
         }
 
         // Step 4: High confidence - fuzzy match orders
-        console.log(`[811POLL] Matching extracted address against PENDING/SCHEDULED orders`);
+        console.log(`[811POLL] Matching extracted address against orders awaiting 811 clearance`);
 
         const orders = await prisma.order.findMany({
           where: {
             status: {
-              in: ['PENDING', 'SCHEDULED'],
+              in: ['PENDING', 'CONFIRMED', 'READY_TO_SCHEDULE'],
             },
             ticket811: {
               is: null,
@@ -386,11 +386,11 @@ export async function pollAndProcess(): Promise<void> {
           if (fuzzyMatchAddress(order.address, parsed.address)) {
             console.log(`[811POLL] ✓ Matched order: ${order.orderNumber}`);
 
-            // Update order to ON_HOLD
+            // Keep 811 state in ticket metadata; the order remains in pre-scheduling workflow.
             await prisma.order.update({
               where: { id: order.id },
               data: {
-                status: 'ON_HOLD',
+                status: 'CONFIRMED',
                 holdReason: `811 ticket ${parsed.ticketNumber || 'unknown'}`,
                 heldAt: new Date(),
               },

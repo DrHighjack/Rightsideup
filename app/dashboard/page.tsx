@@ -6,6 +6,7 @@ import Link from "next/link";
 import GoogleMapReact from "google-map-react";
 import RealtorOnboardingBanner, { OnboardingStatus } from "./components/RealtorOnboardingBanner";
 import PageSkeleton from "../components/PageSkeleton";
+import { ACTIVE_ORDER_STATUSES, formatOrderStatus, FULFILLED_ORDER_STATUSES, ORDER_STATUSES } from "@/lib/order-status";
 
 interface OrderData {
   id: string;
@@ -36,15 +37,17 @@ interface DashboardStats {
 
 const getMarkerColor = (status: string): string => {
   switch (status) {
-    case "COMPLETED":
+    case "REMOVED":
     case "IN_GROUND":
       return "#10B981";
+    case "EXTENDED_LISTING":
+      return "#6366F1";
+    case "READY_TO_SCHEDULE":
+      return "#14B8A6";
+    case "CONFIRMED":
+      return "#0EA5E9";
     case "SCHEDULED":
       return "#3B82F6";
-    case "IN_PROGRESS":
-      return "#8B5CF6";
-    case "ON_HOLD":
-      return "#F97316";
     case "CANCELLED":
       return "#EF4444";
     case "PENDING":
@@ -53,17 +56,9 @@ const getMarkerColor = (status: string): string => {
   }
 };
 
-const STATUS_FILTER_ORDER = [
-  "PENDING",
-  "SCHEDULED",
-  "ON_HOLD",
-  "IN_PROGRESS",
-  "IN_GROUND",
-  "COMPLETED",
-  "CANCELLED",
-] as const;
+const STATUS_FILTER_ORDER = ORDER_STATUSES;
 
-const formatStatusLabel = (status: string): string => status.replace(/_/g, " ");
+const formatStatusLabel = formatOrderStatus;
 
 const formatCalendarDate = (value: string): string =>
   new Intl.DateTimeFormat(undefined, { timeZone: "UTC" }).format(new Date(value));
@@ -168,11 +163,11 @@ export default function DashboardPage() {
 
         if (data.orders) {
           const allOrders: OrderData[] = Array.isArray(data.orders) ? data.orders : [];
-          const active = data.orders.filter(
-            (o: OrderData) => o.status === "SCHEDULED" || o.status === "IN_PROGRESS"
+          const active = data.orders.filter((o: OrderData) =>
+            ACTIVE_ORDER_STATUSES.includes(o.status as any)
           ).length;
           const completedThisMonth = data.orders.filter((o: OrderData) => {
-            if (o.status !== "COMPLETED" && o.status !== "IN_GROUND") return false;
+            if (!FULFILLED_ORDER_STATUSES.includes(o.status as any)) return false;
             const orderDate = new Date(o.createdAt);
             const now = new Date();
             return (
@@ -634,9 +629,9 @@ export default function DashboardPage() {
                       className={`inline-flex rounded-full px-2.5 py-1 font-display text-[11px] font-semibold uppercase tracking-widest ${
                         order.status === "PENDING"
                           ? "bg-amber-100 text-amber-800"
-                          : order.status === "SCHEDULED" || order.status === "IN_PROGRESS"
+                          : order.status === "READY_TO_SCHEDULE" || order.status === "SCHEDULED"
                           ? "bg-blue-100 text-blue-800"
-                          : order.status === "IN_GROUND" || order.status === "COMPLETED"
+                          : ["IN_GROUND", "EXTENDED_LISTING", "REMOVED"].includes(order.status)
                           ? "bg-green-100 text-green-800"
                           : order.status === "CANCELLED"
                           ? "bg-red-100 text-red-800"

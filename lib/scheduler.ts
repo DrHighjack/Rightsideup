@@ -190,60 +190,6 @@ async function checkInvoiceAging() {
   }
 }
 
-async function checkStaleOrders() {
-  try {
-    // Dynamically import at runtime to avoid webpack bundling issues
-    const { prisma } = await import('./prisma');
-
-    console.log('[SCHEDULER] Checking stale orders...');
-
-    const now = new Date();
-    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-
-    // Find PENDING orders older than 48 hours that are not already marked stale
-    const staleOrders = await prisma.order.findMany({
-      where: {
-        status: 'PENDING',
-        updatedAt: {
-          lt: fortyEightHoursAgo,
-        },
-        isStale: false,
-      },
-    });
-
-    console.log(`[SCHEDULER] Found ${staleOrders.length} newly stale orders`);
-
-    // Update all stale orders in batch
-    if (staleOrders.length > 0) {
-      const result = await prisma.order.updateMany({
-        where: {
-          id: {
-            in: staleOrders.map((o) => o.id),
-          },
-        },
-        data: {
-          isStale: true,
-          staleAt: now,
-        },
-      });
-
-      console.log(`[SCHEDULER] Marked ${result.count} orders as stale`);
-    }
-
-    console.log('[SCHEDULER] Stale order check complete');
-  } catch (err) {
-    console.error('[SCHEDULER] Stale order check error:', err);
-    Sentry.captureException(err, {
-      contexts: {
-        scheduler: {
-          job: 'checkStaleOrders',
-          cron: '0 9 * * *',
-        },
-      },
-    });
-  }
-}
-
 export async function startScheduler() {
   // Dynamically import server-only modules at runtime to avoid webpack bundling issues
   const { pollAndProcess } = await import('./emailPoller');
@@ -278,11 +224,6 @@ export async function startScheduler() {
   // Job 2: Invoice aging reminder - daily at 8:00 AM
   cron.schedule('0 8 * * *', async () => {
     await checkInvoiceAging();
-  });
-
-  // Job 3: Stale order check - daily at 9:00 AM
-  cron.schedule('0 9 * * *', async () => {
-    await checkStaleOrders();
   });
 
   console.log('[SCHEDULER] All jobs initialized');

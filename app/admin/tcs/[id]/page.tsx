@@ -58,15 +58,15 @@ interface TCProfileData {
 
 const getStatusColor = (status: string): string => {
   switch (status) {
-    case "COMPLETED":
+    case "REMOVED":
       return "bg-green-100 text-green-800";
     case "SCHEDULED":
       return "bg-blue-100 text-blue-800";
-    case "IN_PROGRESS":
+    case "READY_TO_SCHEDULE":
       return "bg-purple-100 text-purple-800";
     case "IN_GROUND":
       return "bg-cyan-100 text-cyan-800";
-    case "ON_HOLD":
+    case "EXTENDED_LISTING":
       return "bg-orange-100 text-orange-800";
     case "CANCELLED":
       return "bg-red-100 text-red-800";
@@ -78,15 +78,15 @@ const getStatusColor = (status: string): string => {
 
 const getMarkerColor = (status: string): string => {
   switch (status) {
-    case "COMPLETED":
+    case "REMOVED":
       return "#10B981";
     case "SCHEDULED":
       return "#3B82F6";
-    case "IN_PROGRESS":
+    case "READY_TO_SCHEDULE":
       return "#A855F7";
     case "IN_GROUND":
       return "#06B6D4";
-    case "ON_HOLD":
+    case "EXTENDED_LISTING":
       return "#F97316";
     case "CANCELLED":
       return "#EF4444";

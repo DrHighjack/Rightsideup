@@ -7,11 +7,11 @@ const prisma = new PrismaClient();
 
 function mapStatus(csvStatus) {
   const statusMap = {
-    Removed: 'COMPLETED',
+    Removed: 'REMOVED',
     'In Ground': 'IN_GROUND',
-    'On Hold': 'ON_HOLD',
+    'On Hold': 'CONFIRMED',
     'Awaiting 811': 'PENDING',
-    'Awaiting HOA': 'ON_HOLD',
+    'Awaiting HOA': 'CONFIRMED',
   };
   return statusMap[csvStatus] || 'PENDING';
 }

@@ -643,6 +643,8 @@ model JobAssignment {
   techNotes       String?
   issue           String?    // issue flagged by tech, triggers admin alert
   images          Json?      // array of { id, url, uploadedAt } - store base64 or file URLs
+  installerPayCents Int?
+  satisfactionScore Int?     // Admin-recorded customer satisfaction score from 1 to 5
   createdAt       DateTime   @default(now())
   
   @@map("job_assignments")

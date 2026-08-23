@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 
 interface Installer {
   id: string;
@@ -264,7 +265,11 @@ function InstallerTable({
         <tbody className="divide-y divide-gray-200">
           {installers.map((installer) => (
             <tr key={installer.id}>
-              <td className="px-5 py-4 font-medium text-gray-900">{installer.firstName} {installer.lastName}</td>
+              <td className="px-5 py-4 font-medium">
+                <Link href={`/admin/installers/${installer.id}`} className="text-primary-700 hover:underline">
+                  {installer.firstName} {installer.lastName}
+                </Link>
+              </td>
               <td className="px-5 py-4 text-gray-600">
                 <div>{installer.email}</div>
                 {installer.phone ? <div className="mt-1 text-xs text-gray-500">{installer.phone}</div> : null}

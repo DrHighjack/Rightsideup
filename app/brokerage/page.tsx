@@ -212,14 +212,16 @@ function BrokerageDashboardContent() {
       }
 
       const [profileRes, agentsRes, invoicesRes, statementsRes, cardsRes] = await Promise.all([
-        fetch(`/api/brokerage/profile?brokerageId=${encodeURIComponent(officeId)}`),
+        officeId === "all"
+          ? Promise.resolve(null)
+          : fetch(`/api/brokerage/profile?brokerageId=${encodeURIComponent(officeId)}`),
         fetch(`/api/brokerage/agents?brokerageId=${encodeURIComponent(officeId)}`),
         fetch(`/api/brokerage/invoices?${query.toString()}`),
         fetch("/api/brokerage/statements"),
         fetch("/api/payments/card-on-file"),
       ]);
 
-      if (!profileRes.ok) {
+      if (profileRes && !profileRes.ok) {
         const data = await profileRes.json();
         throw new Error(data.error || "Failed to load brokerage profile");
       }
@@ -234,13 +236,15 @@ function BrokerageDashboardContent() {
         throw new Error(data.error || "Failed to load invoices");
       }
 
-      const profileData = await profileRes.json();
+      const profileData = profileRes ? await profileRes.json() : null;
       const agentsData = await agentsRes.json();
       const invoicesData = await invoicesRes.json();
       const statementsData = statementsRes.ok ? await statementsRes.json() : { statements: [] };
       const cardsData = cardsRes.ok ? await cardsRes.json() : { cards: [] };
-      setBrokerage(profileData.brokerage);
-      setScheduleInterval(profileData.brokerage.autoInvoiceInterval || "MONTHLY");
+      setBrokerage(profileData?.brokerage || null);
+      if (profileData?.brokerage) {
+        setScheduleInterval(profileData.brokerage.autoInvoiceInterval || "MONTHLY");
+      }
       setAgents(agentsData.agents || []);
       setAgentSummary(agentsData.summary || null);
       setInvoices(invoicesData.invoices || []);
@@ -258,6 +262,12 @@ function BrokerageDashboardContent() {
   useEffect(() => {
     loadData();
   }, [invoiceStatusFilter, invoiceMemberFilter, selectedBrokerageId]);
+
+  useEffect(() => {
+    if (activeTab === "members" && selectedBrokerageId === "all" && accessibleBrokerages[0]) {
+      setSelectedBrokerageId(accessibleBrokerages[0].id);
+    }
+  }, [activeTab, selectedBrokerageId, accessibleBrokerages]);
 
   useEffect(() => {
     if (linkedStatementId && statements.some((statement) => statement.id === linkedStatementId)) {
@@ -551,7 +561,15 @@ function BrokerageDashboardContent() {
         <section className="border-y border-gray-200 bg-white p-4">
           <label className="block max-w-md text-sm font-medium text-gray-700">
             Office
-            <select value={selectedBrokerageId} onChange={(event) => setSelectedBrokerageId(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900">
+            <select
+              value={selectedBrokerageId}
+              onChange={(event) => {
+                setInvoiceMemberFilter("");
+                setSelectedBrokerageId(event.target.value);
+              }}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+            >
+              {activeTab === "billing" && <option value="all">All Offices</option>}
               {accessibleBrokerages.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
             </select>
           </label>
@@ -788,6 +806,12 @@ function BrokerageDashboardContent() {
         onError={() => setError("Failed to load the secure payment form")}
       />
 
+      {selectedBrokerageId === "all" ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-6">
+          <h3 className="text-xl font-semibold text-gray-900">Automatic invoicing</h3>
+          <p className="mt-2 text-sm text-gray-600">Select an individual office to view or change its automatic invoicing schedule.</p>
+        </section>
+      ) : (
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -853,6 +877,7 @@ function BrokerageDashboardContent() {
           )}
         </div>
       </section>
+      )}
 
       <section className="rounded-lg border border-gray-200 bg-white p-6">
         {accessibleBrokerages.length > 1 && (

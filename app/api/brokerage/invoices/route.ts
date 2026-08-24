@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
+import { getAccessibleBrokerages, resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,11 +12,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const brokerageId = await resolveAccessibleBrokerageId(
-      session.user.id,
-      new URL(request.url).searchParams.get("brokerageId")
-    );
-    if (!brokerageId) {
+    const requestedBrokerageId = new URL(request.url).searchParams.get("brokerageId");
+    const brokerageIds = requestedBrokerageId === "all"
+      ? (await getAccessibleBrokerages(session.user.id)).map((brokerage) => brokerage.id)
+      : [await resolveAccessibleBrokerageId(session.user.id, requestedBrokerageId)].filter(
+          (brokerageId): brokerageId is string => Boolean(brokerageId)
+        );
+    if (!brokerageIds.length) {
       return NextResponse.json({ error: "No brokerage linked to account" }, { status: 404 });
     }
 
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
     const baseWhere: any = {
       status: { not: "DRAFT" },
       user: {
-        brokerageId,
+        brokerageId: brokerageIds.length === 1 ? brokerageIds[0] : { in: brokerageIds },
         role: "REALTOR",
       },
     };

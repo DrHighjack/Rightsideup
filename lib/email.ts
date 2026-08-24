@@ -535,6 +535,45 @@ ${STANDARD_FOOTER_HTML}
   };
 }
 
+export function getAccountActivationWelcomeEmail(input: {
+    firstName: string;
+    officeName: string;
+    activationLink: string;
+    accountTitle: string;
+}) {
+    const firstName = escapeHtml(input.firstName);
+    const officeName = escapeHtml(input.officeName);
+    const activationLink = escapeHtml(input.activationLink);
+    const accountTitle = escapeHtml(input.accountTitle);
+
+    return {
+        subject: "Welcome to North Shore Sign Co - Activate Your Account",
+        html: `<!DOCTYPE html>
+<html lang="en">
+<body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937">
+    <div style="max-width:640px;margin:0 auto;padding:32px 16px">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+            <div style="background:#0f3d5e;color:#ffffff;padding:28px">
+                <div style="font-size:13px;font-weight:700;text-transform:uppercase">North Shore Sign Co</div>
+                <h1 style="margin:8px 0 0;font-size:26px">Welcome, ${firstName}</h1>
+            </div>
+            <div style="padding:28px;line-height:1.6">
+                <p>Your <strong>${accountTitle}</strong> account was created for you as part of <strong>${officeName}</strong>'s setup with North Shore Sign Co.</p>
+                <p>You can use the SignPost Field portal to request and track sign installations, manage inventory, and view order updates for your office.</p>
+                <p style="margin:26px 0">
+                    <a href="${activationLink}" style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:13px 20px;border-radius:6px;font-weight:700">Activate Your Account</a>
+                </p>
+                <p style="font-size:14px;color:#4b5563">This secure activation link expires in 24 hours. It will take you to North Shore Sign Co's website to choose your password. We will never ask you to reply with a password or payment information.</p>
+                <p style="font-size:14px;color:#4b5563">If you were not expecting this account, contact us at <a href="mailto:${NORTH_SHORE_BILLING_EMAIL}" style="color:#0369a1">${NORTH_SHORE_BILLING_EMAIL}</a> or (206) 659-6323.</p>
+            </div>
+            ${STANDARD_FOOTER_HTML}
+        </div>
+    </div>
+</body>
+</html>`,
+    };
+}
+
 export function getAccountVerificationEmail(
   firstName: string,
   verificationLink: string,

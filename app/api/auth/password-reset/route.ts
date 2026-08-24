@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendEmail, getPasswordResetEmail } from "@/lib/email";
+import { sendEmail, getAccountActivationWelcomeEmail, getPasswordResetEmail } from "@/lib/email";
 import { sendSMS, getPasswordResetSMS } from "@/lib/sms";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
@@ -90,7 +90,7 @@ async function verifyResetToken(token: string) {
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, sendViaSMS } = await request.json();
+    const { email, sendViaSMS, accountActivation } = await request.json();
     const forwardedProto = request.headers.get("x-forwarded-proto");
     const forwardedHost = request.headers.get("x-forwarded-host");
     const host = forwardedHost || request.headers.get("host");
@@ -114,7 +114,16 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const user = await prisma.user.findUnique({
       where: { email },
-      select: { id: true, firstName: true, email: true, phone: true, passwordHash: true },
+      select: {
+        id: true,
+        firstName: true,
+        email: true,
+        phone: true,
+        passwordHash: true,
+        role: true,
+        tags: true,
+        brokerage: { select: { name: true } },
+      },
     });
 
     if (!user) {
@@ -133,7 +142,17 @@ export async function POST(request: NextRequest) {
     // Send via email (always)
     try {
       const firstName = typeof user.firstName === "string" ? user.firstName : "User";
-      const emailTemplate = getPasswordResetEmail(firstName, resetLink);
+      const canSendActivation =
+        accountActivation === true &&
+        (user.tags.includes("IMPORTED_WINDERMERE") || user.tags.includes("SHARED_ACCOUNTANT"));
+      const emailTemplate = canSendActivation
+        ? getAccountActivationWelcomeEmail({
+            firstName,
+            officeName: user.brokerage?.name || "your Windermere office",
+            activationLink: resetLink,
+            accountTitle: user.role === "TC" ? "Property Manager" : user.role === "BROKERAGE" ? "Accountant" : "Realtor",
+          })
+        : getPasswordResetEmail(firstName, resetLink);
       await sendEmail({
         to: user.email,
         subject: emailTemplate.subject,

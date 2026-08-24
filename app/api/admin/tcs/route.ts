@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/admin/tcs - Get all TC accounts with agent links and stats
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
   const session = await auth();
 
   if (!session?.user) {
@@ -15,15 +15,24 @@ export async function GET(_request: Request) {
   }
 
   try {
+    const includeAccountants = new URL(request.url).searchParams.get("includeAccountants") === "true";
     // Get all TC users with their agent links
     const tcs = await prisma.user.findMany({
-      where: { role: "TC" },
+      where: includeAccountants
+        ? {
+            OR: [
+              { role: "TC" },
+              { role: "BROKERAGE", tags: { has: "SHARED_ACCOUNTANT" } },
+            ],
+          }
+        : { role: "TC" },
       select: {
         id: true,
         firstName: true,
         lastName: true,
         email: true,
         phone: true,
+        role: true,
         tags: true,
         createdAt: true,
         tcAgentLinks: {
@@ -51,7 +60,12 @@ export async function GET(_request: Request) {
       lastName: tc.lastName,
       email: tc.email,
       phone: tc.phone,
-      accountTitle: tc.tags.includes("PROPERTY_MANAGER") ? "Property Manager" : "Transaction Coordinator",
+      role: tc.role,
+      accountTitle: tc.tags.includes("SHARED_ACCOUNTANT")
+        ? "Accountant"
+        : tc.tags.includes("PROPERTY_MANAGER")
+          ? "Property Manager"
+          : "Transaction Coordinator",
       agentCount: tc.tcAgentLinks.length,
       linkedAgentCount: tc.tcAgentLinks.length,
       isActive: !tc.tags.includes("INACTIVE"),

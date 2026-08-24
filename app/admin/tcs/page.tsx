@@ -9,6 +9,8 @@ interface TC {
   firstName: string | null;
   lastName: string | null;
   email: string;
+  role: string;
+  accountTitle: string;
   agentCount: number;
   agents: Array<{
     linkId: string;
@@ -67,7 +69,7 @@ export default function AdminTCsPage() {
   const fetchTCs = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/admin/tcs");
+      const res = await fetch("/api/admin/tcs?includeAccountants=true");
       if (res.ok) {
         const data = await res.json();
         setTcs(data.tcs || []);
@@ -249,7 +251,7 @@ export default function AdminTCsPage() {
         window.location.href = data.loginUrl;
       }
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Failed to log in as TC");
+      alert(error instanceof Error ? error.message : "Failed to log in as account");
       console.error(error);
     } finally {
       setLoggingInAsTcId(null);
@@ -262,8 +264,8 @@ export default function AdminTCsPage() {
         {/* Header */}
         <div className="mb-8 flex justify-between items-start">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">TC Accounts</h1>
-            <p className="text-gray-600 mt-2">Manage third-party coordinators and their linked agents</p>
+            <h1 className="text-3xl font-bold text-gray-900">TC & Accountant Accounts</h1>
+            <p className="text-gray-600 mt-2">Manage coordinators, shared accountants, and linked agents</p>
           </div>
           <button
             onClick={() => setShowLinkModal(true)}
@@ -291,6 +293,9 @@ export default function AdminTCsPage() {
                       Email
                     </th>
                     <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
+                      Account Type
+                    </th>
+                    <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">
                       Linked Agents
                     </th>
                     <th className="text-center px-6 py-3 font-semibold text-gray-900 text-sm">
@@ -306,6 +311,7 @@ export default function AdminTCsPage() {
                           {tc.firstName} {tc.lastName}
                         </td>
                         <td className="px-6 py-4 text-gray-700">{tc.email}</td>
+                        <td className="px-6 py-4 text-gray-700">{tc.accountTitle}</td>
                         <td className="px-6 py-4">
                           <span className="inline-block px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-semibold">
                             {tc.agentCount} {tc.agentCount === 1 ? "agent" : "agents"}
@@ -313,20 +319,24 @@ export default function AdminTCsPage() {
                         </td>
                         <td className="px-6 py-4 text-center">
                           <div className="flex gap-2 justify-center items-center">
-                            <button
-                              onClick={() =>
-                                setExpandedTcId(expandedTcId === tc.id ? null : tc.id)
-                              }
-                              className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
-                            >
-                              {expandedTcId === tc.id ? "Hide" : "View"} Details
-                            </button>
-                            <Link
-                              href={`/admin/tcs/${tc.id}`}
-                              className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-                            >
-                              View Profile
-                            </Link>
+                            {tc.role === "TC" && (
+                              <>
+                                <button
+                                  onClick={() =>
+                                    setExpandedTcId(expandedTcId === tc.id ? null : tc.id)
+                                  }
+                                  className="text-indigo-600 hover:text-indigo-900 font-medium text-sm"
+                                >
+                                  {expandedTcId === tc.id ? "Hide" : "View"} Details
+                                </button>
+                                <Link
+                                  href={`/admin/tcs/${tc.id}`}
+                                  className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+                                >
+                                  View Profile
+                                </Link>
+                              </>
+                            )}
                             <button
                               onClick={() => handleSendPasswordReset(tc.email)}
                               className="text-indigo-600 hover:text-indigo-800 font-medium text-sm"
@@ -340,7 +350,7 @@ export default function AdminTCsPage() {
                             >
                               {loggingInAsTcId === tc.id ? "Opening..." : "Log In As"}
                             </button>
-                            {tc.agentCount > 0 && (
+                            {tc.role === "TC" && tc.agentCount > 0 && (
                               <button
                                 onClick={() => handleSendInvitation(tc.id, tc.agents[0]?.agentId || "")}
                                 disabled={sendingId === tc.id}
@@ -354,9 +364,9 @@ export default function AdminTCsPage() {
                       </tr>
 
                       {/* Expanded agents list */}
-                      {expandedTcId === tc.id && (
+                      {tc.role === "TC" && expandedTcId === tc.id && (
                         <tr className="bg-gray-50 border-b border-gray-200">
-                          <td colSpan={4} className="px-6 py-4">
+                          <td colSpan={5} className="px-6 py-4">
                             <div className="space-y-3">
                               <h3 className="font-semibold text-gray-900">
                                 Linked Agents ({tc.agents.length})

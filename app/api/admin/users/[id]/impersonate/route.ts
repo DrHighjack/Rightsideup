@@ -24,7 +24,11 @@ export async function POST(
       },
     });
 
-    if (!targetUser || !["REALTOR", "TC"].includes(targetUser.role)) {
+    const supportedUser = targetUser && (
+      ["REALTOR", "TC"].includes(targetUser.role) ||
+      (targetUser.role === "BROKERAGE" && targetUser.tags.includes("SHARED_ACCOUNTANT"))
+    );
+    if (!supportedUser) {
       return NextResponse.json({ error: "Supported user not found" }, { status: 404 });
     }
 

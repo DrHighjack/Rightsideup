@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const type = searchParams.get("type");
     const requestedRealtorId = searchParams.get("realtorId");
+    const search = searchParams.get("search")?.trim();
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
 
@@ -69,6 +70,29 @@ export async function GET(request: NextRequest) {
     
     if (status) where.status = status;
     if (type) where.type = type;
+    if (search) {
+      const nameParts = search.split(/\s+/).filter(Boolean);
+      where.OR = [
+        { orderNumber: { contains: search, mode: "insensitive" } },
+        { address: { contains: search, mode: "insensitive" } },
+        { realtor: { firstName: { contains: search, mode: "insensitive" } } },
+        { realtor: { lastName: { contains: search, mode: "insensitive" } } },
+        ...(nameParts.length > 1
+          ? [
+              {
+                AND: nameParts.map((namePart) => ({
+                  realtor: {
+                    OR: [
+                      { firstName: { contains: namePart, mode: "insensitive" } },
+                      { lastName: { contains: namePart, mode: "insensitive" } },
+                    ],
+                  },
+                })),
+              },
+            ]
+          : []),
+      ];
+    }
 
     const orders = await prisma.order.findMany({
       where,

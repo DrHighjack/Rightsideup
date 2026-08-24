@@ -39,6 +39,9 @@ export default function OrdersPage() {
         if (filter !== "ALL") {
           url += `&status=${filter}`;
         }
+        if (search.trim()) {
+          url += `&search=${encodeURIComponent(search.trim())}`;
+        }
 
         const response = await fetch(url);
         const data = await response.json().catch(() => ({}));
@@ -51,14 +54,7 @@ export default function OrdersPage() {
         }
 
         const sourceOrders: OrderData[] = Array.isArray(data?.orders) ? data.orders : [];
-        let filtered: OrderData[] = sourceOrders;
-        if (search) {
-          filtered = filtered.filter(
-            (o: OrderData) =>
-              o.orderNumber.toLowerCase().includes(search.toLowerCase()) ||
-              o.address.toLowerCase().includes(search.toLowerCase())
-          );
-        }
+        const filtered: OrderData[] = sourceOrders;
 
         // Apply sorting
         if (sortBy === "agent") {
@@ -119,7 +115,7 @@ export default function OrdersPage() {
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Search by order number or address..."
+              placeholder="Search by realtor, order number, or address..."
               className="w-full rounded-md border border-gray-300 px-4 py-2"
             />
           </div>

@@ -17,6 +17,10 @@ interface Agent {
   paymentMethod: string;
   freeInstallGivenBy?: string;
   tags?: string[];
+  createdAt?: string;
+  hasOutstandingBalance?: boolean;
+  outstandingBalance?: number;
+  _count?: { orders: number };
 }
 
 interface Closer {
@@ -109,6 +113,9 @@ export default function ManagementPage() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const [activityFilter, setActivityFilter] = useState<ActivityFilter>("all");
+  const [selectedTag, setSelectedTag] = useState<string>("");
+  const [balanceFilter, setBalanceFilter] = useState<"all" | "has-balance" | "no-balance">("all");
+  const [sendingSMSId, setSendingSMSId] = useState<string | null>(null);
   const [closers, setClosers] = useState<Closer[]>([]);
   const [showAddClientModal, setShowAddClientModal] = useState(false);
   const [addingClient, setAddingClient] = useState(false);
@@ -508,6 +515,76 @@ export default function ManagementPage() {
     }
   };
 
+  const handleSendClientSMS = async (agentId: string) => {
+    const message = prompt("Enter SMS message to send:");
+    if (!message) return;
+
+    try {
+      setSendingSMSId(agentId);
+      const res = await fetch(`/api/admin/users/${agentId}/send-sms`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message }),
+      });
+
+      if (res.ok) {
+        alert("SMS sent successfully!");
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to send SMS");
+      }
+    } catch (_error) {
+      alert("Failed to send SMS");
+    } finally {
+      setSendingSMSId(null);
+    }
+  };
+
+  const handleExportClientsCSV = () => {
+    if (filteredAgents.length === 0) {
+      alert("No clients to export");
+      return;
+    }
+
+    const headers = ["First Name", "Last Name", "Email", "Brokerage", "Phone", "Orders", "Tags", "Joined"];
+    const rows = filteredAgents.map((agent) => [
+      agent.firstName,
+      agent.lastName,
+      agent.email,
+      agent.brokerageName || "",
+      agent.phone || "",
+      agent._count?.orders ?? 0,
+      (agent.tags || []).join("; "),
+      agent.createdAt ? new Date(agent.createdAt).toLocaleDateString() : "",
+    ]);
+
+    const csv = [
+      headers.join(","),
+      ...rows.map((row) =>
+        row
+          .map((cell) => {
+            const str = String(cell);
+            if (str.includes(",") || str.includes('"') || str.includes("\n")) {
+              return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    link.setAttribute("href", url);
+    link.setAttribute("download", `clients_${new Date().toISOString().split("T")[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   const handlePermanentDeleteAccount = async (
     account: {
       id: string;
@@ -552,12 +629,20 @@ export default function ManagementPage() {
     }
   };
 
+  // Tags seen across all clients, for the tag filter dropdown
+  const allClientTags = Array.from(
+    new Set(agents.flatMap((agent) => (Array.isArray(agent.tags) ? agent.tags : [])))
+  ).sort();
+
   // Filter and sort agents based on search and sort settings
   const filteredAgents = agents
     .filter((agent) => {
       const isInactive = Array.isArray(agent.tags) && agent.tags.includes("INACTIVE");
       if (activityFilter === "active" && isInactive) return false;
       if (activityFilter === "inactive" && !isInactive) return false;
+      if (selectedTag && (!agent.tags || !agent.tags.includes(selectedTag))) return false;
+      if (balanceFilter === "has-balance" && !agent.hasOutstandingBalance) return false;
+      if (balanceFilter === "no-balance" && agent.hasOutstandingBalance) return false;
 
       const searchLower = search.toLowerCase();
       return (
@@ -1418,13 +1503,13 @@ export default function ManagementPage() {
         {view === "clients" && (
           <div className="bg-white rounded-lg shadow">
             {/* Search */}
-            <div className="p-6 border-b border-gray-200 flex gap-4 items-center">
+            <div className="p-6 border-b border-gray-200 flex flex-wrap gap-4 items-center">
               <input
                 type="text"
                 placeholder="Search by name, email, or phone..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                className="flex-1 min-w-[220px] px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
               />
               <select
                 value={activityFilter}
@@ -1435,6 +1520,33 @@ export default function ManagementPage() {
                 <option value="active">!inactive (Active)</option>
                 <option value="inactive">inactive</option>
               </select>
+              <select
+                value={selectedTag}
+                onChange={(e) => setSelectedTag(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+              >
+                <option value="">All Tags</option>
+                {allClientTags.map((tag) => (
+                  <option key={tag} value={tag}>
+                    {tag}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={balanceFilter}
+                onChange={(e) => setBalanceFilter(e.target.value as "all" | "has-balance" | "no-balance")}
+                className="px-3 py-2 border border-gray-300 rounded-lg bg-white text-sm"
+              >
+                <option value="all">All Balances</option>
+                <option value="has-balance">Has Outstanding Balance</option>
+                <option value="no-balance">No Outstanding Balance</option>
+              </select>
+              <button
+                onClick={handleExportClientsCSV}
+                className="px-4 py-2 border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium rounded-lg whitespace-nowrap"
+              >
+                Export to CSV
+              </button>
               <button
                 onClick={() => setShowAddClientModal(true)}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg whitespace-nowrap"
@@ -1442,6 +1554,7 @@ export default function ManagementPage() {
                 + Add Realtor
               </button>
             </div>
+
 
             {/* Table */}
             <div className="overflow-x-auto">
@@ -1485,6 +1598,7 @@ export default function ManagementPage() {
                       </button>
                     </th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Payment</th>
+                    <th className="px-6 py-3 text-left font-semibold text-gray-900">Balance</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Profile</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Status</th>
                     <th className="px-6 py-3 text-left font-semibold text-gray-900">Actions</th>
@@ -1517,6 +1631,17 @@ export default function ManagementPage() {
                         </select>
                       </td>
                       <td className="px-6 py-4 text-sm">
+                        {agent.hasOutstandingBalance ? (
+                          <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-amber-800">
+                            Outstanding
+                          </span>
+                        ) : (
+                          <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-800">
+                            Clear
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
                         <Link
                           href={`/admin/clients/${agent.id}`}
                           className="font-medium text-green-600 transition-colors hover:text-green-700"
@@ -1537,6 +1662,15 @@ export default function ManagementPage() {
                       </td>
                       <td className="px-6 py-4 text-sm">
                         <div className="flex items-center gap-4">
+                          {agent.phone && (
+                            <button
+                              onClick={() => handleSendClientSMS(agent.id)}
+                              disabled={sendingSMSId === agent.id}
+                              className="font-medium text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-gray-400"
+                            >
+                              {sendingSMSId === agent.id ? "Sending..." : "SMS"}
+                            </button>
+                          )}
                           <button
                             onClick={() => handleToggleAgentActive(agent)}
                             disabled={agentUpdatingId === agent.id}

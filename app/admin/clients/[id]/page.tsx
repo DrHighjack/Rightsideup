@@ -467,7 +467,7 @@ export default function RealtorDetailPage() {
       }
 
       alert("Account permanently deleted");
-      router.push("/admin/clients");
+      router.push("/admin/brokerages?tab=clients");
       router.refresh();
     } catch (err) {
       setError((err as Error).message || "Failed to permanently delete account");
@@ -539,7 +539,7 @@ export default function RealtorDetailPage() {
     return (
       <div className="min-h-screen bg-gray-50 py-8 px-4">
         <div className="max-w-6xl mx-auto">
-          <Link href="/admin/clients" className="text-green-600 hover:text-green-700 mb-4 inline-block">
+          <Link href="/admin/brokerages?tab=clients" className="text-green-600 hover:text-green-700 mb-4 inline-block">
             ← Back to Clients
           </Link>
           <div className="bg-red-50 p-4 rounded-lg text-red-800">Realtor not found</div>
@@ -553,7 +553,7 @@ export default function RealtorDetailPage() {
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-6">
-          <Link href="/admin/clients" className="text-green-600 hover:text-green-700 mb-4 inline-block">
+          <Link href="/admin/brokerages?tab=clients" className="text-green-600 hover:text-green-700 mb-4 inline-block">
             ← Back to Clients
           </Link>
           <div className="bg-white rounded-lg shadow p-6">

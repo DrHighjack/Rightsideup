@@ -11,7 +11,6 @@ import {
   getDashboardStats,
   getRealtorPerformance,
   getSMSCampaignStats,
-  getTopSigns,
   getOrderAnalytics,
   getDashboardMetrics,
   getRevenueData,
@@ -71,8 +70,6 @@ export async function GET(req: Request) {
         return legacyRealtorHandler();
       case 'sms':
         return smsCampaignHandler();
-      case 'signs':
-        return signsHandler();
       case 'orders-legacy':
         return orderHandlerLegacy(req);
       default:
@@ -132,11 +129,6 @@ async function legacyRealtorHandler() {
 async function smsCampaignHandler() {
   const stats = await getSMSCampaignStats();
   return NextResponse.json({ campaigns: stats });
-}
-
-async function signsHandler() {
-  const topSigns = await getTopSigns(15);
-  return NextResponse.json({ topSigns });
 }
 
 async function orderHandlerLegacy(req: Request) {

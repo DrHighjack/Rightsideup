@@ -114,6 +114,8 @@ model User {
   vaultId        String?    @unique // FluidPay vault record ID for saved card on file
   paymentCardLast4 String?
   paymentCardNickname String?
+  brokerageAutoPayEnabled Boolean @default(false)
+  brokerageAutoPayPaymentMethodId String?
   twoFactorSecret String?
   twoFactorEnabled Boolean   @default(false)
   createdAt      DateTime   @default(now())
@@ -128,6 +130,7 @@ model User {
   paymentSchedules InvoicePaymentSchedule[]
   assignedCredits Coupon[]     @relation("CouponAssignedUser")
   managedBrokerages Brokerage[] @relation("BrokerageAdmin")
+  autoInvoiceBrokerages Brokerage[] @relation("BrokerageAutoInvoiceOwner")
   brokerageAccesses BrokerageAccess[]
   ownedBrokerageStatements BrokerageStatement[] @relation("BrokerageStatementOwner")
   
@@ -315,6 +318,8 @@ model Brokerage {
   autoInvoiceRequestedAt DateTime?
   autoInvoiceApprovedAt DateTime?
   autoInvoiceApprovedById String?
+  autoInvoiceOwnerUserId String?
+  autoInvoiceOwner User? @relation("BrokerageAutoInvoiceOwner", fields: [autoInvoiceOwnerUserId], references: [id], onDelete: SetNull)
   autoInvoicePeriodStart DateTime?
   autoInvoiceNextRunAt DateTime?
   isActive       Boolean    @default(true)
@@ -366,6 +371,9 @@ model BrokerageStatement {
   paymentMethodId       String?
   paymentCardLast4      String?
   fluidpayTransactionId String?
+  autoPayScheduledAt    DateTime?
+  autoPayPaymentMethodId String?
+  autoPayFailureReason  String?
   emailSentAt           DateTime?
   paidAt                DateTime?
   createdAt             DateTime  @default(now())
@@ -377,6 +385,7 @@ model BrokerageStatement {
   @@index([ownerUserId])
   @@index([periodStart])
   @@index([status])
+  @@index([status, autoPayScheduledAt])
 }
 
 model QBOConnection {

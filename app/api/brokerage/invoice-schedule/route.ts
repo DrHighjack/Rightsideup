@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       autoInvoiceRequestedAt: new Date(),
       autoInvoiceApprovedAt: null,
       autoInvoiceApprovedById: null,
+      autoInvoiceOwnerUserId: session.user.id,
       autoInvoicePeriodStart: null,
       autoInvoiceNextRunAt: null,
     },
@@ -84,6 +85,7 @@ export async function DELETE(request: NextRequest) {
       autoInvoiceStatus: "DISABLED",
       autoInvoiceInterval: null,
       autoInvoiceRequestedAt: null,
+      autoInvoiceOwnerUserId: null,
     },
   });
   if (updated.count === 0) {

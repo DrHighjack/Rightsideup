@@ -130,6 +130,8 @@ interface BrokerageStatement {
   totalCents: number;
   paidAt: string | null;
   paymentCardLast4: string | null;
+  autoPayScheduledAt: string | null;
+  autoPayFailureReason: string | null;
   snapshot: StatementSnapshot;
 }
 
@@ -162,6 +164,8 @@ function BrokerageDashboardContent() {
   const [statements, setStatements] = useState<BrokerageStatement[]>([]);
   const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
   const [selectedCardId, setSelectedCardId] = useState("");
+  const [autoPayEnabled, setAutoPayEnabled] = useState(false);
+  const [autoPaySaving, setAutoPaySaving] = useState(false);
   const [expandedStatementId, setExpandedStatementId] = useState<string | null>(null);
   const [generatingStatement, setGeneratingStatement] = useState(false);
   const [payingStatementId, setPayingStatementId] = useState<string | null>(null);
@@ -211,7 +215,7 @@ function BrokerageDashboardContent() {
         query.set("memberId", invoiceMemberFilter);
       }
 
-      const [profileRes, agentsRes, invoicesRes, statementsRes, cardsRes] = await Promise.all([
+      const [profileRes, agentsRes, invoicesRes, statementsRes, cardsRes, autoPayRes] = await Promise.all([
         officeId === "all"
           ? Promise.resolve(null)
           : fetch(`/api/brokerage/profile?brokerageId=${encodeURIComponent(officeId)}`),
@@ -219,6 +223,7 @@ function BrokerageDashboardContent() {
         fetch(`/api/brokerage/invoices?${query.toString()}`),
         fetch("/api/brokerage/statements"),
         fetch("/api/payments/card-on-file"),
+        fetch("/api/brokerage/auto-pay"),
       ]);
 
       if (profileRes && !profileRes.ok) {
@@ -241,6 +246,7 @@ function BrokerageDashboardContent() {
       const invoicesData = await invoicesRes.json();
       const statementsData = statementsRes.ok ? await statementsRes.json() : { statements: [] };
       const cardsData = cardsRes.ok ? await cardsRes.json() : { cards: [] };
+      const autoPayData = autoPayRes.ok ? await autoPayRes.json() : { settings: { enabled: false } };
       setBrokerage(profileData?.brokerage || null);
       if (profileData?.brokerage) {
         setScheduleInterval(profileData.brokerage.autoInvoiceInterval || "MONTHLY");
@@ -251,7 +257,10 @@ function BrokerageDashboardContent() {
       setInvoiceSummary(invoicesData.summary || null);
       setStatements(statementsData.statements || []);
       setSavedCards(cardsData.cards || []);
-      setSelectedCardId((current) => current || cardsData.cards?.[0]?.id || "");
+      setAutoPayEnabled(Boolean(autoPayData.settings?.enabled));
+      setSelectedCardId((current) =>
+        autoPayData.settings?.paymentMethodId || current || cardsData.cards?.[0]?.id || ""
+      );
     } catch (err: any) {
       setError(err?.message || "Failed to load brokerage data");
     } finally {
@@ -426,6 +435,32 @@ function BrokerageDashboardContent() {
       setError(paymentError instanceof Error ? paymentError.message : "Statement payment failed");
     } finally {
       setPayingStatementId(null);
+    }
+  };
+
+  const handleSaveAutoPay = async () => {
+    if (autoPayEnabled && !selectedCardId) {
+      setError("Add or select a company card before enabling auto-pay");
+      return;
+    }
+    try {
+      setAutoPaySaving(true);
+      setError("");
+      const response = await fetch("/api/brokerage/auto-pay", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: autoPayEnabled,
+          savedPaymentMethodId: selectedCardId,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to save auto-pay setting");
+      setAutoPayEnabled(Boolean(data.settings?.enabled));
+    } catch (autoPayError) {
+      setError(autoPayError instanceof Error ? autoPayError.message : "Failed to save auto-pay setting");
+    } finally {
+      setAutoPaySaving(false);
     }
   };
 
@@ -939,6 +974,29 @@ function BrokerageDashboardContent() {
         {savedCards.length === 0 && !addingCard && (
           <p className="text-sm text-orange-700">No company card is saved.</p>
         )}
+        <div className="mt-5 flex flex-col gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <label className="flex items-start gap-3">
+            <input
+              type="checkbox"
+              checked={autoPayEnabled}
+              onChange={(event) => setAutoPayEnabled(event.target.checked)}
+              disabled={savedCards.length === 0}
+              className="mt-1 h-4 w-4 rounded border-gray-300 text-green-700 focus:ring-green-600"
+            />
+            <span>
+              <span className="block text-sm font-semibold text-gray-900">Auto-pay new statements</span>
+              <span className="block text-sm text-gray-600">Charge the selected company card 24 hours after a statement is generated.</span>
+            </span>
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleSaveAutoPay()}
+            disabled={autoPaySaving || (autoPayEnabled && !selectedCardId)}
+            className="self-start rounded-md bg-green-700 px-4 py-2 text-sm font-medium text-white hover:bg-green-800 disabled:opacity-50 sm:self-auto"
+          >
+            {autoPaySaving ? "Saving..." : "Save auto-pay setting"}
+          </button>
+        </div>
         {addingCard && (
           <div className="mt-4 max-w-xl space-y-3">
             <div id="brokerage-payment-form" className="min-h-[220px] rounded-md border border-gray-200 p-3" />
@@ -983,6 +1041,16 @@ function BrokerageDashboardContent() {
                   <span className="block text-sm text-gray-600">
                     {new Date(statement.periodStart).toLocaleDateString()} - {new Date(statement.periodEnd).toLocaleDateString()} · {statement.snapshot.brokerageIds?.length || 1} office(s) · {statement.snapshot.invoices.length} invoices
                   </span>
+                  {statement.autoPayScheduledAt && statement.status === "READY" && (
+                    <span className="block text-sm font-medium text-blue-700">
+                      Auto-pay scheduled {new Date(statement.autoPayScheduledAt).toLocaleString()}
+                    </span>
+                  )}
+                  {statement.autoPayFailureReason && (
+                    <span className="block text-sm font-medium text-red-700">
+                      Auto-pay stopped: {statement.autoPayFailureReason}
+                    </span>
+                  )}
                 </button>
                 <div className="flex flex-wrap items-center gap-3">
                   <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statement.status === "PAID" ? "bg-green-100 text-green-800" : statement.status === "FAILED" ? "bg-red-100 text-red-800" : "bg-orange-100 text-orange-800"}`}>

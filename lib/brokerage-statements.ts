@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { getBrokerageAutoPayScheduledAt } from "@/lib/brokerage-auto-pay";
 import { getBrokerageStatementEmail, sendEmail } from "@/lib/email";
 import { Prisma } from "@prisma/client";
 import { OUTSTANDING_INVOICE_STATUSES } from "@/lib/invoice-totals";
@@ -130,7 +131,12 @@ async function generateBrokerageStatementsForOwner(
     }),
     prisma.user.findUnique({
       where: { id: ownerUserId },
-      select: { email: true, firstName: true },
+      select: {
+        email: true,
+        firstName: true,
+        brokerageAutoPayEnabled: true,
+        brokerageAutoPayPaymentMethodId: true,
+      },
     }),
   ]);
   if (brokerages.length !== selectedIds.length || !owner) {
@@ -233,6 +239,12 @@ async function generateBrokerageStatementsForOwner(
     .digest("hex")
     .slice(0, 8)
     .toUpperCase();
+  const createdAt = new Date();
+  const autoPayScheduledAt = getBrokerageAutoPayScheduledAt(
+    createdAt,
+    owner.brokerageAutoPayEnabled,
+    owner.brokerageAutoPayPaymentMethodId
+  );
 
   let statement;
   try {
@@ -251,6 +263,11 @@ async function generateBrokerageStatementsForOwner(
         subtotalCents: totalCents,
         totalCents,
         status: "READY",
+        autoPayScheduledAt,
+        autoPayPaymentMethodId: autoPayScheduledAt
+          ? owner.brokerageAutoPayPaymentMethodId
+          : null,
+        createdAt,
       },
     });
   } catch (error) {
@@ -343,7 +360,9 @@ export async function generateScheduledBrokerageStatements(now = new Date()) {
     },
     select: {
       id: true,
+      adminId: true,
       autoInvoiceInterval: true,
+      autoInvoiceOwnerUserId: true,
       autoInvoicePeriodStart: true,
       autoInvoiceNextRunAt: true,
     },
@@ -373,7 +392,12 @@ export async function generateScheduledBrokerageStatements(now = new Date()) {
     const periodStart = brokerage.autoInvoicePeriodStart;
     const periodEnd = brokerage.autoInvoiceNextRunAt;
     try {
-      const result = await generateBrokerageStatement(brokerage.id, periodStart, periodEnd);
+      const result = await generateOwnedBrokerageStatement(
+        brokerage.autoInvoiceOwnerUserId || brokerage.adminId,
+        brokerage.id,
+        periodStart,
+        periodEnd
+      );
       const nextRunAt = getNextAutoInvoiceRun(brokerage.autoInvoiceInterval, periodEnd);
       await prisma.brokerage.updateMany({
         where: {

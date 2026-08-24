@@ -21,6 +21,46 @@ if (!isBrevoSmtpConfigured && !isBrevoApiConfigured) {
 }
 
 let smtpTransporter: nodemailer.Transporter | null = null;
+let verifiedBrevoSender: { name: string; email: string } | null = null;
+
+async function getVerifiedBrevoSender(preferredEmail: string) {
+    if (!isBrevoApiConfigured) {
+        return { name: NORTH_SHORE_SIGN_CO, email: preferredEmail };
+    }
+    if (verifiedBrevoSender) return verifiedBrevoSender;
+
+    const response = await fetch("https://api.brevo.com/v3/senders", {
+        headers: {
+            accept: "application/json",
+            "api-key": brevoApiKey,
+        },
+    });
+    if (!response.ok) {
+        throw new Error(`Brevo sender lookup failed with status ${response.status}`);
+    }
+
+    const body = await response.json() as {
+        senders?: Array<{ name?: string; email?: string; active?: boolean }>;
+    };
+    const activeSenders = (body.senders || []).filter(
+        (sender) => sender.active && sender.email
+    );
+    const sender = activeSenders.find(
+        (candidate) => candidate.email?.toLowerCase() === preferredEmail.toLowerCase()
+    ) || activeSenders[0];
+    if (!sender?.email) {
+        throw new Error("Brevo has no active verified sender");
+    }
+
+    verifiedBrevoSender = {
+        name: sender.name || NORTH_SHORE_SIGN_CO,
+        email: sender.email,
+    };
+    if (sender.email.toLowerCase() !== preferredEmail.toLowerCase()) {
+        console.warn(`[EMAIL] Configured sender ${preferredEmail} is not active; using ${sender.email}.`);
+    }
+    return verifiedBrevoSender;
+}
 
 function getSmtpTransporter() {
     if (!isBrevoSmtpConfigured) {
@@ -148,11 +188,9 @@ export async function sendEmail(options: EmailOptions) {
             }
         }
 
+        const verifiedSender = await getVerifiedBrevoSender(senderEmail);
         const payload = {
-            sender: {
-                name: NORTH_SHORE_SIGN_CO,
-                email: senderEmail,
-            },
+            sender: verifiedSender,
             to: normalizedRecipients.map((email) => ({ email })),
             subject,
             htmlContent: html,

@@ -52,6 +52,7 @@ interface TC {
   lastName: string | null;
   email: string;
   phone?: string | null;
+  role: string;
   accountTitle: string;
   agentCount: number;
   linkedAgentCount?: number;
@@ -101,6 +102,7 @@ export default function ManagementPage() {
   const [brokerages, setBrokerages] = useState<Brokerage[]>([]);
   const [agents, setAgents] = useState<Agent[]>([]);
   const [tcs, setTcs] = useState<TC[]>([]);
+  const [loggingInAsTcId, setLoggingInAsTcId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -218,7 +220,7 @@ export default function ManagementPage() {
       const [agentsResult, tcsResult, closersResult, brokeragesResult] =
         await Promise.allSettled([
           fetch("/api/admin/users?limit=500"),
-          fetch("/api/admin/tcs"),
+          fetch("/api/admin/tcs?includeAccountants=true"),
           fetch("/api/admin/users?role=ADMIN,SALESMEN&limit=200"),
           fetch("/api/admin/brokerages"),
         ]);
@@ -755,7 +757,7 @@ export default function ManagementPage() {
   // TC Management Functions
   const fetchTCs = async () => {
     try {
-      const res = await fetch("/api/admin/tcs");
+      const res = await fetch("/api/admin/tcs?includeAccountants=true");
       if (res.ok) {
         const data = await res.json();
         setTcs(data.tcs || []);
@@ -890,6 +892,29 @@ export default function ManagementPage() {
       await fetchTCs();
     } catch (err) {
       alert(`Failed to ${actionLabel} TC`);
+    }
+  };
+
+  const handleLoginAsTc = async (tcId: string) => {
+    try {
+      setLoggingInAsTcId(tcId);
+      const response = await fetch(`/api/admin/users/${tcId}/impersonate`, {
+        method: "POST",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to generate login link");
+      }
+
+      const newWindow = window.open(data.loginUrl, "_blank", "noopener,noreferrer");
+      if (!newWindow) {
+        window.location.href = data.loginUrl;
+      }
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Failed to log in as account");
+      console.error(error);
+    } finally {
+      setLoggingInAsTcId(null);
     }
   };
 
@@ -1794,8 +1819,8 @@ export default function ManagementPage() {
           <div>
             <div className="mb-6 flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">TC Accounts</h2>
-                <p className="text-gray-600 text-sm mt-1">Manage third-party coordinators and their linked agents</p>
+                <h2 className="text-xl font-semibold text-gray-900">TC & Accountant Accounts</h2>
+                <p className="text-gray-600 text-sm mt-1">Manage coordinators, shared accountants, and linked agents</p>
               </div>
               <div className="flex items-center gap-3">
                 <select
@@ -1861,50 +1886,61 @@ export default function ManagementPage() {
                             <td className="px-6 py-4 text-sm">
                               <div className="flex items-center gap-4">
                                 <button
-                                  onClick={() => openEditTcModal(tc)}
-                                  className="text-indigo-600 hover:text-indigo-800 font-medium"
+                                  onClick={() => handleLoginAsTc(tc.id)}
+                                  disabled={loggingInAsTcId === tc.id}
+                                  className="text-amber-700 hover:text-amber-900 font-medium disabled:text-gray-400"
                                 >
-                                  Edit
+                                  {loggingInAsTcId === tc.id ? "Opening..." : "Log In As"}
                                 </button>
-                                <Link
-                                  href={`/admin/tcs/${tc.id}`}
-                                  className="text-blue-600 hover:text-blue-800 font-medium"
-                                >
-                                  View Profile
-                                </Link>
-                                <button
-                                  onClick={() => handleToggleTcActive(tc)}
-                                  className={`font-medium ${
-                                    isActive
-                                      ? "text-red-600 hover:text-red-700"
-                                      : "text-green-700 hover:text-green-800"
-                                  }`}
-                                >
-                                  {isActive ? "Deactivate" : "Reactivate"}
-                                </button>
-                                {!isActive && (
-                                  <button
-                                    onClick={() => handlePermanentDeleteAccount(tc, "TC")}
-                                    disabled={deletingUserId === tc.id}
-                                    className="font-semibold text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:text-gray-400"
-                                  >
-                                    {deletingUserId === tc.id ? "Deleting..." : "Delete permanently"}
-                                  </button>
+                                {tc.role === "TC" && (
+                                  <>
+                                    <button
+                                      onClick={() => openEditTcModal(tc)}
+                                      className="text-indigo-600 hover:text-indigo-800 font-medium"
+                                    >
+                                      Edit
+                                    </button>
+                                    <Link
+                                      href={`/admin/tcs/${tc.id}`}
+                                      className="text-blue-600 hover:text-blue-800 font-medium"
+                                    >
+                                      View Profile
+                                    </Link>
+                                    <button
+                                      onClick={() => handleToggleTcActive(tc)}
+                                      className={`font-medium ${
+                                        isActive
+                                          ? "text-red-600 hover:text-red-700"
+                                          : "text-green-700 hover:text-green-800"
+                                      }`}
+                                    >
+                                      {isActive ? "Deactivate" : "Reactivate"}
+                                    </button>
+                                    {!isActive && (
+                                      <button
+                                        onClick={() => handlePermanentDeleteAccount(tc, "TC")}
+                                        disabled={deletingUserId === tc.id}
+                                        className="font-semibold text-red-700 hover:text-red-900 disabled:cursor-not-allowed disabled:text-gray-400"
+                                      >
+                                        {deletingUserId === tc.id ? "Deleting..." : "Delete permanently"}
+                                      </button>
+                                    )}
+                                    <button
+                                      onClick={() => {
+                                        setShowLinkModal(true);
+                                        setLinkForm((prev) => ({
+                                          ...prev,
+                                          selectedTcId: tc.id,
+                                          tcSearchQuery: fullName,
+                                          tcSearchResults: [],
+                                        }));
+                                      }}
+                                      className="text-green-700 hover:text-green-800 font-medium"
+                                    >
+                                      Link to Agent
+                                    </button>
+                                  </>
                                 )}
-                                <button
-                                  onClick={() => {
-                                    setShowLinkModal(true);
-                                    setLinkForm((prev) => ({
-                                      ...prev,
-                                      selectedTcId: tc.id,
-                                      tcSearchQuery: fullName,
-                                      tcSearchResults: [],
-                                    }));
-                                  }}
-                                  className="text-green-700 hover:text-green-800 font-medium"
-                                >
-                                  Link to Agent
-                                </button>
                               </div>
                             </td>
                           </tr>

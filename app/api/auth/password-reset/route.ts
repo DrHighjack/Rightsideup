@@ -150,7 +150,13 @@ export async function POST(request: NextRequest) {
             firstName,
             officeName: user.brokerage?.name || "your Windermere office",
             activationLink: resetLink,
-            accountTitle: user.role === "TC" ? "Property Manager" : user.role === "BROKERAGE" ? "Accountant" : "Realtor",
+            accountTitle: user.tags.includes("PROPERTY_MANAGER")
+              ? "Property Manager"
+              : user.role === "TC"
+                ? "Transaction Coordinator"
+                : user.role === "BROKERAGE"
+                  ? "Accountant"
+                  : "Realtor",
           })
         : getPasswordResetEmail(firstName, resetLink);
       await sendEmail({

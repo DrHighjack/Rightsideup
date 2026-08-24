@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { DISCORD_NOTIFICATION_CATEGORIES } from '@/lib/discord-categories';
 
 interface SettingsState {
   // IMAP
@@ -17,6 +18,9 @@ interface SettingsState {
 
   // Inventory
   lowInventoryThreshold: string;
+
+  // Discord
+  discordWebhookUrl: string;
 }
 
 interface TwoFactorStatus {
@@ -43,7 +47,13 @@ export default function AdminSettingsPage() {
     invoiceReminderDays: '7,14,30',
     smsOptInDefault: false,
     lowInventoryThreshold: '5',
+    discordWebhookUrl: '',
   });
+
+  const [discordEnabled, setDiscordEnabled] = useState<Record<string, boolean>>(
+    Object.fromEntries(DISCORD_NOTIFICATION_CATEGORIES.map((category) => [category.key, true]))
+  );
+  const [testingDiscord, setTestingDiscord] = useState(false);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<string, boolean>>({});
@@ -91,7 +101,17 @@ export default function AdminSettingsPage() {
           invoiceReminderDays: data['notifications.invoiceReminderDays'] || '7,14,30',
           smsOptInDefault: data['notifications.smsOptInDefault'] === 'true' || false,
           lowInventoryThreshold: data['inventory.lowInventoryThreshold'] || '5',
+          discordWebhookUrl: data['discord.webhookUrl'] || '',
         }));
+
+        setDiscordEnabled((prev) => {
+          const next = { ...prev };
+          for (const category of DISCORD_NOTIFICATION_CATEGORIES) {
+            const stored = data[`discord.notify.${category.key}`];
+            if (stored === false) next[category.key] = false;
+          }
+          return next;
+        });
       } catch (error) {
         console.error('Error loading settings:', error);
         setMessages((prev) => ({
@@ -208,6 +228,39 @@ export default function AdminSettingsPage() {
       }));
     } finally {
       setSaving((prev) => ({ ...prev, twoFactorDisable: false }));
+    }
+  }
+
+  async function testDiscordWebhook() {
+    try {
+      setTestingDiscord(true);
+      setMessages((prev) => ({ ...prev, discord: { type: '', text: 'Sending test notification...' } }));
+
+      const res = await fetch('/api/admin/settings/test-discord', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ webhookUrl: settings.discordWebhookUrl }),
+      });
+
+      const data = await res.json();
+
+      setMessages((prev) => ({
+        ...prev,
+        discord: {
+          type: data.success ? 'success' : 'error',
+          text: (data.success ? '✅ ' : '❌ ') + data.message,
+        },
+      }));
+    } catch (error) {
+      setMessages((prev) => ({
+        ...prev,
+        discord: {
+          type: 'error',
+          text: `❌ ${error instanceof Error ? error.message : 'Failed to send test notification'}`,
+        },
+      }));
+    } finally {
+      setTestingDiscord(false);
     }
   }
 
@@ -618,6 +671,89 @@ export default function AdminSettingsPage() {
             className="px-4 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary-dark disabled:opacity-50"
           >
             {saving.notifications ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      {/* Section 2b: Discord Notifications */}
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-1">Discord Notifications</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          Post a message to a Discord channel for important events. Toggle any category off to stop
+          sending that type of notification without disabling anything else.
+        </p>
+        <div className="space-y-4">
+          <div>
+            <label htmlFor="discordWebhookUrl" className="block text-sm font-medium text-gray-700 mb-1">
+              Discord Webhook URL
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="discordWebhookUrl"
+                type="password"
+                value={settings.discordWebhookUrl}
+                onChange={(e) => setSettings({ ...settings, discordWebhookUrl: e.target.value })}
+                placeholder="https://discord.com/api/webhooks/..."
+                className="w-full rounded-md border border-gray-300 px-4 py-2"
+              />
+              <button
+                type="button"
+                onClick={testDiscordWebhook}
+                disabled={testingDiscord || !settings.discordWebhookUrl}
+                className="whitespace-nowrap rounded-md border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                {testingDiscord ? 'Sending...' : 'Send Test'}
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {DISCORD_NOTIFICATION_CATEGORIES.map((category) => (
+              <div key={category.key} className="flex items-center gap-3">
+                <input
+                  id={`discord-${category.key}`}
+                  type="checkbox"
+                  checked={discordEnabled[category.key] ?? true}
+                  onChange={(e) =>
+                    setDiscordEnabled((prev) => ({ ...prev, [category.key]: e.target.checked }))
+                  }
+                  className="rounded border-gray-300"
+                />
+                <label htmlFor={`discord-${category.key}`} className="text-sm font-medium text-gray-700">
+                  {category.label}
+                </label>
+              </div>
+            ))}
+          </div>
+
+          {messages.discord?.text && (
+            <div
+              className={`p-3 rounded-md text-sm ${
+                messages.discord.type === 'success'
+                  ? 'bg-green-50 text-green-800 border border-green-200'
+                  : 'bg-red-50 text-red-800 border border-red-200'
+              }`}
+            >
+              {messages.discord.text}
+            </div>
+          )}
+
+          <button
+            onClick={() =>
+              saveSection('discord', {
+                webhookUrl: settings.discordWebhookUrl,
+                ...Object.fromEntries(
+                  DISCORD_NOTIFICATION_CATEGORIES.map((category) => [
+                    `notify.${category.key}`,
+                    discordEnabled[category.key] ?? true,
+                  ])
+                ),
+              })
+            }
+            disabled={saving.discord}
+            className="px-4 py-2 rounded-md bg-primary text-white font-medium hover:bg-primary-dark disabled:opacity-50"
+          >
+            {saving.discord ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

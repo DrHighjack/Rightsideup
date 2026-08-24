@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { sendJobCompletedDiscordWebhook } from '@/lib/discord';
 
 const completeJobSchema = z.object({
   techNotes: z.string().min(1),
@@ -87,6 +88,12 @@ export async function PUT(
         images: formattedImages,
       },
       include: {
+        fieldTech: {
+          select: {
+            firstName: true,
+            lastName: true,
+          },
+        },
         order: {
           include: {
             realtor: {
@@ -119,6 +126,16 @@ export async function PUT(
       where: { id: assignment.orderId },
       data: { status: newStatus },
     });
+
+    sendJobCompletedDiscordWebhook({
+      orderId: updatedAssignment.order.id,
+      orderNumber: updatedAssignment.order.orderNumber,
+      orderType: updatedAssignment.order.type,
+      address: updatedAssignment.order.address,
+      realtorName: `${updatedAssignment.order.realtor.firstName} ${updatedAssignment.order.realtor.lastName}`,
+      fieldTechName: `${updatedAssignment.fieldTech.firstName} ${updatedAssignment.fieldTech.lastName}`,
+      techNotes,
+    }).catch((error) => console.error('Failed to send Discord job completed webhook:', error));
 
     return NextResponse.json(updatedAssignment);
   } catch (error: any) {

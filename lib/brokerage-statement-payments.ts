@@ -1,6 +1,7 @@
 import { canAccessBrokerages } from "@/lib/brokerage-access";
 import { BrokerageStatementSnapshot } from "@/lib/brokerage-statements";
 import { chargeVaultRecord } from "@/lib/fluidpay";
+import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 import { prisma } from "@/lib/prisma";
 
 export class BrokerageStatementPaymentError extends Error {
@@ -17,7 +18,7 @@ export async function payBrokerageStatement(
 ) {
   const user = await prisma.user.findUnique({
     where: { id: actorUserId },
-    select: { vaultId: true, paymentCardLast4: true },
+    select: { vaultId: true, paymentCardLast4: true, firstName: true, lastName: true },
   });
   if (!user) throw new BrokerageStatementPaymentError("Account is unavailable", 403);
 
@@ -150,6 +151,15 @@ export async function payBrokerageStatement(
         },
       });
     });
+
+    sendInvoicePaidDiscordWebhook({
+      invoiceId: statement.id,
+      invoiceNumber: statement.statementNumber,
+      amountCents: statement.totalCents,
+      payerName: `${user.firstName || ""} ${user.lastName || ""}`.trim(),
+      payerType: "BROKERAGE",
+      url: `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://app.northshoresignco.com"}/brokerage?tab=billing&statement=${statement.id}`,
+    }).catch((error) => console.error("Failed to send Discord invoice paid webhook:", error));
 
     return { transactionId: charge.transactionId };
   } catch (error) {

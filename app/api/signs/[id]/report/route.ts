@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSignReportAlertEmail, sendEmail } from "@/lib/email";
+import { sendSignReportDiscordWebhook } from "@/lib/discord";
 
 // POST /api/signs/[id]/report - Report a sign as lost/damaged
 export async function POST(
@@ -120,6 +121,14 @@ export async function POST(
       console.error("Error sending alert email:", emailErr);
       // Don't fail the request if email fails, just log it
     }
+
+    sendSignReportDiscordWebhook({
+      signId,
+      signNumber: sign.signNumber || "N/A",
+      reportType: type,
+      realtorName: user.name || user.email,
+      description,
+    }).catch((error) => console.error("Failed to send Discord sign report webhook:", error));
 
     return Response.json(report, { status: 201 });
   } catch (err) {

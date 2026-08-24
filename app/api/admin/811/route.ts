@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { pollAndProcess } from '@/lib/emailPoller';
 import { get811ManualTicketCreatedAlertEmail, sendEmail } from '@/lib/email';
+import { send811AlertDiscordWebhook } from '@/lib/discord';
 import { auth } from '@/lib/auth';
 
 // GET /api/admin/811 - List tickets with optional filters
@@ -176,6 +177,12 @@ export async function POST(request: NextRequest) {
           // Don't fail the whole operation if email fails
         }
       }
+
+      send811AlertDiscordWebhook({
+        title: 'Manual 811 Ticket Created',
+        ticketNumber,
+        address: order.address,
+      }).catch((error) => console.error('Failed to send Discord 811 webhook:', error));
 
       return NextResponse.json(ticket);
     }

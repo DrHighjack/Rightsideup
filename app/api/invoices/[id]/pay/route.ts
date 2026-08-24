@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateInvoiceBalance } from "@/lib/invoice-totals";
 import { sendEmail } from "@/lib/email";
+import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 import { invoicePaySchema } from "@/lib/schemas";
 import { ZodError } from "zod";
 
@@ -176,6 +177,14 @@ export async function POST(
         })
       )
     );
+
+    sendInvoicePaidDiscordWebhook({
+      invoiceId: invoice.id,
+      invoiceNumber,
+      amountCents: totalDue,
+      payerName: `${invoice.user.firstName} ${invoice.user.lastName}`.trim(),
+      payerType,
+    }).catch((error) => console.error("Failed to send Discord invoice paid webhook:", error));
 
     return NextResponse.json({
       success: true,

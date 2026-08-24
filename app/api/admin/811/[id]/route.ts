@@ -9,6 +9,7 @@ import {
 import { auth } from '@/lib/auth';
 import { logActivity } from '@/lib/activityLog';
 import { createNotification } from '@/lib/notifications';
+import { send811AlertDiscordWebhook } from '@/lib/discord';
 import { ActivityAction } from '@prisma/client';
 import { areAllUtilityLinesClear } from '@/lib/order-status';
 
@@ -167,6 +168,14 @@ export async function PUT(
         }
       }
 
+      send811AlertDiscordWebhook({
+        title: '811 Ticket Cleared',
+        ticketNumber: ticket.ticketNumber || 'Unknown',
+        address: ticket.parsedAddress || 'Unknown',
+        detail: `${matchedOrders.length} order(s) released to scheduling`,
+        color: 0x10b981,
+      }).catch((error) => console.error('Failed to send Discord 811 webhook:', error));
+
       // Update ticket status to CLEARED
       const updatedTicket = await prisma.ticket811.update({
         where: { id },
@@ -246,6 +255,14 @@ export async function PUT(
           // Don't fail the whole operation if email fails
         }
       }
+
+      send811AlertDiscordWebhook({
+        title: '811 Ticket Dismissed',
+        ticketNumber: ticket.ticketNumber || 'Unknown',
+        address: ticket.parsedAddress || 'Unknown',
+        detail: adminNotes || 'Marked as a false positive',
+        color: 0x9ca3af,
+      }).catch((error) => console.error('Failed to send Discord 811 webhook:', error));
 
       return NextResponse.json({
         success: true,

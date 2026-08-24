@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLowInventoryAlertEmail, sendEmail } from "@/lib/email";
+import { sendLowInventoryDiscordWebhook } from "@/lib/discord";
 
 const LOW_INVENTORY_THRESHOLD = parseInt(process.env.LOW_INVENTORY_THRESHOLD || "5", 10);
 
@@ -176,6 +177,12 @@ async function checkAndAlertLowInventory(signType: string): Promise<void> {
             threshold: LOW_INVENTORY_THRESHOLD,
           },
         });
+
+        sendLowInventoryDiscordWebhook({
+          signType,
+          availableQuantity: availableCount,
+          threshold: LOW_INVENTORY_THRESHOLD,
+        }).catch((error) => console.error("Failed to send Discord low inventory webhook:", error));
 
         console.log(`Low inventory alert sent for ${signType} (available: ${availableCount})`);
       }

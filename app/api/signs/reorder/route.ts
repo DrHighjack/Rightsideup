@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { getReorderRequestAlertEmail, sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
+import { sendReorderRequestDiscordWebhook } from "@/lib/discord";
 
 // POST /api/signs/reorder - Realtor requests more signs or inventory items
 export async function POST(request: Request) {
@@ -93,6 +94,11 @@ export async function POST(request: Request) {
       console.error("Error sending reorder email:", emailErr);
       // Don't fail the request if email fails
     }
+
+    sendReorderRequestDiscordWebhook({
+      realtorName: user.name || user.email,
+      items: isInventoryReorder ? subject : `${quantity} x ${type || "Any"} signs`,
+    }).catch((error) => console.error("Failed to send Discord reorder webhook:", error));
 
     return Response.json(
       {

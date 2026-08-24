@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { getFieldJobIssueAlertEmail, sendEmail } from '@/lib/email';
+import { sendFieldIssueDiscordWebhook } from '@/lib/discord';
 import { z } from 'zod';
 
 const flagJobSchema = z.object({
@@ -122,6 +123,13 @@ export async function PUT(
       console.error('[FIELD JOB FLAG] Email send error:', emailError);
       // Don't fail the operation if email fails
     }
+
+    sendFieldIssueDiscordWebhook({
+      orderId: assignment.order.id,
+      orderNumber: assignment.order.orderNumber,
+      fieldTechName: `${assignment.fieldTech.firstName} ${assignment.fieldTech.lastName}`,
+      issueDescription: issue,
+    }).catch((error) => console.error('Failed to send Discord field issue webhook:', error));
 
     return NextResponse.json(updatedAssignment);
   } catch (error: any) {

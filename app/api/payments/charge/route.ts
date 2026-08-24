@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { chargeToken, chargeVaultRecord } from "@/lib/fluidpay";
 import { calculateInvoiceBalance } from "@/lib/invoice-totals";
 import { sendEmail } from "@/lib/email";
+import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 import { paymentChargeSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
 
@@ -170,6 +171,14 @@ export async function POST(request: NextRequest) {
     } catch (emailError) {
       console.error("Payment email failed:", emailError);
     }
+
+    sendInvoicePaidDiscordWebhook({
+      invoiceId: invoice.id,
+      invoiceNumber,
+      amountCents: totalDue,
+      payerName: recipientName,
+      payerType: useVault ? "VAULT" : "TOKEN",
+    }).catch((error) => console.error("Failed to send Discord invoice paid webhook:", error));
 
     return NextResponse.json({ success: true, transactionId: chargeResult.transactionId });
   } catch (error) {

@@ -5,6 +5,7 @@ import {
   get811TicketCreatedAlertEmail,
   sendEmail,
 } from './email';
+import { send811AlertDiscordWebhook } from './discord';
 
 interface RawEmail {
   subject: string;
@@ -356,6 +357,13 @@ export async function pollAndProcess(): Promise<void> {
             html: needsReviewEmail.html,
           });
 
+          send811AlertDiscordWebhook({
+            title: '811 Ticket Needs Review',
+            ticketNumber: parsed.ticketNumber || '(not extracted)',
+            address: parsed.address || '(not found)',
+            detail: 'Address could not be extracted from the source email.',
+          }).catch((error) => console.error('Failed to send Discord 811 webhook:', error));
+
           continue;
         }
 
@@ -440,6 +448,14 @@ export async function pollAndProcess(): Promise<void> {
           subject: createdEmail.subject,
           html: createdEmail.html,
         });
+
+        send811AlertDiscordWebhook({
+          title: `811 Ticket ${ticketStatus === 'ACTIVE' ? 'Matched' : 'Needs Review'}`,
+          ticketNumber: parsed.ticketNumber || '(not extracted)',
+          address: parsed.address || '(not found)',
+          detail: `${matchedOrderIds.length} order(s) matched`,
+          color: ticketStatus === 'ACTIVE' ? 0x10b981 : 0xf59e0b,
+        }).catch((error) => console.error('Failed to send Discord 811 webhook:', error));
 
         console.log(`[811POLL] ✓ Created ticket ${ticket.id} (${ticketStatus})`);
       } catch (err) {

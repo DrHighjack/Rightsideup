@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateInvoiceBalance } from "@/lib/invoice-totals";
+import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 
 function nextRunDate(dayOfMonth: number) {
   const now = new Date();
@@ -32,7 +33,11 @@ export async function POST(request: NextRequest) {
         nextRunAt: { lte: new Date() },
       },
       include: {
-        invoice: true,
+        invoice: {
+          include: {
+            user: { select: { firstName: true, lastName: true } },
+          },
+        },
         paymentCard: {
           select: { id: true, nickname: true },
         },
@@ -90,6 +95,14 @@ export async function POST(request: NextRequest) {
           },
         });
       });
+
+      sendInvoicePaidDiscordWebhook({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
+        amountCents: totalDue,
+        payerName: `${invoice.user.firstName} ${invoice.user.lastName}`.trim(),
+        payerType: "AGENT (Scheduled)",
+      }).catch((error) => console.error("Failed to send Discord invoice paid webhook:", error));
 
       results.push({ scheduleId: schedule.id, status: "paid" });
     }

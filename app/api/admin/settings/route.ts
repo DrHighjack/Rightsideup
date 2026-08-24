@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
     // Define which fields are encrypted per section
     const encryptedFields: Record<string, string[]> = {
       imap: ['imapPassword'],
+      discord: ['webhookUrl'],
     };
 
     const sectionEncryptedFields = encryptedFields[section] || [];

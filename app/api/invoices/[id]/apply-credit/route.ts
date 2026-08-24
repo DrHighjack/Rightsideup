@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateInvoiceBalance, calculateTaxAmount } from "@/lib/invoice-totals";
+import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 
 export async function POST(
   _request: NextRequest,
@@ -14,7 +15,10 @@ export async function POST(
     }
 
     const role = (session.user as { role?: string }).role;
-    const invoice = await prisma.invoice.findUnique({ where: { id: params.id } });
+    const invoice = await prisma.invoice.findUnique({
+      where: { id: params.id },
+      include: { user: { select: { firstName: true, lastName: true } } },
+    });
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -129,6 +133,16 @@ export async function POST(
         remainingCredit: remainingCredits._sum.remainingValue || 0,
       };
     });
+
+    if (result.updatedInvoice.status === "PAID") {
+      sendInvoicePaidDiscordWebhook({
+        invoiceId: invoice.id,
+        invoiceNumber: invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`,
+        amountCents: result.appliedCents,
+        payerName: `${invoice.user.firstName} ${invoice.user.lastName}`.trim(),
+        payerType: "CREDIT",
+      }).catch((error) => console.error("Failed to send Discord invoice paid webhook:", error));
+    }
 
     return NextResponse.json({
       success: true,

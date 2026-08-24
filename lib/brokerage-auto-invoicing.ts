@@ -16,6 +16,20 @@ export function getNextAutoInvoiceRun(interval: AutoInvoiceInterval, from: Date)
     ));
   }
 
+  const lastDayOfCurrentMonth = new Date(Date.UTC(
+    from.getUTCFullYear(),
+    from.getUTCMonth() + 1,
+    0
+  )).getUTCDate();
+  if (from.getUTCDate() === lastDayOfCurrentMonth) {
+    return new Date(Date.UTC(
+      from.getUTCFullYear(),
+      from.getUTCMonth() + 2,
+      0,
+      9
+    ));
+  }
+
   return new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth() + 1, 1, 9));
 }
 

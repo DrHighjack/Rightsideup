@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import StatusBadge from "@/app/components/StatusBadge";
 import { formatOrderStatus, ORDER_STATUSES } from "@/lib/order-status";
 
@@ -21,6 +22,10 @@ interface OrderData {
 }
 
 export default function OrdersPage() {
+  const { data: session } = useSession();
+  const isSharedAccountant =
+    (session?.user as any)?.role === "BROKERAGE" &&
+    (session?.user as any)?.accountTitle === "Accountant";
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");
@@ -92,12 +97,12 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
           <p className="text-gray-600">Manage and track your orders</p>
         </div>
-        <Link
+        {!isSharedAccountant && <Link
           href="/dashboard/orders/new"
           className="rounded-md bg-primary px-6 py-2 text-white font-medium hover:bg-primary-dark inline-block text-center"
         >
           Place New Order
-        </Link>
+        </Link>}
       </div>
 
       {/* Filters */}

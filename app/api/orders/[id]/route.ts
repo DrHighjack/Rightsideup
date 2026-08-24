@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activityLog";
 import { isOrderReadyToSchedule, ORDER_STATUSES } from "@/lib/order-status";
+import { getAccessibleBrokerages } from "@/lib/brokerage-access";
 
 function serializeOrderPhotos<T extends { id: string; photos: unknown }>(order: T) {
   const photos = Array.isArray(order.photos) ? order.photos : [];
@@ -37,7 +38,7 @@ export async function GET(
     const order = await prisma.order.findUnique({
       where: { id: params.id },
       include: {
-        realtor: { select: { id: true, email: true, firstName: true, lastName: true } },
+        realtor: { select: { id: true, email: true, firstName: true, lastName: true, brokerageId: true } },
         ticket811: { select: { id: true } },
       },
     });
@@ -66,6 +67,21 @@ export async function GET(
       });
 
       if (!link) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
+    if ((session.user as any).role === "BROKERAGE") {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { tags: true },
+      });
+      const accessibleIds = new Set(
+        user?.tags.includes("SHARED_ACCOUNTANT")
+          ? (await getAccessibleBrokerages(session.user.id)).map((brokerage) => brokerage.id)
+          : []
+      );
+      if (!order.realtor.brokerageId || !accessibleIds.has(order.realtor.brokerageId)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }

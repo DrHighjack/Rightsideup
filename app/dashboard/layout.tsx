@@ -54,10 +54,19 @@ export default function DashboardLayout({
   const { data: session } = useSession();
   const userRole = (session?.user as any)?.role as string | undefined;
   const isTC = userRole === "TC";
+  const isSharedAccountant = userRole === "BROKERAGE" && (session?.user as any)?.accountTitle === "Accountant";
 
-  const navItems = isTC
-    ? [...NAV_ITEMS.slice(0, 2), MY_AGENTS_ITEM, ...NAV_ITEMS.slice(2)]
-    : NAV_ITEMS;
+  const navItems = isSharedAccountant
+    ? [
+        NAV_ITEMS[0],
+        NAV_ITEMS[1],
+        { ...NAV_ITEMS[5], href: "/brokerage?tab=billing" },
+        NAV_ITEMS[6],
+        NAV_ITEMS[7],
+      ]
+    : isTC
+      ? [...NAV_ITEMS.slice(0, 2), MY_AGENTS_ITEM, ...NAV_ITEMS.slice(2)]
+      : NAV_ITEMS;
   const activeHref = useActiveHref(navItems);
 
   const handleSignOut = async () => {

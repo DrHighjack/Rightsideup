@@ -19,7 +19,10 @@ export default function Home() {
       router.push("/admin");
     } else if ((session.user as any).role === "SALESMEN") {
       router.push("/admin");
-    } else if ((session.user as any).role === "BROKERAGE") {
+    } else if (
+      (session.user as any).role === "BROKERAGE" &&
+      (session.user as any).accountTitle !== "Accountant"
+    ) {
       router.push("/brokerage");
     } else {
       router.push("/dashboard");

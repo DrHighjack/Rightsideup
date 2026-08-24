@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 
 interface OrderDetail {
   id: string;
@@ -40,7 +41,11 @@ function formatCalendarDate(value: string) {
 
 export default function OrderDetailPage() {
   const params = useParams();
+  const { data: session } = useSession();
   const id = params.id as string;
+  const isSharedAccountant =
+    (session?.user as any)?.role === "BROKERAGE" &&
+    (session?.user as any)?.accountTitle === "Accountant";
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -226,7 +231,7 @@ export default function OrderDetailPage() {
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
         <div className="flex items-center justify-between gap-4">
           <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Listing Photos</h2>
-          <label className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-navy-900 px-4 text-sm font-medium text-white hover:bg-navy-800">
+          {!isSharedAccountant && <label className="inline-flex h-10 cursor-pointer items-center rounded-lg bg-navy-900 px-4 text-sm font-medium text-white hover:bg-navy-800">
             {photoUploading ? "Uploading..." : "Add Photo"}
             <input
               type="file"
@@ -235,7 +240,7 @@ export default function OrderDetailPage() {
               disabled={photoUploading}
               className="hidden"
             />
-          </label>
+          </label>}
         </div>
         {photoError && <p className="text-sm text-red-700">{photoError}</p>}
         {(order.photos ?? []).length > 0 ? (
@@ -306,7 +311,7 @@ export default function OrderDetailPage() {
           <div>
             <div className="flex items-center justify-between gap-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Requested Date</p>
-              {["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED"].includes(order.status) && !editingDate && (
+              {!isSharedAccountant && ["PENDING", "CONFIRMED", "READY_TO_SCHEDULE", "SCHEDULED"].includes(order.status) && !editingDate && (
                 <button
                   type="button"
                   onClick={() => setEditingDate(true)}
@@ -363,7 +368,7 @@ export default function OrderDetailPage() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
+      {!isSharedAccountant && <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
         <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Apply Credit</h2>
         <p className="text-sm text-slate-600">Use a realtor credit code here. If the credit is larger than the order total, the remainder stays available for the next order.</p>
 
@@ -386,10 +391,10 @@ export default function OrderDetailPage() {
 
         {creditError && <p className="text-sm text-red-700">{creditError}</p>}
         {creditMessage && <p className="text-sm text-green-700">{creditMessage}</p>}
-      </div>
+      </div>}
 
       {/* Cancel button */}
-      {order.status === "PENDING" && !cancelled && (
+      {!isSharedAccountant && order.status === "PENDING" && !cancelled && (
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             onClick={() => setShowCancelModal(true)}

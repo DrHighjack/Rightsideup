@@ -115,6 +115,9 @@ const resolvePhotoSrc = (raw?: string | null): string | null => {
 
 export default function DashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
+  const isSharedAccountant =
+    (session?.user as any)?.role === "BROKERAGE" &&
+    (session?.user as any)?.accountTitle === "Accountant";
   const [stats, setStats] = useState<DashboardStats>({
     active: 0,
     completedThisMonth: 0,
@@ -412,7 +415,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Ready to order CTA */}
-      {!readyCardHidden && (
+      {!isSharedAccountant && !readyCardHidden && (
         <div className="relative bg-white rounded-xl border border-slate-200 p-6 text-center shadow-sm">
           <button
             type="button"

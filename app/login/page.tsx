@@ -8,6 +8,12 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
+const getPortalPath = (user: { role?: string; accountTitle?: string } | null | undefined) => {
+  if (user?.role === "ADMIN" || user?.role === "SALESMEN") return "/admin";
+  if (user?.role === "BROKERAGE" && user.accountTitle !== "Accountant") return "/brokerage";
+  return "/dashboard";
+};
+
 function LoginPageContent() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -26,13 +32,7 @@ function LoginPageContent() {
   // If already logged in, redirect to appropriate dashboard
   useEffect(() => {
     if (session?.user) {
-      if (["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
-        router.push("/admin");
-      } else if ((session.user as any).role === "BROKERAGE") {
-        router.push("/brokerage");
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(getPortalPath(session.user as any));
     }
   }, [session, router]);
 
@@ -58,15 +58,7 @@ function LoginPageContent() {
         const response = await fetch("/api/auth/session");
         const newSession = await response.json();
 
-        if (newSession?.user?.role === "ADMIN") {
-          router.push("/admin");
-        } else if (newSession?.user?.role === "SALESMEN") {
-          router.push("/admin");
-        } else if (newSession?.user?.role === "BROKERAGE") {
-          router.push("/brokerage");
-        } else {
-          router.push("/dashboard");
-        }
+        router.push(getPortalPath(newSession?.user));
       } catch {
         setError("Unable to use admin login-as-client link.");
       } finally {
@@ -143,15 +135,7 @@ function LoginPageContent() {
           router.push(`/verify-email?email=${encodeURIComponent(newSession?.user?.email || email)}&pending=1`);
           return;
         }
-        if (newSession?.user?.role === "ADMIN") {
-          router.push("/admin");
-        } else if (newSession?.user?.role === "SALESMEN") {
-          router.push("/admin");
-        } else if (newSession?.user?.role === "BROKERAGE") {
-          router.push("/brokerage");
-        } else {
-          router.push("/dashboard");
-        }
+        router.push(getPortalPath(newSession?.user));
       }
     } catch {
       setError("An error occurred. Please try again.");

@@ -90,6 +90,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               role: targetUser.role,
               accountTitle: targetUser.tags.includes("PROPERTY_MANAGER")
                 ? "Property Manager"
+                : targetUser.tags.includes("SHARED_ACCOUNTANT")
+                  ? "Accountant"
                 : null,
               brokerageName: targetUser.brokerageName,
               emailVerifiedAt: new Date().toISOString(),
@@ -259,6 +261,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             role: user.role,
             accountTitle: user.tags.includes("PROPERTY_MANAGER")
               ? "Property Manager"
+              : user.tags.includes("SHARED_ACCOUNTANT")
+                ? "Accountant"
               : null,
             brokerageName: user.brokerageName,
             // Legacy production DB may not have emailVerifiedAt yet.

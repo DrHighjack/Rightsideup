@@ -30,6 +30,7 @@ export async function middleware(request: NextRequest) {
   );
 
   const userRole = (session?.user as any)?.role;
+  const isSharedAccountant = userRole === "BROKERAGE" && (session?.user as any)?.accountTitle === "Accountant";
 
   // Redirect to login if not authenticated for protected routes
   if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !hasSessionToken) {
@@ -46,7 +47,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Brokerage accounts can only access /brokerage and API routes.
-  if ((isAdminRoute || isDashboardRoute || isFieldRoute) && userRole === "BROKERAGE") {
+  if ((isAdminRoute || isDashboardRoute || isFieldRoute) && userRole === "BROKERAGE" && !isSharedAccountant) {
     return NextResponse.redirect(new URL("/brokerage", request.url));
   }
 

@@ -5,6 +5,7 @@ import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { notifyOrderUpdate } from "@/lib/notifications";
 import { sendNewOrderDiscordWebhook } from "@/lib/discord";
+import { getAccessibleBrokerages } from "@/lib/brokerage-access";
 
 function isMissingEmailVerifiedColumn(error: unknown): boolean {
   return (
@@ -64,6 +65,16 @@ export async function GET(request: NextRequest) {
       } else {
         where.realtorId = { in: linkedAgentIds };
       }
+    } else if (role === "BROKERAGE") {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { tags: true },
+      });
+      if (!user?.tags.includes("SHARED_ACCOUNTANT")) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+      const brokerageIds = (await getAccessibleBrokerages(session.user.id)).map((brokerage) => brokerage.id);
+      where.realtor = { brokerageId: { in: brokerageIds } };
     } else if (role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

@@ -38,6 +38,7 @@ export function InventoryCard({
 }: InventoryCardProps) {
   const isLowStock = availableQuantity < lowStockThreshold;
   const isCustomSign = name.toLowerCase().includes('custom');
+  const shouldContainImage = isCustomSign || category === 'RIDER' || category === 'FLYER_BOX';
 
   const getCategoryIcon = (cat: string) => {
     switch (cat) {
@@ -60,7 +61,7 @@ export function InventoryCard({
           <img
             src={imageUrl}
             alt={name}
-            className={`w-full h-full ${isCustomSign ? 'object-contain object-bottom p-2' : 'object-cover'}`}
+            className={`w-full h-full ${shouldContainImage ? 'object-contain p-3' : 'object-cover'}`}
           />
         ) : (
           <span className="text-gray-400">{getCategoryIcon(category)}</span>

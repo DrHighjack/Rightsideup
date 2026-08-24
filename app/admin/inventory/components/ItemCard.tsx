@@ -31,6 +31,9 @@ export function ItemCard({ item, onEdit, onToggleVisibility, onDelete }: ItemCar
     if (isFlyerBox) {
       return 'w-full h-full object-contain p-5';
     }
+    if (item.category === 'RIDER') {
+      return 'w-full h-full object-contain p-3';
+    }
     if (isCustomBluePost) {
       return 'w-full h-full object-contain p-6';
     }

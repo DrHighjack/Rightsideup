@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-async function getBrokerageIdForSessionUser(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { brokerageId: true },
-  });
-
-  return user?.brokerageId || null;
-}
+import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 
 export async function GET(request: NextRequest) {
   try {
@@ -20,7 +12,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const brokerageId = await getBrokerageIdForSessionUser(session.user.id);
+    const brokerageId = await resolveAccessibleBrokerageId(
+      session.user.id,
+      new URL(request.url).searchParams.get("brokerageId")
+    );
     if (!brokerageId) {
       return NextResponse.json({ error: "No brokerage linked to account" }, { status: 404 });
     }

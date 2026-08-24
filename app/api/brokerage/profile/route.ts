@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const role = (session?.user as any)?.role;
@@ -22,15 +23,23 @@ export async function GET() {
       },
     });
 
-    if (!user?.brokerageId) {
+    if (!user) {
       return NextResponse.json(
         { error: "No brokerage is linked to this account" },
         { status: 404 }
       );
     }
 
+    const brokerageId = await resolveAccessibleBrokerageId(
+      user.id,
+      new URL(request.url).searchParams.get("brokerageId") || user.brokerageId
+    );
+    if (!brokerageId) {
+      return NextResponse.json({ error: "Brokerage is not available" }, { status: 403 });
+    }
+
     const brokerage = await prisma.brokerage.findUnique({
-      where: { id: user.brokerageId },
+      where: { id: brokerageId },
       include: {
         _count: {
           select: { agents: true },

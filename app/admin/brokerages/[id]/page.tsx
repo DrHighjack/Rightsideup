@@ -84,6 +84,14 @@ interface RealtorImportResult {
   results: Array<{ rowNumber: number; error: string }>;
 }
 
+interface BrokerageAccessAccount {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  isPrimary: boolean;
+}
+
 const emptyStats: BrokerageStats = {
   lifetimeInvoiceTotal: 0,
   lifetimePaidTotal: 0,
@@ -189,6 +197,9 @@ export default function BrokeragePage() {
   const [csvResult, setCsvResult] = useState<RealtorImportResult | null>(null);
   const [scheduleInterval, setScheduleInterval] = useState<"MONTHLY" | "BIWEEKLY">("MONTHLY");
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [accessAccounts, setAccessAccounts] = useState<BrokerageAccessAccount[]>([]);
+  const [accessEmail, setAccessEmail] = useState("");
+  const [accessSubmitting, setAccessSubmitting] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -236,11 +247,55 @@ export default function BrokeragePage() {
       }
   };
 
+  const fetchAccessAccounts = async () => {
+    const response = await fetch(`/api/admin/brokerages/${brokerageId}/access`);
+    if (response.ok) {
+      const data = await response.json();
+      setAccessAccounts(data.accounts || []);
+    }
+  };
+
   useEffect(() => {
     if (status === "authenticated" && brokerageId) {
       void fetchBrokerage();
+      void fetchAccessAccounts();
     }
   }, [status, brokerageId]);
+
+  const handleGrantAccess = async (event: React.FormEvent) => {
+    event.preventDefault();
+    try {
+      setAccessSubmitting(true);
+      setPageError("");
+      const response = await fetch(`/api/admin/brokerages/${brokerageId}/access`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: accessEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to grant access");
+      setAccessEmail("");
+      await fetchAccessAccounts();
+    } catch (error) {
+      setPageError(error instanceof Error ? error.message : "Failed to grant access");
+    } finally {
+      setAccessSubmitting(false);
+    }
+  };
+
+  const handleRevokeAccess = async (account: BrokerageAccessAccount) => {
+    if (!window.confirm(`Remove ${account.email} from this office?`)) return;
+    const response = await fetch(
+      `/api/admin/brokerages/${brokerageId}/access?userId=${encodeURIComponent(account.id)}`,
+      { method: "DELETE" }
+    );
+    const data = await response.json();
+    if (!response.ok) {
+      setPageError(data.error || "Failed to remove access");
+      return;
+    }
+    await fetchAccessAccounts();
+  };
 
   const outstandingInvoices = useMemo(
     () => invoices.filter((invoice) => isOutstandingInvoiceStatus(invoice.status)),
@@ -511,6 +566,43 @@ export default function BrokeragePage() {
               <div><p className="text-xs uppercase text-gray-500">Agents</p><p className="mt-1 font-medium text-gray-900">{brokerage.agents.length}</p></div>
             </div>
           )}
+        </section>
+
+        <section className="mb-6 border-y border-gray-200 bg-white p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Office Account Access</h2>
+              <p className="mt-1 text-sm text-gray-600">Link an existing brokerage account so it can manage this office and include its balance in consolidated statements.</p>
+            </div>
+            <form onSubmit={handleGrantAccess} className="flex w-full max-w-xl gap-2">
+              <input
+                type="email"
+                required
+                value={accessEmail}
+                onChange={(event) => setAccessEmail(event.target.value)}
+                placeholder="accountant@company.com"
+                className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+              />
+              <button type="submit" disabled={accessSubmitting} className="rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50">
+                {accessSubmitting ? "Linking..." : "Link Account"}
+              </button>
+            </form>
+          </div>
+          <div className="mt-5 divide-y divide-gray-100 border-y border-gray-200">
+            {accessAccounts.map((account) => (
+              <div key={account.id} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="font-medium text-gray-900">{account.firstName} {account.lastName}</p>
+                  <p className="text-sm text-gray-600">{account.email}</p>
+                </div>
+                {account.isPrimary ? (
+                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-700">Primary</span>
+                ) : (
+                  <button type="button" onClick={() => void handleRevokeAccess(account)} className="text-sm font-medium text-red-700 hover:text-red-900">Remove</button>
+                )}
+              </div>
+            ))}
+          </div>
         </section>
 
         <section className="mb-6 border-y border-gray-200 bg-white p-6">

@@ -35,6 +35,13 @@ interface BrokerageProfile {
   agentCount: number;
 }
 
+interface AccessibleBrokerage {
+  id: string;
+  name: string;
+  address?: string | null;
+  billingType: "AGENT" | "BROKERAGE";
+}
+
 interface Agent {
   id: string;
   firstName: string;
@@ -96,11 +103,13 @@ interface SavedPaymentMethod {
 }
 
 interface StatementSnapshot {
+  brokerageIds?: string[];
   invoices: Array<{
     id: string;
     invoiceNumber: string;
     invoiceDate: string;
     realtorName: string;
+    brokerageName?: string;
     balanceCents: number;
     lineItems: Array<{
       description: string;
@@ -163,6 +172,10 @@ function BrokerageDashboardContent() {
   const [paymentTokenizer, setPaymentTokenizer] = useState<{ submit?: () => void } | null>(null);
   const [scheduleInterval, setScheduleInterval] = useState<"MONTHLY" | "BIWEEKLY">("MONTHLY");
   const [scheduleSubmitting, setScheduleSubmitting] = useState(false);
+  const [accessibleBrokerages, setAccessibleBrokerages] = useState<AccessibleBrokerage[]>([]);
+  const [selectedBrokerageId, setSelectedBrokerageId] = useState("");
+  const [consolidatedBrokerageIds, setConsolidatedBrokerageIds] = useState<string[]>([]);
+  const [generatingConsolidated, setGeneratingConsolidated] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -178,8 +191,18 @@ function BrokerageDashboardContent() {
       setLoading(true);
       setError("");
 
+      const accessRes = await fetch("/api/brokerage/access");
+      const accessData = accessRes.ok ? await accessRes.json() : { brokerages: [] };
+      const offices: AccessibleBrokerage[] = accessData.brokerages || [];
+      const officeId = selectedBrokerageId || offices[0]?.id || "";
+      if (!officeId) throw new Error("No brokerage office is linked to this account");
+      setAccessibleBrokerages(offices);
+      if (!selectedBrokerageId) setSelectedBrokerageId(officeId);
+      setConsolidatedBrokerageIds((current) => current.length ? current : offices.map((office) => office.id));
+
       const query = new URLSearchParams({
         limit: "25",
+        brokerageId: officeId,
       });
       if (invoiceStatusFilter) {
         query.set("status", invoiceStatusFilter);
@@ -189,8 +212,8 @@ function BrokerageDashboardContent() {
       }
 
       const [profileRes, agentsRes, invoicesRes, statementsRes, cardsRes] = await Promise.all([
-        fetch("/api/brokerage/profile"),
-        fetch("/api/brokerage/agents"),
+        fetch(`/api/brokerage/profile?brokerageId=${encodeURIComponent(officeId)}`),
+        fetch(`/api/brokerage/agents?brokerageId=${encodeURIComponent(officeId)}`),
         fetch(`/api/brokerage/invoices?${query.toString()}`),
         fetch("/api/brokerage/statements"),
         fetch("/api/payments/card-on-file"),
@@ -234,7 +257,7 @@ function BrokerageDashboardContent() {
 
   useEffect(() => {
     loadData();
-  }, [invoiceStatusFilter, invoiceMemberFilter]);
+  }, [invoiceStatusFilter, invoiceMemberFilter, selectedBrokerageId]);
 
   useEffect(() => {
     if (linkedStatementId && statements.some((statement) => statement.id === linkedStatementId)) {
@@ -305,7 +328,7 @@ function BrokerageDashboardContent() {
     try {
       setGeneratingStatement(true);
       setError("");
-      const response = await fetch("/api/brokerage/statements", { method: "POST" });
+      const response = await fetch(`/api/brokerage/statements?brokerageId=${encodeURIComponent(selectedBrokerageId)}`, { method: "POST" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to generate statement");
       await loadData();
@@ -317,11 +340,31 @@ function BrokerageDashboardContent() {
     }
   };
 
+  const handleGenerateConsolidatedStatement = async () => {
+    try {
+      setGeneratingConsolidated(true);
+      setError("");
+      const response = await fetch("/api/brokerage/statements/consolidated", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brokerageIds: consolidatedBrokerageIds }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to generate consolidated statement");
+      await loadData();
+      setExpandedStatementId(data.statement?.id || null);
+    } catch (statementError) {
+      setError(statementError instanceof Error ? statementError.message : "Failed to generate consolidated statement");
+    } finally {
+      setGeneratingConsolidated(false);
+    }
+  };
+
   const handleScheduleRequest = async () => {
     try {
       setScheduleSubmitting(true);
       setError("");
-      const response = await fetch("/api/brokerage/invoice-schedule", {
+      const response = await fetch(`/api/brokerage/invoice-schedule?brokerageId=${encodeURIComponent(selectedBrokerageId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ interval: scheduleInterval }),
@@ -340,7 +383,7 @@ function BrokerageDashboardContent() {
     try {
       setScheduleSubmitting(true);
       setError("");
-      const response = await fetch("/api/brokerage/invoice-schedule", { method: "DELETE" });
+      const response = await fetch(`/api/brokerage/invoice-schedule?brokerageId=${encodeURIComponent(selectedBrokerageId)}`, { method: "DELETE" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to cancel request");
       await loadData();
@@ -391,7 +434,7 @@ function BrokerageDashboardContent() {
 
     try {
       setSubmitting(true);
-      const res = await fetch("/api/brokerage/agents", {
+      const res = await fetch(`/api/brokerage/agents?brokerageId=${encodeURIComponent(selectedBrokerageId)}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -435,7 +478,7 @@ function BrokerageDashboardContent() {
   ) => {
     try {
       setMemberActionId(agentId);
-      const res = await fetch("/api/brokerage/agents", {
+      const res = await fetch(`/api/brokerage/agents?brokerageId=${encodeURIComponent(selectedBrokerageId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId, paymentMethod }),
@@ -475,7 +518,7 @@ function BrokerageDashboardContent() {
 
     try {
       setMemberActionId(agent.id);
-      const res = await fetch("/api/brokerage/agents", {
+      const res = await fetch(`/api/brokerage/agents?brokerageId=${encodeURIComponent(selectedBrokerageId)}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -504,6 +547,16 @@ function BrokerageDashboardContent() {
 
   return (
     <div className="space-y-6">
+      {accessibleBrokerages.length > 1 && (
+        <section className="border-y border-gray-200 bg-white p-4">
+          <label className="block max-w-md text-sm font-medium text-gray-700">
+            Office
+            <select value={selectedBrokerageId} onChange={(event) => setSelectedBrokerageId(event.target.value)} className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900">
+              {accessibleBrokerages.map((office) => <option key={office.id} value={office.id}>{office.name}</option>)}
+            </select>
+          </label>
+        </section>
+      )}
       <section className="rounded-lg border border-gray-200 bg-white p-3">
         <div className="flex flex-wrap gap-2">
           <Link
@@ -802,6 +855,36 @@ function BrokerageDashboardContent() {
       </section>
 
       <section className="rounded-lg border border-gray-200 bg-white p-6">
+        {accessibleBrokerages.length > 1 && (
+          <div className="mb-6 border-b border-gray-200 pb-6">
+            <h3 className="text-lg font-semibold text-gray-900">Consolidated Office Balance</h3>
+            <p className="mt-1 text-sm text-gray-600">Generate one payable statement containing every outstanding balance from the selected offices.</p>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+              {accessibleBrokerages.map((office) => (
+                <label key={office.id} className="flex items-center gap-2 rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-800">
+                  <input
+                    type="checkbox"
+                    checked={consolidatedBrokerageIds.includes(office.id)}
+                    onChange={(event) => setConsolidatedBrokerageIds((current) =>
+                      event.target.checked
+                        ? Array.from(new Set([...current, office.id]))
+                        : current.filter((id) => id !== office.id)
+                    )}
+                  />
+                  {office.name}
+                </label>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleGenerateConsolidatedStatement()}
+              disabled={generatingConsolidated || consolidatedBrokerageIds.length < 2}
+              className="mt-4 rounded-md bg-blue-700 px-4 py-2 text-sm font-medium text-white hover:bg-blue-800 disabled:opacity-50"
+            >
+              {generatingConsolidated ? "Generating..." : "Generate Combined Balance"}
+            </button>
+          </div>
+        )}
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="text-xl font-semibold text-gray-900">Company payment method</h3>
@@ -873,7 +956,7 @@ function BrokerageDashboardContent() {
                 >
                   <span className="block font-semibold text-gray-900">{statement.statementNumber}</span>
                   <span className="block text-sm text-gray-600">
-                    {new Date(statement.periodStart).toLocaleDateString()} - {new Date(statement.periodEnd).toLocaleDateString()} · {statement.snapshot.invoices.length} invoices
+                    {new Date(statement.periodStart).toLocaleDateString()} - {new Date(statement.periodEnd).toLocaleDateString()} · {statement.snapshot.brokerageIds?.length || 1} office(s) · {statement.snapshot.invoices.length} invoices
                   </span>
                 </button>
                 <div className="flex flex-wrap items-center gap-3">
@@ -906,6 +989,7 @@ function BrokerageDashboardContent() {
                     <thead className="text-left text-xs uppercase text-gray-500">
                       <tr>
                         <th className="px-2 py-2">Invoice / Date</th>
+                        <th className="px-2 py-2">Office</th>
                         <th className="px-2 py-2">Realtor</th>
                         <th className="px-2 py-2">Item</th>
                         <th className="px-2 py-2 text-right">Qty</th>
@@ -921,6 +1005,7 @@ function BrokerageDashboardContent() {
                               <span className="block font-medium text-gray-900">{invoice.invoiceNumber}</span>
                               <span className="text-xs text-gray-500">{new Date(invoice.invoiceDate).toLocaleDateString()}</span>
                             </td>
+                            <td className="px-2 py-2 text-gray-700">{invoice.brokerageName || brokerage?.name}</td>
                             <td className="px-2 py-2 text-gray-700">{invoice.realtorName}</td>
                             <td className="px-2 py-2 text-gray-700">{item.description}</td>
                             <td className="px-2 py-2 text-right">{item.quantity}</td>

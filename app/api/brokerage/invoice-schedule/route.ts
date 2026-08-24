@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isAutoInvoiceInterval } from "@/lib/brokerage-auto-invoicing";
+import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
@@ -9,11 +10,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { brokerageId: true },
-  });
-  if (!user?.brokerageId) {
+  const brokerageId = await resolveAccessibleBrokerageId(
+    session.user.id,
+    new URL(request.url).searchParams.get("brokerageId")
+  );
+  if (!brokerageId) {
     return NextResponse.json({ error: "Brokerage not found" }, { status: 404 });
   }
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Interval must be MONTHLY or BIWEEKLY" }, { status: 400 });
   }
 
-  const brokerage = await prisma.brokerage.findUnique({ where: { id: user.brokerageId } });
+  const brokerage = await prisma.brokerage.findUnique({ where: { id: brokerageId } });
   if (!brokerage || brokerage.billingType !== "BROKERAGE") {
     return NextResponse.json(
       { error: "Brokerage-paid billing is required for automatic invoicing" },
@@ -58,19 +59,19 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE() {
+export async function DELETE(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || (session.user as { role?: string }).role !== "BROKERAGE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { brokerageId: true },
-  });
-  if (!user?.brokerageId) {
+  const brokerageId = await resolveAccessibleBrokerageId(
+    session.user.id,
+    new URL(request.url).searchParams.get("brokerageId")
+  );
+  if (!brokerageId) {
     return NextResponse.json({ error: "Brokerage not found" }, { status: 404 });
   }
-  const brokerage = await prisma.brokerage.findUnique({ where: { id: user.brokerageId } });
+  const brokerage = await prisma.brokerage.findUnique({ where: { id: brokerageId } });
   if (brokerage?.autoInvoiceStatus === "APPROVED") {
     return NextResponse.json(
       { error: "Contact an admin to disable an approved invoicing schedule" },
@@ -78,7 +79,7 @@ export async function DELETE() {
     );
   }
   const updated = await prisma.brokerage.updateMany({
-    where: { id: user.brokerageId, autoInvoiceStatus: { not: "APPROVED" } },
+    where: { id: brokerageId, autoInvoiceStatus: { not: "APPROVED" } },
     data: {
       autoInvoiceStatus: "DISABLED",
       autoInvoiceInterval: null,

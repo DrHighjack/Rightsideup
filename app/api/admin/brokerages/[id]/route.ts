@@ -8,6 +8,7 @@ import {
   calculateInvoiceTotal,
   isOutstandingInvoiceStatus,
 } from "@/lib/invoice-totals";
+import { canAccessBrokerages } from "@/lib/brokerage-access";
 
 const addAgentSchema = z.object({
   email: z.string().email(),
@@ -42,12 +43,7 @@ async function canAccessBrokerage(
     return false;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { brokerageId: true },
-  });
-
-  return !!user?.brokerageId && user.brokerageId === brokerageId;
+  return canAccessBrokerages(userId, [brokerageId]);
 }
 
 export async function GET(

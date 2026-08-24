@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { BrokerageStatementSnapshot } from "@/lib/brokerage-statements";
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
+import { canAccessBrokerages } from "@/lib/brokerage-access";
 
 const styles = StyleSheet.create({
   page: { padding: 38, fontFamily: "Helvetica", color: "#111827", fontSize: 9 },
@@ -41,7 +42,7 @@ function StatementPdf({ statement, snapshot }: {
       statement.status === "PAID" ? React.createElement(Text, { style: styles.paid }, "PAID") : null,
       ...snapshot.invoices.map((invoice) => React.createElement(View, { key: invoice.id, style: styles.invoice },
         React.createElement(View, { style: styles.invoiceHeader },
-          React.createElement(Text, null, `${invoice.invoiceNumber} | ${invoice.realtorName}`),
+          React.createElement(Text, null, `${invoice.brokerageName || snapshot.brokerageName} | ${invoice.invoiceNumber} | ${invoice.realtorName}`),
           React.createElement(Text, null, new Date(invoice.invoiceDate).toLocaleDateString())
         ),
         React.createElement(View, { style: styles.row },
@@ -79,13 +80,14 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const role = (session.user as { role?: string }).role;
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { brokerageId: true },
-  });
   const statement = await prisma.brokerageStatement.findUnique({ where: { id: params.id } });
   if (!statement) return NextResponse.json({ error: "Statement not found" }, { status: 404 });
-  if (role !== "ADMIN" && (role !== "BROKERAGE" || user?.brokerageId !== statement.brokerageId)) {
+  if (
+    role !== "ADMIN" &&
+    (role !== "BROKERAGE" ||
+      statement.ownerUserId !== session.user.id ||
+      !(await canAccessBrokerages(session.user.id, statement.brokerageIds)))
+  ) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

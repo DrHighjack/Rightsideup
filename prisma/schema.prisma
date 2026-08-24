@@ -128,6 +128,8 @@ model User {
   paymentSchedules InvoicePaymentSchedule[]
   assignedCredits Coupon[]     @relation("CouponAssignedUser")
   managedBrokerages Brokerage[] @relation("BrokerageAdmin")
+  brokerageAccesses BrokerageAccess[]
+  ownedBrokerageStatements BrokerageStatement[] @relation("BrokerageStatementOwner")
   
   // TC relations
   tcAgentLinks   TCAgentLink[] @relation("TCUser")
@@ -319,6 +321,7 @@ model Brokerage {
   adminId        String
   admin          User       @relation("BrokerageAdmin", fields: [adminId], references: [id], onDelete: Cascade)
   agents         User[]
+  accessGrants   BrokerageAccess[]
   priceOverrides PriceOverride[]
   statements     BrokerageStatement[]
   createdAt      DateTime   @default(now())
@@ -329,10 +332,27 @@ model Brokerage {
   @@index([autoInvoiceStatus, autoInvoiceNextRunAt])
 }
 
+model BrokerageAccess {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  brokerageId String
+  brokerage   Brokerage @relation(fields: [brokerageId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([userId, brokerageId])
+  @@index([brokerageId])
+  @@map("brokerage_access")
+}
+
 model BrokerageStatement {
   id                    String    @id @default(cuid())
   brokerageId           String
   brokerage             Brokerage @relation(fields: [brokerageId], references: [id], onDelete: Cascade)
+  ownerUserId           String
+  owner                 User      @relation("BrokerageStatementOwner", fields: [ownerUserId], references: [id], onDelete: Restrict)
+  brokerageIds          String[]  @default([])
+  selectionKey          String
   statementNumber       String    @unique
   periodStart           DateTime
   periodEnd             DateTime
@@ -352,8 +372,9 @@ model BrokerageStatement {
   updatedAt             DateTime  @updatedAt
 
   @@map("brokerage_statements")
-  @@unique([brokerageId, periodStart])
+  @@unique([ownerUserId, periodStart, selectionKey])
   @@index([brokerageId])
+  @@index([ownerUserId])
   @@index([periodStart])
   @@index([status])
 }

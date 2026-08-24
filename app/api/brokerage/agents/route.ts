@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 
 const addAgentSchema = z.object({
   email: z.string().email(),
@@ -23,16 +24,7 @@ const manageAgentSchema = z
     message: "At least one update field is required",
   });
 
-async function getBrokerageIdForSessionUser(userId: string) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { brokerageId: true },
-  });
-
-  return user?.brokerageId || null;
-}
-
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     const role = (session?.user as any)?.role;
@@ -41,7 +33,10 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const brokerageId = await getBrokerageIdForSessionUser(session.user.id);
+    const brokerageId = await resolveAccessibleBrokerageId(
+      session.user.id,
+      new URL(request.url).searchParams.get("brokerageId")
+    );
     if (!brokerageId) {
       return NextResponse.json({ error: "No brokerage linked to account" }, { status: 404 });
     }
@@ -179,7 +174,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const brokerageId = await getBrokerageIdForSessionUser(session.user.id);
+    const brokerageId = await resolveAccessibleBrokerageId(
+      session.user.id,
+      new URL(request.url).searchParams.get("brokerageId")
+    );
     if (!brokerageId) {
       return NextResponse.json({ error: "No brokerage linked to account" }, { status: 404 });
     }
@@ -259,7 +257,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const brokerageId = await getBrokerageIdForSessionUser(session.user.id);
+    const brokerageId = await resolveAccessibleBrokerageId(
+      session.user.id,
+      new URL(request.url).searchParams.get("brokerageId")
+    );
     if (!brokerageId) {
       return NextResponse.json({ error: "No brokerage linked to account" }, { status: 404 });
     }

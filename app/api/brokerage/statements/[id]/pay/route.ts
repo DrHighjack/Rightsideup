@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeVaultRecord } from "@/lib/fluidpay";
 import { BrokerageStatementSnapshot } from "@/lib/brokerage-statements";
+import { canAccessBrokerages } from "@/lib/brokerage-access";
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
@@ -23,19 +24,20 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const user = await prisma.user.findUnique({
       where: { id: actorUserId },
       select: {
-        brokerageId: true,
         vaultId: true,
         paymentCardLast4: true,
-        brokerage: { select: { isActive: true } },
       },
     });
-    if (!user?.brokerageId || !user.brokerage?.isActive) {
-      return NextResponse.json({ error: "Brokerage is inactive or unavailable" }, { status: 403 });
+    if (!user) {
+      return NextResponse.json({ error: "Account is unavailable" }, { status: 403 });
     }
     const statement = await prisma.brokerageStatement.findFirst({
-      where: { id: params.id, brokerageId: user.brokerageId },
+      where: { id: params.id, ownerUserId: actorUserId },
     });
     if (!statement) return NextResponse.json({ error: "Statement not found" }, { status: 404 });
+    if (!(await canAccessBrokerages(actorUserId, statement.brokerageIds))) {
+      return NextResponse.json({ error: "One or more offices are no longer available" }, { status: 403 });
+    }
     if (!['READY', 'FAILED'].includes(statement.status)) {
       return NextResponse.json({ error: "Statement is not payable" }, { status: 409 });
     }
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const currentInvoices = await prisma.invoice.findMany({
       where: {
         id: { in: statement.invoiceIds },
-        user: { brokerageId: statement.brokerageId, role: "REALTOR" },
+        user: { brokerageId: { in: statement.brokerageIds }, role: "REALTOR" },
       },
       select: {
         id: true,

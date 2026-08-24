@@ -6,9 +6,11 @@ import {
   getNextAutoInvoiceRun,
   isAutoInvoiceInterval,
 } from "@/lib/brokerage-auto-invoicing";
+import { createHash } from "crypto";
 
 export interface BrokerageStatementSnapshot {
   brokerageName: string;
+  brokerageIds: string[];
   invoices: Array<{
     id: string;
     invoiceNumber: string;
@@ -16,6 +18,8 @@ export interface BrokerageStatementSnapshot {
     dueDate: string | null;
     realtorName: string;
     realtorEmail: string;
+    brokerageId: string;
+    brokerageName: string;
     subtotalCents: number;
     discountCents: number;
     taxRateBps: number;
@@ -48,26 +52,96 @@ export async function generateBrokerageStatement(
   periodEnd: Date,
   includeEarlierInvoices = true
 ) {
-  const existing = await prisma.brokerageStatement.findUnique({
-    where: { brokerageId_periodStart: { brokerageId, periodStart } },
-  });
-  if (existing) return { statement: existing, created: false };
-
   const brokerage = await prisma.brokerage.findUnique({
     where: { id: brokerageId },
-    include: {
-      admin: { select: { email: true, firstName: true } },
-      statements: {
-        where: { status: { not: "VOIDED" } },
-        select: { invoiceIds: true },
-      },
-    },
+    select: { adminId: true },
   });
-  if (!brokerage || !brokerage.isActive) {
+  if (!brokerage) {
     throw new Error("Brokerage not found or inactive");
   }
 
-  const previouslyCapturedIds = brokerage.statements.flatMap((statement) => statement.invoiceIds);
+  return generateBrokerageStatementsForOwner(
+    brokerage.adminId,
+    [brokerageId],
+    periodStart,
+    periodEnd,
+    includeEarlierInvoices,
+    false
+  );
+}
+
+export async function generateOwnedBrokerageStatement(
+  ownerUserId: string,
+  brokerageId: string,
+  periodStart: Date,
+  periodEnd: Date
+) {
+  return generateBrokerageStatementsForOwner(
+    ownerUserId,
+    [brokerageId],
+    periodStart,
+    periodEnd,
+    true,
+    false
+  );
+}
+
+export async function generateConsolidatedBrokerageStatement(
+  ownerUserId: string,
+  brokerageIds: string[],
+  periodStart: Date,
+  periodEnd: Date
+) {
+  return generateBrokerageStatementsForOwner(
+    ownerUserId,
+    brokerageIds,
+    periodStart,
+    periodEnd,
+    true,
+    true
+  );
+}
+
+async function generateBrokerageStatementsForOwner(
+  ownerUserId: string,
+  brokerageIds: string[],
+  periodStart: Date,
+  periodEnd: Date,
+  includeEarlierInvoices: boolean,
+  allowRepeat: boolean
+) {
+  const selectedIds = Array.from(new Set(brokerageIds)).sort();
+  if (!selectedIds.length) throw new Error("Select at least one brokerage");
+  const selectionKey = allowRepeat
+    ? `${selectedIds.join(":")}@${periodEnd.toISOString()}`
+    : selectedIds.join(":");
+  const existing = await prisma.brokerageStatement.findUnique({
+    where: {
+      ownerUserId_periodStart_selectionKey: { ownerUserId, periodStart, selectionKey },
+    },
+  });
+  if (existing) return { statement: existing, created: false };
+
+  const [brokerages, owner] = await Promise.all([
+    prisma.brokerage.findMany({
+      where: { id: { in: selectedIds }, isActive: true },
+      select: { id: true, name: true, email: true },
+      orderBy: { name: "asc" },
+    }),
+    prisma.user.findUnique({
+      where: { id: ownerUserId },
+      select: { email: true, firstName: true },
+    }),
+  ]);
+  if (brokerages.length !== selectedIds.length || !owner) {
+    throw new Error("One or more brokerages are inactive or unavailable");
+  }
+
+  const previousStatements = await prisma.brokerageStatement.findMany({
+    where: { status: { not: "VOIDED" }, brokerageIds: { hasSome: selectedIds } },
+    select: { invoiceIds: true },
+  });
+  const previouslyCapturedIds = previousStatements.flatMap((statement) => statement.invoiceIds);
   const invoices = await prisma.invoice.findMany({
     where: {
       qboInvoiceId: null,
@@ -76,11 +150,19 @@ export async function generateBrokerageStatement(
         ? { lte: periodEnd }
         : { gte: periodStart, lte: periodEnd },
       status: { in: [...OUTSTANDING_INVOICE_STATUSES] },
-      user: { brokerageId, role: "REALTOR" },
+      user: { brokerageId: { in: selectedIds }, role: "REALTOR" },
     },
     include: {
       lineItems: { orderBy: { createdAt: "asc" } },
-      user: { select: { firstName: true, lastName: true, email: true } },
+      user: {
+        select: {
+          firstName: true,
+          lastName: true,
+          email: true,
+          brokerageId: true,
+          brokerage: { select: { name: true } },
+        },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
@@ -104,6 +186,8 @@ export async function generateBrokerageStatement(
           `${invoice.user.firstName || ""} ${invoice.user.lastName || ""}`.trim() ||
           invoice.user.email,
         realtorEmail: invoice.user.email,
+        brokerageId: invoice.user.brokerageId!,
+        brokerageName: invoice.user.brokerage!.name,
         subtotalCents,
         discountCents,
         taxRateBps: invoice.taxRateBps,
@@ -125,7 +209,12 @@ export async function generateBrokerageStatement(
             }],
       };
     })
-    .filter((invoice) => invoice.balanceCents > 0);
+    .filter((invoice) => invoice.balanceCents > 0)
+    .sort((left, right) =>
+      left.brokerageName.localeCompare(right.brokerageName) ||
+      left.realtorName.localeCompare(right.realtorName) ||
+      left.invoiceDate.localeCompare(right.invoiceDate)
+    );
 
   if (!snapshotInvoices.length) return { statement: null, created: false };
 
@@ -134,16 +223,26 @@ export async function generateBrokerageStatement(
   dueDate.setUTCDate(dueDate.getUTCDate() + 15);
   const periodKey = `${periodStart.getUTCFullYear()}${String(periodStart.getUTCMonth() + 1).padStart(2, "0")}${String(periodStart.getUTCDate()).padStart(2, "0")}`;
   const snapshot: BrokerageStatementSnapshot = {
-    brokerageName: brokerage.name,
+    brokerageName: brokerages.length === 1 ? brokerages[0].name : `${brokerages.length} offices`,
+    brokerageIds: selectedIds,
     invoices: snapshotInvoices,
   };
+  const statementPrefix = brokerages.length === 1 ? "BST" : "CBST";
+  const statementSuffix = createHash("sha256")
+    .update(`${ownerUserId}:${selectionKey}:${periodStart.toISOString()}`)
+    .digest("hex")
+    .slice(0, 8)
+    .toUpperCase();
 
   let statement;
   try {
     statement = await prisma.brokerageStatement.create({
       data: {
-        brokerageId,
-        statementNumber: `BST-${periodKey}-${brokerageId.slice(-6).toUpperCase()}`,
+        brokerageId: selectedIds[0],
+        ownerUserId,
+        brokerageIds: selectedIds,
+        selectionKey,
+        statementNumber: `${statementPrefix}-${periodKey}-${statementSuffix}`,
         periodStart,
         periodEnd,
         dueDate,
@@ -157,19 +256,23 @@ export async function generateBrokerageStatement(
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
       const concurrentStatement = await prisma.brokerageStatement.findUnique({
-        where: { brokerageId_periodStart: { brokerageId, periodStart } },
+        where: {
+          ownerUserId_periodStart_selectionKey: { ownerUserId, periodStart, selectionKey },
+        },
       });
       if (concurrentStatement) return { statement: concurrentStatement, created: false };
     }
     throw error;
   }
 
-  const recipient = brokerage.email || brokerage.admin.email;
+  const recipient = brokerages.length === 1 && brokerages[0].email
+    ? brokerages[0].email
+    : owner.email;
   if (recipient) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://app.northshoresignco.com";
     const email = getBrokerageStatementEmail({
-      recipientName: brokerage.admin.firstName || brokerage.name,
-      brokerageName: brokerage.name,
+      recipientName: owner.firstName || snapshot.brokerageName,
+      brokerageName: snapshot.brokerageName,
       statementNumber: statement.statementNumber,
       periodStart,
       periodEnd,

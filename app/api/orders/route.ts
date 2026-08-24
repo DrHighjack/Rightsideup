@@ -283,7 +283,13 @@ export async function POST(request: NextRequest) {
         : null;
     }
 
-    if (!targetUser?.emailVerifiedAt) {
+    if (!targetUser) {
+      return NextResponse.json({ error: "Realtor not found" }, { status: 404 });
+    }
+
+    // TCs place orders on behalf of realtors they're already linked to, so the
+    // realtor's own email verification isn't required in that case.
+    if (sessionUser.role !== "TC" && !targetUser.emailVerifiedAt) {
       return NextResponse.json(
         { error: "Email verification is required before placing orders" },
         { status: 403 }

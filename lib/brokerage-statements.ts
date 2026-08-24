@@ -220,7 +220,7 @@ async function generateBrokerageStatementsForOwner(
 
   const totalCents = snapshotInvoices.reduce((sum, invoice) => sum + invoice.balanceCents, 0);
   const dueDate = new Date(periodEnd);
-  dueDate.setUTCDate(dueDate.getUTCDate() + 15);
+  dueDate.setUTCDate(dueDate.getUTCDate() + 5);
   const periodKey = `${periodStart.getUTCFullYear()}${String(periodStart.getUTCMonth() + 1).padStart(2, "0")}${String(periodStart.getUTCDate()).padStart(2, "0")}`;
   const snapshot: BrokerageStatementSnapshot = {
     brokerageName: brokerages.length === 1 ? brokerages[0].name : `${brokerages.length} offices`,

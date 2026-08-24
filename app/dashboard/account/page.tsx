@@ -319,13 +319,13 @@ export default function AccountPage() {
 
   const user = session.user as any;
   const roleLabel =
-    user.role === "TC"
+    user.accountTitle || (user.role === "TC"
       ? "Transaction Coordinator"
       : user.role === "REALTOR"
       ? "Realtor"
       : user.role === "ADMIN"
       ? "Admin"
-      : user.role || "Realtor";
+      : user.role || "Realtor");
   const businessName = user.brokerageName || "Not set";
   const [firstName = "N/A", ...lastNameParts] = (user.name || "").trim().split(/\s+/);
   const lastName = lastNameParts.join(" ") || "N/A";

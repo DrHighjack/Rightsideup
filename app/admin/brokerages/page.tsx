@@ -52,6 +52,7 @@ interface TC {
   lastName: string | null;
   email: string;
   phone?: string | null;
+  accountTitle: string;
   agentCount: number;
   linkedAgentCount?: number;
   isActive?: boolean;
@@ -1826,6 +1827,7 @@ export default function ManagementPage() {
                     <thead className="bg-gray-50 border-b border-gray-200">
                       <tr>
                         <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Full Name</th>
+                        <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Account Type</th>
                         <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Email</th>
                         <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Phone</th>
                         <th className="text-left px-6 py-3 font-semibold text-gray-900 text-sm">Linked Agent Count</th>
@@ -1842,6 +1844,7 @@ export default function ManagementPage() {
                         return (
                           <tr key={tc.id} className="hover:bg-gray-50">
                             <td className="px-6 py-4 text-sm font-medium text-gray-900">{fullName || "—"}</td>
+                            <td className="px-6 py-4 text-sm text-gray-700">{tc.accountTitle}</td>
                             <td className="px-6 py-4 text-sm text-gray-700">{tc.email}</td>
                             <td className="px-6 py-4 text-sm text-gray-700">{tc.phone || "—"}</td>
                             <td className="px-6 py-4 text-sm text-gray-700">{tc.linkedAgentCount ?? tc.agentCount}</td>

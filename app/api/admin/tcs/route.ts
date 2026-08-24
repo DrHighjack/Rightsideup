@@ -51,6 +51,7 @@ export async function GET(_request: Request) {
       lastName: tc.lastName,
       email: tc.email,
       phone: tc.phone,
+      accountTitle: tc.tags.includes("PROPERTY_MANAGER") ? "Property Manager" : "Transaction Coordinator",
       agentCount: tc.tcAgentLinks.length,
       linkedAgentCount: tc.tcAgentLinks.length,
       isActive: !tc.tags.includes("INACTIVE"),

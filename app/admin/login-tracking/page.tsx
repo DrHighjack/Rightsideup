@@ -1,7 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { formatDistanceToNow, format } from "date-fns";
+import {
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 interface UserLoginData {
   id: string;
@@ -12,6 +24,16 @@ interface UserLoginData {
   createdAt: string;
   lastLoginAt: string | null;
 }
+
+const ACTIVITY_COLORS: Record<string, string> = {
+  "Today": "#10b981",
+  "This Week": "#3b82f6",
+  "This Month": "#f59e0b",
+  "Inactive": "#ef4444",
+  "Never Logged In": "#9ca3af",
+};
+
+const ROLE_COLORS = ["#3b82f6", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899"];
 
 export default function LoginTrackingPage() {
   const [users, setUsers] = useState<UserLoginData[]>([]);
@@ -34,6 +56,66 @@ export default function LoginTrackingPage() {
 
     fetchLoginData();
   }, []);
+
+  const activityData = useMemo(() => {
+    const buckets = {
+      "Today": 0,
+      "This Week": 0,
+      "This Month": 0,
+      "Inactive": 0,
+      "Never Logged In": 0,
+    };
+
+    users.forEach((user) => {
+      if (!user.lastLoginAt) {
+        buckets["Never Logged In"]++;
+        return;
+      }
+      const daysSinceLogin = Math.floor(
+        (Date.now() - new Date(user.lastLoginAt).getTime()) / (1000 * 60 * 60 * 24)
+      );
+      if (daysSinceLogin === 0) buckets["Today"]++;
+      else if (daysSinceLogin <= 7) buckets["This Week"]++;
+      else if (daysSinceLogin <= 30) buckets["This Month"]++;
+      else buckets["Inactive"]++;
+    });
+
+    return Object.entries(buckets)
+      .map(([name, value]) => ({ name, value }))
+      .filter((bucket) => bucket.value > 0);
+  }, [users]);
+
+  const roleData = useMemo(() => {
+    const counts = new Map<string, number>();
+    users.forEach((user) => {
+      counts.set(user.role, (counts.get(user.role) || 0) + 1);
+    });
+    return Array.from(counts.entries())
+      .map(([role, count]) => ({ role, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [users]);
+
+  const signupTrend = useMemo(() => {
+    const now = new Date();
+    const months = Array.from({ length: 6 }, (_, i) => {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - (5 - i), 1);
+      return {
+        key: `${monthDate.getFullYear()}-${monthDate.getMonth()}`,
+        label: monthDate.toLocaleString("en-US", { month: "short" }),
+        signups: 0,
+      };
+    });
+    const indexByKey = new Map(months.map((month, index) => [month.key, index]));
+
+    users.forEach((user) => {
+      const createdAt = new Date(user.createdAt);
+      const key = `${createdAt.getFullYear()}-${createdAt.getMonth()}`;
+      const index = indexByKey.get(key);
+      if (index !== undefined) months[index].signups++;
+    });
+
+    return months;
+  }, [users]);
 
   const getStatusColor = (lastLoginAt: string | null) => {
     if (!lastLoginAt) {
@@ -89,6 +171,99 @@ export default function LoginTrackingPage() {
         <p className="text-gray-600">
           Monitor when users last logged in and their activity status
         </p>
+      </div>
+
+      {/* Stats */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-gray-600 text-sm font-medium">Total Users</div>
+          <div className="text-3xl font-bold text-gray-900 mt-2">{users.length}</div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-gray-600 text-sm font-medium">Active Today</div>
+          <div className="text-3xl font-bold text-green-600 mt-2">
+            {activityData.find((bucket) => bucket.name === "Today")?.value || 0}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-gray-600 text-sm font-medium">Active This Week</div>
+          <div className="text-3xl font-bold text-blue-600 mt-2">
+            {activityData.find((bucket) => bucket.name === "This Week")?.value || 0}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-gray-600 text-sm font-medium">Active This Month</div>
+          <div className="text-3xl font-bold text-yellow-600 mt-2">
+            {activityData.find((bucket) => bucket.name === "This Month")?.value || 0}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-gray-600 text-sm font-medium">Inactive (30+ days)</div>
+          <div className="text-3xl font-bold text-orange-600 mt-2">
+            {activityData.find((bucket) => bucket.name === "Inactive")?.value || 0}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="text-gray-600 text-sm font-medium">Never Logged In</div>
+          <div className="text-3xl font-bold text-red-600 mt-2">
+            {activityData.find((bucket) => bucket.name === "Never Logged In")?.value || 0}
+          </div>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div className="mb-8 grid grid-cols-1 gap-4 lg:grid-cols-3">
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Activity Breakdown</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <PieChart>
+              <Pie
+                data={activityData}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                outerRadius={80}
+                label={(entry) => `${entry.name}: ${entry.value}`}
+              >
+                {activityData.map((bucket) => (
+                  <Cell key={bucket.name} fill={ACTIVITY_COLORS[bucket.name]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Users By Role</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={roleData}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="role" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="count" name="Users">
+                {roleData.map((entry, index) => (
+                  <Cell key={entry.role} fill={ROLE_COLORS[index % ROLE_COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">New Signups (Last 6 Months)</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={signupTrend}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+              <YAxis allowDecimals={false} />
+              <Tooltip />
+              <Bar dataKey="signups" name="New Accounts" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Legend */}
@@ -196,46 +371,6 @@ export default function LoginTrackingPage() {
             No users found
           </div>
         )}
-      </div>
-
-      {/* Stats */}
-      <div className="mt-8 grid grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-gray-600 text-sm font-medium">Total Users</div>
-          <div className="text-3xl font-bold text-gray-900 mt-2">
-            {users.length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-gray-600 text-sm font-medium">Active Today</div>
-          <div className="text-3xl font-bold text-green-600 mt-2">
-            {users.filter(
-              (u) =>
-                u.lastLoginAt &&
-                new Date().getTime() - new Date(u.lastLoginAt).getTime() <
-                  24 * 60 * 60 * 1000
-            ).length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-gray-600 text-sm font-medium">Never Logged In</div>
-          <div className="text-3xl font-bold text-red-600 mt-2">
-            {users.filter((u) => !u.lastLoginAt).length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="text-gray-600 text-sm font-medium">Inactive (30+ days)</div>
-          <div className="text-3xl font-bold text-orange-600 mt-2">
-            {users.filter((u) => {
-              if (!u.lastLoginAt) return false;
-              const days = Math.floor(
-                (new Date().getTime() - new Date(u.lastLoginAt).getTime()) /
-                  (1000 * 60 * 60 * 24)
-              );
-              return days >= 30;
-            }).length}
-          </div>
-        </div>
       </div>
     </div>
   );

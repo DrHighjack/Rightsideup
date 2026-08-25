@@ -11,6 +11,10 @@
     {
       "path": "/api/cron/brevo-usage",
       "schedule": "0 */4 * * *"
+    },
+    {
+      "path": "/api/cron/smart-sign",
+      "schedule": "0 9 * * *"
     }
   ]
 }

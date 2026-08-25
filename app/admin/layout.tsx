@@ -101,6 +101,7 @@ const ADMIN_NAV: NavGroup[] = [
     title: "Operations",
     items: [
       { href: "/admin/inventory", label: "Inventory", icon: PackageIcon },
+      { href: "/admin/smart-sign", label: "Smart Sign", icon: SignpostIcon },
       { href: "/admin/analytics", label: "Analytics", icon: ChartIcon },
       { href: "/admin/reports", label: "Reports", icon: DocumentIcon },
     ],

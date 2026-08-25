@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/orders", label: "My Orders", short: "Orders", icon: OrdersIcon },
   { href: "/dashboard/orders/new", label: "New Order", short: "New", icon: PlusCircleIcon },
   { href: "/dashboard/inventory", label: "Signs & Inventory", short: "Signs", icon: SignpostIcon },
+  { href: "/dashboard/smart-sign", label: "Smart Sign", short: "Smart", icon: SignpostIcon },
   { href: "/dashboard/811", label: "811 Tracker", short: "811", icon: ShieldIcon },
   { href: "/dashboard/invoices", label: "Invoices", short: "Bills", icon: CreditCardIcon },
   { href: "/dashboard/account", label: "Account", short: "Account", icon: UserIcon },
@@ -65,7 +66,7 @@ export default function DashboardLayout({
         NAV_ITEMS[7],
       ]
     : isTC
-      ? [...NAV_ITEMS.slice(0, 2), MY_AGENTS_ITEM, ...NAV_ITEMS.slice(2)]
+      ? [...NAV_ITEMS.slice(0, 2), MY_AGENTS_ITEM, ...NAV_ITEMS.slice(2, 4), ...NAV_ITEMS.slice(5)]
       : NAV_ITEMS;
   const activeHref = useActiveHref(navItems);
 

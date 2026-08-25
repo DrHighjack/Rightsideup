@@ -169,6 +169,7 @@ model User {
   signPickupRequests SignPickupRequest[] @relation("SignPickupRequests")
   approvedPickupRequests SignPickupRequest[] @relation("ApprovedSignPickupRequests")
   printerPartnershipRequests PrinterPartnershipRequest[]
+  smartSignSubscription SmartSignSubscription?
   
   @@map("users")
   @@index([brokerageId])
@@ -285,12 +286,69 @@ model Sign {
   
   orderItems        OrderItem[]
   reports           SignReport[]
+  smartSignTag      SmartSignTag?
   
   @@map("signs")
   @@index([status])
   @@index([assignedToUserId])
   @@index([assignedToOrderId])
   @@index([type])
+}
+
+model SmartSignTag {
+  id          String   @id @default(cuid())
+  tagCode     String   @unique
+  signId      String   @unique
+  sign        Sign     @relation(fields: [signId], references: [id], onDelete: Cascade)
+  isActive    Boolean  @default(true)
+  installedAt DateTime @default(now())
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tapEvents   SmartSignTapEvent[]
+
+  @@map("smart_sign_tags")
+  @@index([isActive])
+}
+
+model SmartSignSubscription {
+  id                    String   @id @default(cuid())
+  agentId               String   @unique
+  agent                 User     @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tier                  String   @default("SMART_SIGN") // SMART_SIGN | SMART_SIGN_INSIGHTS | SMART_SIGN_LEAD_CAPTURE
+  status                String   @default("TRIAL") // TRIAL | ACTIVE | EXPIRED | CANCELLED | BUYOUT
+  trialStartedAt        DateTime @default(now())
+  trialEndsAt           DateTime
+  reminderSentAt        DateTime?
+  savedPaymentMethodId  String?
+  monthlyPriceCents     Int      @default(2900)
+  nextBillingAt         DateTime?
+  lastChargedAt         DateTime?
+  lastTransactionId     String?
+  billingFailureReason  String?
+  cancelledAt           DateTime?
+  buyoutPurchasedAt     DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  @@map("smart_sign_subscriptions")
+  @@index([status, trialEndsAt])
+  @@index([status, nextBillingAt])
+}
+
+model SmartSignTapEvent {
+  id          String   @id @default(cuid())
+  tagId       String
+  tag         SmartSignTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tappedAt    DateTime @default(now())
+  latitude    Float?
+  longitude   Float?
+  deviceType  String?
+
+  @@map("smart_sign_tap_events")
+  @@index([tagId, tappedAt])
+  @@index([tappedAt])
 }
 
 model OrderItem {

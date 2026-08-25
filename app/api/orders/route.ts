@@ -6,6 +6,7 @@ import { sendOrderConfirmationEmail } from "@/lib/email";
 import { notifyOrderUpdate } from "@/lib/notifications";
 import { sendNewOrderDiscordWebhook } from "@/lib/discord";
 import { getAccessibleBrokerages } from "@/lib/brokerage-access";
+import { resolveAreaPriceGroup } from "@/lib/area-pricing";
 
 function isMissingEmailVerifiedColumn(error: unknown): boolean {
   return (
@@ -347,6 +348,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const areaPriceGroup = await resolveAreaPriceGroup(address);
+
     if (type === 'REMOVAL') {
       if (!removalSignId || typeof removalSignId !== 'string') {
         return NextResponse.json({ error: 'A sign must be selected for removal' }, { status: 400 });
@@ -430,6 +433,9 @@ export async function POST(request: NextRequest) {
           address,
           addressLat: addressLat ? parseFloat(addressLat) : null,
           addressLng: addressLng ? parseFloat(addressLng) : null,
+          areaPriceGroupId: areaPriceGroup?.id || null,
+          areaPriceGroupName: areaPriceGroup?.name || null,
+          areaPriceCents: areaPriceGroup?.amountCents || 0,
           scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
           notes: combinedNotes || null,
           self811Accepted: self811Accepted || false,

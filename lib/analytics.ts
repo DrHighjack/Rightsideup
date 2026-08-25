@@ -77,6 +77,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
         const priceInCents = await getEffectivePrice(serviceType, order.realtorId, order.realtor?.brokerageId || undefined);
         subtotal += priceInCents * item.quantity;
       }
+      subtotal += order.areaPriceCents;
       const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
       total += subtotal - discount;
     }
@@ -189,6 +190,7 @@ export async function getOrderAnalytics(startDate: Date, endDate: Date) {
       const priceInCents = await getEffectivePrice(serviceType, order.realtor.id, order.realtor.brokerageId || undefined);
       subtotal += priceInCents * item.quantity;
     }
+    subtotal += order.areaPriceCents;
     const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
     totalRevenue += subtotal - discount;
     totalDiscount += discount;
@@ -244,6 +246,7 @@ export async function getRealtorPerformance() {
         const priceInCents = await getEffectivePrice(serviceType, realtor.id, realtor.brokerageId || undefined);
         subtotal += priceInCents * item.quantity;
       }
+      subtotal += order.areaPriceCents;
       const discount = order.discounts.reduce((sum, od) => sum + od.discountAmount, 0);
       totalRevenue += subtotal - discount;
 

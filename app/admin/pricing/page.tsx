@@ -51,6 +51,14 @@ interface InventoryPriceItem {
   pricePerUnit?: number | null;
 }
 
+interface AreaPriceGroup {
+  id: string;
+  name: string;
+  cities: string[];
+  amountCents: number;
+  isActive: boolean;
+}
+
 type OverrideFilter = "all" | "realtors" | "brokerages" | "locked" | "unlocked";
 
 export default function PricingPage() {
@@ -60,6 +68,10 @@ export default function PricingPage() {
   const [error, setError] = useState<string | null>(null);
   const [inventoryItems, setInventoryItems] = useState<InventoryPriceItem[]>([]);
   const [savingInventoryPriceId, setSavingInventoryPriceId] = useState<string | null>(null);
+  const [areaPriceGroups, setAreaPriceGroups] = useState<AreaPriceGroup[]>([]);
+  const [areaPriceDrafts, setAreaPriceDrafts] = useState<Record<string, AreaPriceGroup>>({});
+  const [savingAreaPriceId, setSavingAreaPriceId] = useState<string | null>(null);
+  const [newAreaPriceGroup, setNewAreaPriceGroup] = useState({ name: "", cities: "", amountDollars: "" });
 
   // Master price editing
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -108,23 +120,28 @@ export default function PricingPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [pricesRes, overridesRes, inventoryRes] = await Promise.all([
+      const [pricesRes, overridesRes, inventoryRes, areaPricesRes] = await Promise.all([
         fetch("/api/admin/pricing"),
         fetch("/api/admin/pricing/overrides"),
         fetch("/api/admin/inventory"),
+        fetch("/api/admin/pricing/areas"),
       ]);
 
-      if (!pricesRes.ok || !overridesRes.ok || !inventoryRes.ok) {
+      if (!pricesRes.ok || !overridesRes.ok || !inventoryRes.ok || !areaPricesRes.ok) {
         throw new Error("Failed to fetch pricing data");
       }
 
       const pricesData = await pricesRes.json();
       const overridesData = await overridesRes.json();
       const inventoryData = await inventoryRes.json();
+      const areaPricesData = await areaPricesRes.json();
 
       setMasterPrices(pricesData.masterPrices || []);
       setOverrides(overridesData.overrides || []);
       setInventoryItems((inventoryData.items || []).filter((item: InventoryPriceItem) => item.isOrderable !== false));
+      const groups = areaPricesData.groups || [];
+      setAreaPriceGroups(groups);
+      setAreaPriceDrafts(Object.fromEntries(groups.map((group: AreaPriceGroup) => [group.id, group])));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -315,6 +332,89 @@ export default function PricingPage() {
     }
   };
 
+  const citiesFromText = (cities: string) =>
+    cities.split(",").map((city) => city.trim()).filter(Boolean);
+
+  const handleCreateAreaPriceGroup = async () => {
+    const amountDollars = Number.parseFloat(newAreaPriceGroup.amountDollars);
+    const cities = citiesFromText(newAreaPriceGroup.cities);
+    if (!newAreaPriceGroup.name.trim() || !cities.length || !Number.isFinite(amountDollars) || amountDollars < 0) {
+      setError("Enter a group name, at least one city, and a valid area price.");
+      return;
+    }
+
+    try {
+      setSavingAreaPriceId("new");
+      const response = await fetch("/api/admin/pricing/areas", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newAreaPriceGroup.name.trim(),
+          cities,
+          amountCents: Math.round(amountDollars * 100),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to create area price group");
+      setAreaPriceGroups((current) => [...current, data.group].sort((left, right) => left.name.localeCompare(right.name)));
+      setAreaPriceDrafts((current) => ({ ...current, [data.group.id]: data.group }));
+      setNewAreaPriceGroup({ name: "", cities: "", amountDollars: "" });
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create area price group");
+    } finally {
+      setSavingAreaPriceId(null);
+    }
+  };
+
+  const handleSaveAreaPriceGroup = async (id: string) => {
+    const draft = areaPriceDrafts[id];
+    if (!draft || !draft.name.trim() || !draft.cities.length) return;
+
+    try {
+      setSavingAreaPriceId(id);
+      const response = await fetch(`/api/admin/pricing/areas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: draft.name.trim(),
+          cities: draft.cities,
+          amountCents: draft.amountCents,
+          isActive: draft.isActive,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to save area price group");
+      setAreaPriceGroups((current) => current.map((group) => group.id === id ? data.group : group));
+      setAreaPriceDrafts((current) => ({ ...current, [id]: data.group }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save area price group");
+    } finally {
+      setSavingAreaPriceId(null);
+    }
+  };
+
+  const handleDeleteAreaPriceGroup = async (id: string) => {
+    if (!window.confirm("Delete this area price group? Existing orders keep their saved area price.")) return;
+
+    try {
+      setSavingAreaPriceId(id);
+      const response = await fetch(`/api/admin/pricing/areas/${id}`, { method: "DELETE" });
+      if (!response.ok) throw new Error("Failed to delete area price group");
+      setAreaPriceGroups((current) => current.filter((group) => group.id !== id));
+      setAreaPriceDrafts((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete area price group");
+    } finally {
+      setSavingAreaPriceId(null);
+    }
+  };
+
   const getPriceDifference = (overridePrice: number, masterPrice: number | null) => {
     if (!masterPrice) return null;
     const diff = overridePrice - masterPrice;
@@ -340,6 +440,152 @@ export default function PricingPage() {
           {error}
         </div>
       )}
+
+      <div className="mb-12 rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <div className="mb-5">
+          <h2 className="text-2xl font-bold text-gray-900">City Area Pricing</h2>
+          <p className="mt-1 text-sm text-gray-600">
+            Group cities under one shared order adjustment. Matching is automatic from the property address; turn a group off to stop applying it to new orders.
+          </p>
+        </div>
+
+        <div className="grid gap-3 border-b border-gray-200 pb-5 md:grid-cols-[1fr_2fr_150px_auto] md:items-end">
+          <label className="text-sm font-medium text-gray-700">
+            Group name
+            <input
+              value={newAreaPriceGroup.name}
+              onChange={(event) => setNewAreaPriceGroup((current) => ({ ...current, name: event.target.value }))}
+              placeholder="North County"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+            />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Cities
+            <input
+              value={newAreaPriceGroup.cities}
+              onChange={(event) => setNewAreaPriceGroup((current) => ({ ...current, cities: event.target.value }))}
+              placeholder="Mount Vernon, Burlington, Sedro-Woolley"
+              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+            />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Area price
+            <div className="mt-1 flex rounded-md border border-gray-300 bg-white">
+              <span className="px-3 py-2 text-gray-500">$</span>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={newAreaPriceGroup.amountDollars}
+                onChange={(event) => setNewAreaPriceGroup((current) => ({ ...current, amountDollars: event.target.value }))}
+                placeholder="0.00"
+                className="min-w-0 w-full rounded-r-md py-2 pr-3 text-gray-900 focus:outline-none"
+              />
+            </div>
+          </label>
+          <button
+            type="button"
+            onClick={() => void handleCreateAreaPriceGroup()}
+            disabled={savingAreaPriceId === "new"}
+            className="rounded-md bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {savingAreaPriceId === "new" ? "Adding..." : "Add group"}
+          </button>
+        </div>
+
+        <div className="mt-5 overflow-x-auto">
+          <table className="w-full min-w-[800px] text-sm">
+            <thead className="border-b border-gray-200 text-left text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-2 py-3">Group</th>
+                <th className="px-2 py-3">Cities</th>
+                <th className="px-2 py-3 text-right">Price</th>
+                <th className="px-2 py-3 text-center">Active</th>
+                <th className="px-2 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {areaPriceGroups.map((group) => {
+                const draft = areaPriceDrafts[group.id] || group;
+                const isSaving = savingAreaPriceId === group.id;
+                return (
+                  <tr key={group.id} className="border-b border-gray-100">
+                    <td className="px-2 py-3">
+                      <input
+                        value={draft.name}
+                        onChange={(event) => setAreaPriceDrafts((current) => ({
+                          ...current,
+                          [group.id]: { ...draft, name: event.target.value },
+                        }))}
+                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-gray-900"
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <input
+                        value={draft.cities.join(", ")}
+                        onChange={(event) => setAreaPriceDrafts((current) => ({
+                          ...current,
+                          [group.id]: { ...draft, cities: citiesFromText(event.target.value) },
+                        }))}
+                        className="w-full rounded border border-gray-300 px-2 py-1.5 text-gray-900"
+                      />
+                    </td>
+                    <td className="px-2 py-3">
+                      <div className="ml-auto flex max-w-[130px] rounded border border-gray-300 bg-white">
+                        <span className="px-2 py-1.5 text-gray-500">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={(draft.amountCents / 100).toFixed(2)}
+                          onChange={(event) => setAreaPriceDrafts((current) => ({
+                            ...current,
+                            [group.id]: { ...draft, amountCents: Math.max(0, Math.round((Number.parseFloat(event.target.value) || 0) * 100)) },
+                          }))}
+                          className="min-w-0 w-full rounded-r py-1.5 pr-2 text-right text-gray-900 focus:outline-none"
+                        />
+                      </div>
+                    </td>
+                    <td className="px-2 py-3 text-center">
+                      <input
+                        type="checkbox"
+                        checked={draft.isActive}
+                        onChange={(event) => setAreaPriceDrafts((current) => ({
+                          ...current,
+                          [group.id]: { ...draft, isActive: event.target.checked },
+                        }))}
+                        className="h-4 w-4 rounded border-gray-300"
+                        aria-label={`Enable ${draft.name} area pricing`}
+                      />
+                    </td>
+                    <td className="px-2 py-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => void handleSaveAreaPriceGroup(group.id)}
+                        disabled={isSaving}
+                        className="mr-3 font-medium text-blue-700 hover:text-blue-900 disabled:opacity-50"
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteAreaPriceGroup(group.id)}
+                        disabled={isSaving}
+                        className="font-medium text-red-700 hover:text-red-900 disabled:opacity-50"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {areaPriceGroups.length === 0 && (
+            <p className="py-6 text-center text-sm text-gray-500">No city price groups yet. Add one above to start matching orders by area.</p>
+          )}
+        </div>
+      </div>
 
       {/* Section 1: Master Prices */}
       <div className="mb-12">

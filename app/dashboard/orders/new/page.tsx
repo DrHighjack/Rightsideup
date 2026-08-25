@@ -37,6 +37,13 @@ interface RemovableSign {
   deployedAddress: string | null;
 }
 
+interface AreaPriceGroup {
+  id: string;
+  name: string;
+  matchedCity: string;
+  amountCents: number;
+}
+
 export default function NewOrderPage() {
   return (
     <Suspense fallback={<div className="text-sm text-slate-600">Loading order form...</div>}>
@@ -76,6 +83,8 @@ function NewOrderPageContent() {
   const [rfidModalError, setRfidModalError] = useState('');
   const [hasAcceptedOrderPolicies, setHasAcceptedOrderPolicies] = useState(false);
   const [inventoryItems, setInventoryItems] = useState<any[]>([]);
+  const [areaPriceGroup, setAreaPriceGroup] = useState<AreaPriceGroup | null>(null);
+  const [loadingAreaPrice, setLoadingAreaPrice] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [successOrderId, setSuccessOrderId] = useState('');
@@ -101,6 +110,29 @@ function NewOrderPageContent() {
   const is811Relevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
   const isSignSetupRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
   const isPlacementRelevant = formData.type === 'INSTALL' || formData.type === 'CHANGE';
+
+  useEffect(() => {
+    const address = formData.address.trim();
+    if (address.length < 5) {
+      setAreaPriceGroup(null);
+      return;
+    }
+
+    const timeout = window.setTimeout(async () => {
+      try {
+        setLoadingAreaPrice(true);
+        const response = await fetch(`/api/pricing/area?address=${encodeURIComponent(address)}`);
+        const data = response.ok ? await response.json() : { group: null };
+        setAreaPriceGroup(data.group || null);
+      } catch {
+        setAreaPriceGroup(null);
+      } finally {
+        setLoadingAreaPrice(false);
+      }
+    }, 350);
+
+    return () => window.clearTimeout(timeout);
+  }, [formData.address]);
 
   useEffect(() => {
     if (formData.type !== 'REMOVAL') return;
@@ -580,8 +612,9 @@ function NewOrderPageContent() {
   const addOnsTotalCents = selectedAddOnRows.reduce((sum, row) => sum + row.lineTotalCents, 0);
   const postColorAdjustmentCents = !isSignSetupRelevant || postColor !== 'CUSTOM' ? 0 : 1500;
   const conciergeAdjustmentCents = !is811Relevant ? 0 : use811Service ? 2000 : -1000;
+  const areaPriceCents = areaPriceGroup?.amountCents || 0;
   const totalEstimatedPriceCents =
-    selectedSignPriceCents + addOnsTotalCents + postColorAdjustmentCents + conciergeAdjustmentCents;
+    selectedSignPriceCents + addOnsTotalCents + postColorAdjustmentCents + conciergeAdjustmentCents + areaPriceCents;
 
   const orderTypeLabels: Record<string, string> = {
     INSTALL: 'Install',
@@ -790,6 +823,18 @@ function NewOrderPageContent() {
               : "Loading address search..."}
           </p>
         </div>}
+
+        {loadingAreaPrice && (
+          <p className="text-sm text-slate-500">Checking area pricing...</p>
+        )}
+        {areaPriceGroup && (
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-950">
+            <p className="font-semibold">{areaPriceGroup.name} area price</p>
+            <p className="mt-1">
+              {areaPriceGroup.matchedCity} is in this group. Adjustment: {formatMoneyFromCents(areaPriceCents)}
+            </p>
+          </div>
+        )}
 
         {isPlacementRelevant && (
           <StreetViewPlacement
@@ -1063,6 +1108,11 @@ function NewOrderPageContent() {
               <p className="pt-1 text-base font-semibold text-slate-900">
                   811 Concierge: {formatMoneyFromCents(conciergeAdjustmentCents)}
               </p>
+              {areaPriceGroup && (
+                <p className="pt-1 text-base font-semibold text-slate-900">
+                  {areaPriceGroup.name} area price: {formatMoneyFromCents(areaPriceCents)}
+                </p>
+              )}
               <p className="pt-1 text-base font-semibold text-slate-900">
                 Total estimated price: {formatMoneyFromCents(totalEstimatedPriceCents)}
               </p>

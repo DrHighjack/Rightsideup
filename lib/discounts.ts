@@ -29,6 +29,7 @@ export interface OrderPriceSummary {
 
 async function calculateOrderSubtotal(order: {
   type: string;
+  areaPriceCents: number;
   realtorId: string;
   realtor: { brokerageId: string | null } | null;
   items: Array<{ quantity: number }>;
@@ -71,6 +72,7 @@ async function calculateOrderSubtotal(order: {
     }
   }
 
+  subtotal += order.areaPriceCents / 100;
   return subtotal;
 }
 

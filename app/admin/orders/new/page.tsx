@@ -213,7 +213,11 @@ function AdminNewOrderFormContent() {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) =>
+      name === "address"
+        ? { ...prev, address: value, addressLat: null, addressLng: null }
+        : { ...prev, [name]: value }
+    );
   };
 
   const handleRealtorSearch = (text: string) => {
@@ -245,11 +249,12 @@ function AdminNewOrderFormContent() {
     : "";
 
   useEffect(() => {
-    if (!mapsLoaded || !streetViewContainerRef.current || streetViewPanoramaRef.current) {
+    if (!mapsLoaded || !hasStreetViewAddress || !streetViewContainerRef.current || streetViewPanoramaRef.current) {
       return;
     }
 
-    if (!window.google?.maps?.StreetViewPanorama) {
+    if (!window.google?.maps?.StreetViewPanorama || !window.google?.maps?.StreetViewService) {
+      setStreetViewError("Street View failed to load. Verify Maps JavaScript API access for this domain.");
       return;
     }
 
@@ -262,9 +267,13 @@ function AdminNewOrderFormContent() {
         fullscreenControl: true,
       }
     );
-
     streetViewServiceRef.current = new window.google.maps.StreetViewService();
-  }, [mapsLoaded]);
+
+    // The preview is conditionally mounted, so resize after it has a real layout.
+    window.setTimeout(() => {
+      window.google?.maps?.event?.trigger(streetViewPanoramaRef.current, "resize");
+    }, 0);
+  }, [mapsLoaded, hasStreetViewAddress, streetViewHeading, streetViewPitch]);
 
   useEffect(() => {
     if (!hasStreetViewAddress || !streetViewPanoramaRef.current || !streetViewServiceRef.current) {
@@ -277,7 +286,7 @@ function AdminNewOrderFormContent() {
     streetViewServiceRef.current.getPanorama(
       {
         location: { lat, lng },
-        radius: 80,
+        radius: 250,
         source: window.google.maps.StreetViewSource.OUTDOOR,
       },
       (result: any, status: any) => {
@@ -292,13 +301,8 @@ function AdminNewOrderFormContent() {
           return;
         }
 
-        streetViewPanoramaRef.current.setPosition({ lat, lng });
-        streetViewPanoramaRef.current.setPov({
-          heading: streetViewHeading,
-          pitch: streetViewPitch,
-        });
-        streetViewPanoramaRef.current.setZoom(Math.max(0, Math.round((120 - streetViewFov) / 30)));
-        setStreetViewError("Street View imagery is limited here. Try a nearby point or adjust the address.");
+        streetViewPanoramaRef.current.setVisible(false);
+        setStreetViewError("No Street View imagery was found within 250 meters of this address. Try a nearby road or adjust the address.");
       }
     );
   }, [hasStreetViewAddress, formData.addressLat, formData.addressLng, streetViewHeading, streetViewPitch, streetViewFov]);

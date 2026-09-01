@@ -95,6 +95,8 @@ function AdminNewOrderFormContent() {
   const [streetViewHeading, setStreetViewHeading] = useState(180);
   const [streetViewPitch, setStreetViewPitch] = useState(-10);
   const [streetViewFov, setStreetViewFov] = useState(90);
+  const [streetViewLocation, setStreetViewLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [markingStreetViewPlacement, setMarkingStreetViewPlacement] = useState(false);
   const [streetViewMarker, setStreetViewMarker] = useState<{
     x: number;
     y: number;
@@ -190,9 +192,9 @@ function AdminNewOrderFormContent() {
     async function fetchData() {
       try {
         // Fetch realtors
-        const realtorResponse = await fetch("/api/admin/users");
+        const realtorResponse = await fetch("/api/admin/users?role=REALTOR&limit=500");
         const realtorData = await realtorResponse.json();
-        setRealtors(realtorData.users);
+        setRealtors(Array.isArray(realtorData.users) ? realtorData.users : []);
 
         // Fetch signs
         const signsResponse = await fetch("/api/inventory");
@@ -245,7 +247,7 @@ function AdminNewOrderFormContent() {
     formData.addressLng !== null;
 
   const streetViewImageUrl = hasStreetViewAddress
-    ? `https://maps.googleapis.com/maps/api/streetview?size=1280x720&location=${formData.addressLat},${formData.addressLng}&heading=${streetViewHeading}&pitch=${streetViewPitch}&fov=${streetViewFov}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
+    ? `https://maps.googleapis.com/maps/api/streetview?size=1280x720&location=${streetViewLocation?.lat ?? formData.addressLat},${streetViewLocation?.lng ?? formData.addressLng}&heading=${streetViewHeading}&pitch=${streetViewPitch}&fov=${streetViewFov}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY}`
     : "";
 
   useEffect(() => {
@@ -265,9 +267,28 @@ function AdminNewOrderFormContent() {
         zoom: 1,
         addressControl: false,
         fullscreenControl: true,
+        clickToGo: true,
+        linksControl: true,
+        panControl: true,
+        scrollwheel: true,
       }
     );
     streetViewServiceRef.current = new window.google.maps.StreetViewService();
+
+    streetViewPanoramaRef.current.addListener("pov_changed", () => {
+      const pov = streetViewPanoramaRef.current?.getPov();
+      if (!pov) return;
+      setStreetViewHeading(Math.round(pov.heading || 0));
+      setStreetViewPitch(Math.round(pov.pitch || 0));
+    });
+    streetViewPanoramaRef.current.addListener("zoom_changed", () => {
+      const zoom = streetViewPanoramaRef.current?.getZoom();
+      if (typeof zoom === "number") setStreetViewFov(Math.max(30, Math.min(120, 120 - zoom * 30)));
+    });
+    streetViewPanoramaRef.current.addListener("position_changed", () => {
+      const position = streetViewPanoramaRef.current?.getPosition();
+      if (position) setStreetViewLocation({ lat: position.lat(), lng: position.lng() });
+    });
 
     // The preview is conditionally mounted, so resize after it has a real layout.
     window.setTimeout(() => {
@@ -292,6 +313,8 @@ function AdminNewOrderFormContent() {
       (result: any, status: any) => {
         if (status === window.google.maps.StreetViewStatus.OK && result?.location?.pano) {
           streetViewPanoramaRef.current.setPano(result.location.pano);
+          const location = result.location.latLng;
+          if (location) setStreetViewLocation({ lat: location.lat(), lng: location.lng() });
           streetViewPanoramaRef.current.setPov({
             heading: streetViewHeading,
             pitch: streetViewPitch,
@@ -305,7 +328,13 @@ function AdminNewOrderFormContent() {
         setStreetViewError("No Street View imagery was found within 250 meters of this address. Try a nearby road or adjust the address.");
       }
     );
-  }, [hasStreetViewAddress, formData.addressLat, formData.addressLng, streetViewHeading, streetViewPitch, streetViewFov]);
+  }, [hasStreetViewAddress, formData.addressLat, formData.addressLng]);
+
+  useEffect(() => {
+    if (!streetViewPanoramaRef.current) return;
+    streetViewPanoramaRef.current.setPov({ heading: streetViewHeading, pitch: streetViewPitch });
+    streetViewPanoramaRef.current.setZoom(Math.max(0, Math.round((120 - streetViewFov) / 30)));
+  }, [streetViewHeading, streetViewPitch, streetViewFov]);
 
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
   const toDegrees = (radians: number) => (radians * 180) / Math.PI;
@@ -351,7 +380,7 @@ function AdminNewOrderFormContent() {
     };
   };
 
-  const handleStreetViewClick = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleStreetViewClick = (e: React.MouseEvent<HTMLElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
@@ -362,10 +391,15 @@ function AdminNewOrderFormContent() {
     let estimatedLat: number | null = null;
     let estimatedLng: number | null = null;
 
-    if (formData.addressLat !== null && formData.addressLng !== null) {
+    const panoramaLocation = streetViewLocation || (
+      formData.addressLat !== null && formData.addressLng !== null
+        ? { lat: formData.addressLat, lng: formData.addressLng }
+        : null
+    );
+    if (panoramaLocation) {
       const estimated = estimateGroundCoordinate(
-        formData.addressLat,
-        formData.addressLng,
+        panoramaLocation.lat,
+        panoramaLocation.lng,
         normalizedX,
         normalizedY,
         streetViewHeading,
@@ -718,7 +752,7 @@ function AdminNewOrderFormContent() {
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Google Street View</h3>
             <p className="text-sm text-gray-600">
-              Pick the view, click to mark where the sign should go, then attach it to this order.
+              Drag to look around and use the arrows to move. Mark the sign location only when you are ready.
             </p>
           </div>
 
@@ -773,12 +807,21 @@ function AdminNewOrderFormContent() {
           ) : (
             <div className="space-y-3">
               <div
-                className="relative aspect-video rounded-lg overflow-hidden border border-gray-300 bg-gray-100 cursor-crosshair"
-                onClick={handleStreetViewClick}
-                title="Click to mark sign placement"
+                className={`relative aspect-video overflow-hidden rounded-lg border border-gray-300 bg-gray-100 ${markingStreetViewPlacement ? "cursor-crosshair" : "cursor-grab"}`}
+                title={markingStreetViewPlacement ? "Click to mark sign placement" : "Drag or use arrows to move through Street View"}
               >
                 <div ref={streetViewContainerRef} className="absolute inset-0" />
-                <div className="absolute inset-0 z-10" />
+                {markingStreetViewPlacement && (
+                  <button
+                    type="button"
+                    aria-label="Mark sign placement"
+                    onClick={(event) => {
+                      handleStreetViewClick(event);
+                      setMarkingStreetViewPlacement(false);
+                    }}
+                    className="absolute inset-0 z-10 cursor-crosshair"
+                  />
+                )}
 
                 {streetViewMarker && (
                   <div
@@ -789,6 +832,14 @@ function AdminNewOrderFormContent() {
                   </div>
                 )}
               </div>
+
+              <button
+                type="button"
+                onClick={() => setMarkingStreetViewPlacement((current) => !current)}
+                className={`h-10 rounded-md px-4 text-sm font-medium ${markingStreetViewPlacement ? "bg-amber-500 text-white hover:bg-amber-600" : "border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}
+              >
+                {markingStreetViewPlacement ? "Click the view to place sign" : "Mark Sign Location"}
+              </button>
 
               <div className="flex flex-col md:flex-row gap-3">
                 <input

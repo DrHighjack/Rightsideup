@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { OrderNotes } from "@/app/components/OrderNotes";
 
 interface OrderDetail {
   id: string;
@@ -361,10 +362,7 @@ export default function OrderDetailPage() {
         )}
 
         {order.notes && (
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</p>
-            <p className="mt-1 text-base text-slate-900">{order.notes}</p>
-          </div>
+          <OrderNotes notes={order.notes} />
         )}
       </div>
 

@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { FieldTabs } from '../../FieldTabs';
+import { OrderNotes } from '@/app/components/OrderNotes';
 
 interface JobAssignment {
   id: string;
@@ -323,8 +324,7 @@ export default function JobDetailPage() {
         {/* Order Notes */}
         {job.order.notes && (
           <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-            <p className="text-xs text-gray-500 mb-2 uppercase font-semibold">Realtor Notes</p>
-            <p className="text-gray-900 whitespace-pre-wrap">{job.order.notes}</p>
+            <OrderNotes notes={job.order.notes} title="Realtor Notes" compact />
           </div>
         )}
 

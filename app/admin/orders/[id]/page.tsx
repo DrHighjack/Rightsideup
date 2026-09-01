@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { formatOrderStatus, ORDER_STATUSES } from "@/lib/order-status";
+import { OrderNotes } from "@/app/components/OrderNotes";
 
 interface OrderDetail {
   id: string;
@@ -422,10 +423,7 @@ export default function AdminOrderDetailPage() {
             )}
 
             {order.notes && (
-              <div>
-                <p className="text-sm text-gray-600">Notes</p>
-                <p className="text-gray-900">{order.notes}</p>
-              </div>
+              <OrderNotes notes={order.notes} />
             )}
 
             {order.adminNotes && (

@@ -6,7 +6,7 @@ import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id || (session.user as { role?: string }).role !== "BROKERAGE") {
+  if (!session?.user?.id || session.user.role !== "BROKERAGE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id || (session.user as { role?: string }).role !== "BROKERAGE") {
+  if (!session?.user?.id || session.user.role !== "BROKERAGE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const brokerageId = await resolveAccessibleBrokerageId(

@@ -7,11 +7,11 @@ export async function GET() {
   try {
     const session = await auth();
 
-    if (!session?.user || (session.user as any).role !== "TC") {
+    if (!session?.user || session.user.role !== "TC") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tcUserId = (session.user as any).id;
+    const tcUserId = session.user.id;
 
     // Get all linked agents for this TC
     const linkedAgents = await prisma.tCAgentLink.findMany({

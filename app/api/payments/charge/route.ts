@@ -3,29 +3,15 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { chargeToken, chargeVaultRecord } from "@/lib/fluidpay";
 import { calculateInvoiceBalance } from "@/lib/invoice-totals";
-import { sendEmail } from "@/lib/email";
+import { getPaymentConfirmationEmail, sendEmail } from "@/lib/email";
 import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 import { paymentChargeSchema } from "@/lib/schemas";
 import { ZodError } from "zod";
 
-function buildPaidEmailHtml(recipientName: string, invoiceNumber: string, amountPaid: number) {
-  return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
-      <h2 style="margin-bottom: 12px;">Payment Received</h2>
-      <p>Hi ${recipientName},</p>
-      <p>We received your payment for invoice <strong>${invoiceNumber}</strong>.</p>
-      <ul>
-        <li><strong>Amount:</strong> $${amountPaid.toFixed(2)}</li>
-      </ul>
-      <p>Thank you for your business.</p>
-    </div>
-  `;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as { role?: string } | undefined)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -59,13 +45,6 @@ export async function POST(request: NextRequest) {
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
-
-    if (invoice.qboInvoiceId) {
-      return NextResponse.json(
-        { error: "Imported QuickBooks invoices must be paid through QuickBooks" },
-        { status: 409 }
-      );
     }
 
     const isAdmin = role === "ADMIN";
@@ -163,10 +142,15 @@ export async function POST(request: NextRequest) {
     const recipientName = `${invoice.user.firstName || ""} ${invoice.user.lastName || ""}`.trim() || "there";
 
     try {
+      const email = getPaymentConfirmationEmail({
+        recipientName,
+        invoiceNumber,
+        amountPaid: totalDue,
+      });
       await sendEmail({
         to: invoice.user.email,
-        subject: `Payment received for invoice ${invoiceNumber}`,
-        html: buildPaidEmailHtml(recipientName, invoiceNumber, totalDue),
+        subject: email.subject,
+        html: email.html,
       });
     } catch (emailError) {
       console.error("Payment email failed:", emailError);

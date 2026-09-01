@@ -19,7 +19,7 @@ export async function PUT(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== 'FIELD_TECH') {
+    if (!session?.user?.id || session.user.role !== 'FIELD_TECH') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -37,6 +37,7 @@ export async function PUT(
             id: true,
             status: true,
             type: true,
+            removalSignId: true,
           },
         },
       },
@@ -126,6 +127,20 @@ export async function PUT(
       where: { id: assignment.orderId },
       data: { status: newStatus },
     });
+
+    if (assignment.order.type === 'REMOVAL' && assignment.order.removalSignId) {
+      await prisma.sign.update({
+        where: { id: assignment.order.removalSignId },
+        data: {
+          status: 'AVAILABLE',
+          assignedToUserId: null,
+          assignedToOrderId: null,
+          deployedAddress: null,
+          deployedLat: null,
+          deployedLng: null,
+        },
+      });
+    }
 
     sendJobCompletedDiscordWebhook({
       orderId: updatedAssignment.order.id,

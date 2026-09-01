@@ -148,7 +148,7 @@ vercel deploy
 
 ## Future Phases
 
-- Phase 2: Transaction Coordinator (TC) accounts, QuickBooks integration
+- Phase 2: Transaction Coordinator (TC) accounts
 - Phase 3: SMS notifications, sign inventory module
 - Phase 4: 811 email monitoring, coupon system
 - Phase 5: Stripe payments, analytics dashboard

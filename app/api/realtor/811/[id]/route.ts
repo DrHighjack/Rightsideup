@@ -19,7 +19,7 @@ export async function GET(
     }
 
     const userId = session.user.id;
-    const userRole = (session.user as any).role;
+    const userRole = session.user.role;
     const ticketId = params.id;
 
     if (!userId) {

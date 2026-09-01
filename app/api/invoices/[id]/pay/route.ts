@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { calculateInvoiceBalance } from "@/lib/invoice-totals";
-import { sendEmail } from "@/lib/email";
+import { getPaymentConfirmationEmail, sendEmail } from "@/lib/email";
 import { sendInvoicePaidDiscordWebhook } from "@/lib/discord";
 import { invoicePaySchema } from "@/lib/schemas";
 import { ZodError } from "zod";
@@ -15,21 +15,6 @@ function uniqueEmails(emails: Array<string | null | undefined>) {
         .filter(Boolean)
     )
   );
-}
-
-function buildPaidEmailHtml(recipientName: string, invoiceNumber: string, amountPaid: number, payerType: string) {
-  return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #1f2937;">
-      <h2 style="margin-bottom: 12px;">Invoice Payment Received</h2>
-      <p>Hi ${recipientName},</p>
-      <p>We received a payment for invoice <strong>${invoiceNumber}</strong>.</p>
-      <ul>
-        <li><strong>Amount:</strong> $${amountPaid.toFixed(2)}</li>
-        <li><strong>Paid By:</strong> ${payerType}</li>
-      </ul>
-      <p>Thank you.</p>
-    </div>
-  `;
 }
 
 export async function POST(
@@ -71,15 +56,8 @@ export async function POST(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (invoice.qboInvoiceId) {
-      return NextResponse.json(
-        { error: "Imported QuickBooks invoices must be paid through QuickBooks" },
-        { status: 409 }
-      );
-    }
-
     const isOwner = invoice.userId === actorUserId;
-    const isAdmin = (session.user as any).role === "ADMIN";
+    const isAdmin = session.user.role === "ADMIN";
 
     if (!isOwner && !isAdmin) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -162,20 +140,23 @@ export async function POST(
     ]);
 
     await Promise.all(
-      recipients.map((email) =>
-        sendEmail({
+      recipients.map((email) => {
+        const paymentEmail = getPaymentConfirmationEmail({
+          recipientName: email === invoice.user.email
+            ? `${invoice.user.firstName} ${invoice.user.lastName}`.trim()
+            : "Team",
+          invoiceNumber,
+          amountPaid: totalDue,
+          payerType,
+        });
+        return sendEmail({
           to: email,
-          subject: `Invoice ${invoiceNumber} paid`,
-          html: buildPaidEmailHtml(
-            email === invoice.user.email
-              ? `${invoice.user.firstName} ${invoice.user.lastName}`.trim()
-              : "Team",
-            invoiceNumber,
-            totalDue,
-            payerType
-          ),
-        })
-      )
+          subject: paymentEmail.subject,
+          html: paymentEmail.html,
+        }).catch((emailError) => {
+          console.error(`Failed to send payment confirmation to ${email}:`, emailError);
+        });
+      })
     );
 
     sendInvoicePaidDiscordWebhook({

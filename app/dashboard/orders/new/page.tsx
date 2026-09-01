@@ -55,7 +55,7 @@ export default function NewOrderPage() {
 function NewOrderPageContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
-  const userRole = (session?.user as any)?.role as string | undefined;
+  const userRole = session?.user?.role as string | undefined;
   const isTC = userRole === 'TC';
 
   const [formData, setFormData] = useState({

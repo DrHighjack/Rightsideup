@@ -48,7 +48,7 @@ Read [API catalog](./references/api-catalog.md) for the current high-level capab
 | Brokerage statements and auto-pay | `/api/brokerage/statements`, `/api/brokerage/auto-pay` | BROKERAGE |
 | Smart Sign tag, dashboard, public tap flow | `/api/admin/smart-sign`, `/api/smart-sign`, `/s/[tagCode]` | ADMIN, REALTOR, public |
 | Pricing and city area pricing | `/api/admin/pricing`, `/api/admin/pricing/areas`, `/api/pricing/area` | ADMIN, authenticated preview |
-| Configuration and system integrations | `/api/admin/settings`, QuickBooks routes, cron routes | ADMIN, CRON_SECRET |
+| Configuration and system integrations | `/api/admin/settings`, cron routes | ADMIN, CRON_SECRET |
 
 ## Standard Procedure
 

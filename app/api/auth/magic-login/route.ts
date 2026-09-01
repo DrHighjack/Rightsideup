@@ -7,7 +7,11 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
-    const redirect = searchParams.get("redirect") || "/dashboard";
+    // Only allow relative in-app paths; prevents open redirects to external sites.
+    const rawRedirect = searchParams.get("redirect") || "/dashboard";
+    const redirect = rawRedirect.startsWith("/") && !rawRedirect.startsWith("//") && !rawRedirect.includes("://")
+      ? rawRedirect
+      : "/dashboard";
 
     if (!token) {
       return NextResponse.json(

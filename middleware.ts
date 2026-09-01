@@ -29,8 +29,8 @@ export async function middleware(request: NextRequest) {
     pathname === route || pathname.startsWith(`${route}/`)
   );
 
-  const userRole = (session?.user as any)?.role;
-  const isSharedAccountant = userRole === "BROKERAGE" && (session?.user as any)?.accountTitle === "Accountant";
+  const userRole = session?.user?.role;
+  const isSharedAccountant = userRole === "BROKERAGE" && session?.user?.accountTitle === "Accountant";
 
   // Redirect to login if not authenticated for protected routes
   if ((isAdminRoute || isDashboardRoute || isBrokerageRoute || isFieldRoute || isTcRoute) && !hasSessionToken) {

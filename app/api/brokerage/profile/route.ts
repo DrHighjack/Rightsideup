@@ -6,7 +6,7 @@ import { resolveAccessibleBrokerageId } from "@/lib/brokerage-access";
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || role !== "BROKERAGE") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { signOut } from 'next-auth/react';
+import { FieldTabs } from '../FieldTabs';
 
 interface JobAssignment {
   id: string;
@@ -260,21 +260,7 @@ export default function FieldDashboard() {
         )}
       </div>
 
-      {/* Bottom Tab Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around">
-        <Link
-          href="/field/dashboard"
-          className="flex-1 py-4 text-center font-semibold text-blue-600 border-b-4 border-blue-600"
-        >
-          Jobs
-        </Link>
-        <button
-          onClick={handleSignOut}
-          className="flex-1 py-4 text-center font-semibold text-gray-600 active:bg-gray-50"
-        >
-          Profile
-        </button>
-      </div>
+      <FieldTabs />
     </div>
   );
 }

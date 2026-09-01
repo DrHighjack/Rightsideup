@@ -39,7 +39,7 @@ const statusColors: Record<string, { bg: string; text: string }> = {
 export default function InvoicesPage() {
   const { data: session } = useSession();
   const router = useRouter();
-  const isTC = (session?.user as any)?.role === "TC";
+  const isTC = session?.user?.role === "TC";
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);

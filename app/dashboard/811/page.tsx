@@ -43,7 +43,7 @@ export default function ElevenPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [requestedOrderId, setRequestedOrderId] = useState<string | null>(null);
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   const [tickets, setTickets] = useState<Ticket811[]>([]);
   const [selectedTicketId, setSelectedTicketId] = useState<string>('');
   const [showTicketModal, setShowTicketModal] = useState(false);

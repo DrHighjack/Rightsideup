@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
   if (user.role !== "REALTOR" && user.role !== "TC") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }

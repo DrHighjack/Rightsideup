@@ -16,7 +16,7 @@ export async function GET() {
     }
 
     // Check admin role
-    const userRole = (session.user as any)?.role;
+    const userRole = session.user?.role;
     if (userRole !== 'ADMIN') {
       console.warn('[ADMIN LEADS API] Forbidden - user role:', userRole);
       return NextResponse.json(
@@ -25,11 +25,12 @@ export async function GET() {
       );
     }
 
-    // Fetch all leads, sorted by newest first
+    // Fetch leads, newest first, bounded page
     const leads = await prisma.instaads.findMany({
       orderBy: {
         createdAt: 'desc',
       },
+      take: 500,
       select: {
         id: true,
         fullName: true,

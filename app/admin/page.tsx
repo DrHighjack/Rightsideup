@@ -86,14 +86,14 @@ export default function AdminDashboardPage() {
 
   // Redirect salesmen to their dashboard
   useEffect(() => {
-    if (session?.user && (session.user as any).role === 'SALESMEN') {
+    if (session?.user && session.user.role === 'SALESMEN') {
       router.push('/admin/salesmen');
     }
   }, [session, router]);
 
   useEffect(() => {
     // Don't fetch analytics if user is salesmen (they'll be redirected)
-    if (session?.user && (session.user as any).role !== 'SALESMEN') {
+    if (session?.user && session.user.role !== 'SALESMEN') {
       fetchAnalyticsData();
     }
   }, [dateRange, session]);
@@ -165,7 +165,7 @@ export default function AdminDashboardPage() {
   }
 
   // Redirect salesmen (while their redirect effect is happening)
-  if (session?.user && (session.user as any).role === 'SALESMEN') {
+  if (session?.user && session.user.role === 'SALESMEN') {
     return null;
   }
 

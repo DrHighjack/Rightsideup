@@ -16,6 +16,7 @@ type DashboardData = {
   tags: Array<{ id: string; tagCode: string; signNumber: string | null; status: string; listingAddress: string; tapCount: number; lastTapAt: string | null; url: string }>;
   summary: { totalTaps: number; tapsThisWeek: number; trend: number };
   dailyTaps: Array<{ date: string; taps: number }>;
+  listingBreakdown: Array<{ orderId: string | null; address: string; listingUrl: string | null; taps: number; lastTapAt: string }>;
 };
 
 type Card = { id: string; last4: string | null; nickname: string | null };
@@ -155,6 +156,26 @@ export default function SmartSignDashboardPage() {
         <h2 className="text-lg font-semibold text-slate-900">Posts and listings</h2>
         {data.tags.length === 0 ? <p className="mt-3 text-sm text-slate-600">No Smart Sign tags are assigned to your active posts yet.</p> : <div className="mt-4 divide-y divide-slate-100">{data.tags.map((tag) => <div key={tag.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium text-slate-900">{tag.listingAddress}</p><p className="text-sm text-slate-500">Post {tag.signNumber || "unlabeled"} · {tag.tapCount} taps {tag.lastTapAt ? `· last tap ${new Date(tag.lastTapAt).toLocaleDateString()}` : ""}</p></div><a href={tag.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-sky-700 hover:text-sky-900">Open public page</a></div>)}</div>}
       </section>
+
+      {data.listingBreakdown.length > 0 && (
+        <section className="border border-slate-200 bg-white p-5">
+          <h2 className="text-lg font-semibold text-slate-900">Historical listing activity</h2>
+          <div className="mt-4 divide-y divide-slate-100">
+            {data.listingBreakdown.map((listing) => (
+              <div key={listing.orderId || listing.address} className="flex items-center justify-between gap-4 py-3">
+                <div>
+                  <p className="font-medium text-slate-900">{listing.address}</p>
+                  <p className="text-sm text-slate-500">Last tap {new Date(listing.lastTapAt).toLocaleDateString()}</p>
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="font-semibold text-slate-900">{listing.taps} tap{listing.taps === 1 ? "" : "s"}</span>
+                  {listing.listingUrl && <a href={listing.listingUrl} target="_blank" rel="noreferrer" className="text-sm font-medium text-sky-700">Listing</a>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check authorization - REALTOR or TC
-    const userRole = (session.user as any).role as string | undefined;
+    const userRole = session.user.role as string | undefined;
     if (!userRole || !['REALTOR', 'TC'].includes(userRole)) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -149,7 +149,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = (session.user as any).role as string | undefined;
+    const userRole = session.user.role as string | undefined;
 
     // Build query based on role
     const where: any = { type: 'Custom' };

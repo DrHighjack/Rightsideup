@@ -12,7 +12,7 @@ export async function DELETE(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
   if (user.role !== "ADMIN") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }

@@ -281,21 +281,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.role = (user as any).role;
+        token.role = user.role;
         token.id = user.id;
-        token.accountTitle = (user as any).accountTitle || null;
-        token.brokerageName = (user as any).brokerageName || null;
-        token.emailVerifiedAt = (user as any).emailVerifiedAt || null;
+        token.accountTitle = user.accountTitle || null;
+        token.brokerageName = user.brokerageName || null;
+        token.emailVerifiedAt = user.emailVerifiedAt || null;
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).role = token.role;
-        (session.user as any).id = token.id;
-        (session.user as any).accountTitle = (token as any).accountTitle || null;
-        (session.user as any).brokerageName = (token as any).brokerageName || null;
-        (session.user as any).emailVerifiedAt = (token as any).emailVerifiedAt || null;
+        session.user.role = token.role!;
+        session.user.id = token.id!;
+        session.user.accountTitle = token.accountTitle || null;
+        session.user.brokerageName = token.brokerageName || null;
+        session.user.emailVerifiedAt = token.emailVerifiedAt || null;
         
         // Set Sentry user context
         Sentry.setUser({

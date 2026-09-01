@@ -9,7 +9,7 @@ export async function GET() {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
 
   // Only realtors and admins can see their linked TCs
   if (user.role !== "REALTOR" && user.role !== "ADMIN") {

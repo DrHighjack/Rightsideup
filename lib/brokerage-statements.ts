@@ -150,7 +150,6 @@ async function generateBrokerageStatementsForOwner(
   const previouslyCapturedIds = previousStatements.flatMap((statement) => statement.invoiceIds);
   const invoices = await prisma.invoice.findMany({
     where: {
-      qboInvoiceId: null,
       id: previouslyCapturedIds.length ? { notIn: previouslyCapturedIds } : undefined,
       createdAt: includeEarlierInvoices
         ? { lte: periodEnd }

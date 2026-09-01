@@ -14,7 +14,7 @@ export async function POST(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
   if (!["REALTOR", "TC", "ADMIN"].includes(user.role)) {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -102,11 +102,12 @@ export async function POST(
     const adminEmail = process.env.ADMIN_ALERT_EMAIL || "admin@signpost.local";
     const signLink = `${process.env.NEXTAUTH_URL || "http://localhost:3001"}/admin/signs/${signId}`;
 
+    const reporterName = user.name || user.email || "Unknown user";
     const emailTemplate = getSignReportAlertEmail(
       type,
       sign.signNumber || "N/A",
       description,
-      user.name || user.email,
+      reporterName,
       newStatus,
       signLink
     );
@@ -126,7 +127,7 @@ export async function POST(
       signId,
       signNumber: sign.signNumber || "N/A",
       reportType: type,
-      realtorName: user.name || user.email,
+      realtorName: reporterName,
       description,
     }).catch((error) => console.error("Failed to send Discord sign report webhook:", error));
 

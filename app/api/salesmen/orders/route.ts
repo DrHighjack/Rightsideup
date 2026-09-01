@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
+    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { type, address, addressLat, addressLng, scheduledDate, notes, realtorId, status, items } = parsed.data;
-    const userRole = (session.user as any).role;
+    const userRole = session.user.role;
 
     // Verify realtor exists
     const realtor = await prisma.user.findUnique({

@@ -44,8 +44,8 @@ export default function OrderDetailPage() {
   const { data: session } = useSession();
   const id = params.id as string;
   const isSharedAccountant =
-    (session?.user as any)?.role === "BROKERAGE" &&
-    (session?.user as any)?.accountTitle === "Accountant";
+    session?.user?.role === "BROKERAGE" &&
+    session?.user?.accountTitle === "Accountant";
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");

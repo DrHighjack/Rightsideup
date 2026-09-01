@@ -7,7 +7,7 @@ const accessSchema = z.object({ email: z.string().trim().email() });
 
 async function requireAdmin() {
   const session = await auth();
-  return session?.user?.id && (session.user as { role?: string }).role === "ADMIN";
+  return session?.user?.id && session.user.role === "ADMIN";
 }
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {

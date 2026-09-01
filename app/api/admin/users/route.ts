@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -166,13 +166,20 @@ export async function POST(request: NextRequest) {
     if (brokerageId?.trim()) {
       const brokerage = await prisma.brokerage.findUnique({
         where: { id: brokerageId.trim() },
-        select: { id: true, name: true },
+        select: { id: true, name: true, isActive: true },
       });
 
       if (!brokerage) {
         return NextResponse.json(
           { error: "Selected brokerage not found" },
           { status: 404 }
+        );
+      }
+
+      if (!brokerage.isActive) {
+        return NextResponse.json(
+          { error: "Cannot add a realtor to an inactive brokerage" },
+          { status: 409 }
         );
       }
 

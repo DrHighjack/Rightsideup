@@ -13,7 +13,7 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -67,12 +67,13 @@ export async function POST(
       );
     }
 
+    const parsedAmountCents = Math.round(parsedAmount * 100);
     const coupon = await prisma.coupon.create({
       data: {
         code: couponCode,
         type: "FIXED",
-        value: parsedAmount,
-        remainingValue: parsedAmount,
+        value: parsedAmountCents,
+        remainingValue: parsedAmountCents,
         isCredit: true,
         assignedUserId: params.id,
         maxUses: null,

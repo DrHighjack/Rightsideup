@@ -78,7 +78,7 @@ function StatementPdf({ statement, snapshot }: {
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const role = (session.user as { role?: string }).role;
+  const role = session.user.role;
 
   const statement = await prisma.brokerageStatement.findUnique({ where: { id: params.id } });
   if (!statement) return NextResponse.json({ error: "Statement not found" }, { status: 404 });

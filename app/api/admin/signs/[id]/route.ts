@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLowInventoryAlertEmail, sendEmail } from "@/lib/email";
 import { sendLowInventoryDiscordWebhook } from "@/lib/discord";
+import { ensureSmartSignTrial } from "@/lib/smart-sign";
 
 const LOW_INVENTORY_THRESHOLD = parseInt(process.env.LOW_INVENTORY_THRESHOLD || "5", 10);
 
@@ -16,7 +17,7 @@ export async function PUT(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
   if (user.role !== "ADMIN") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -28,6 +29,7 @@ export async function PUT(
     // Get current sign to compare status
     const currentSign = await prisma.sign.findUnique({
       where: { id: signId },
+      include: { smartSignTag: { select: { id: true } } },
     });
 
     if (!currentSign) {
@@ -42,8 +44,43 @@ export async function PUT(
       deployedLat,
       deployedLng,
       assignedToUserId,
+      assignedToOrderId,
       notes,
     } = body;
+
+    const nextStatus = status ?? currentSign.status;
+    const nextAssignedToUserId = assignedToUserId !== undefined ? assignedToUserId || null : currentSign.assignedToUserId;
+    const nextDeployedAddress = deployedAddress !== undefined ? deployedAddress || null : currentSign.deployedAddress;
+    let nextAssignedToOrderId = assignedToOrderId !== undefined ? assignedToOrderId || null : currentSign.assignedToOrderId;
+
+    if (nextStatus === "DEPLOYED" && !nextAssignedToOrderId && nextAssignedToUserId && nextDeployedAddress) {
+      const normalizedDeployed = nextDeployedAddress.trim().replace(/\s+/g, " ").toLowerCase();
+      const matchingOrder = await prisma.order.findFirst({
+        where: {
+          realtorId: nextAssignedToUserId,
+          address: { equals: nextDeployedAddress.trim(), mode: "insensitive" },
+          type: { not: "REMOVAL" },
+          status: { notIn: ["CANCELLED", "REMOVED"] },
+        },
+        select: { id: true, address: true },
+        orderBy: { createdAt: "desc" },
+      });
+      const exactMatch = matchingOrder && matchingOrder.address.trim().replace(/\s+/g, " ").toLowerCase() === normalizedDeployed
+        ? matchingOrder
+        : null;
+      nextAssignedToOrderId = exactMatch?.id || null;
+    }
+
+    if (nextStatus === "DEPLOYED" && currentSign.smartSignTag && !nextAssignedToOrderId) {
+      return Response.json(
+        { error: "A tagged post must match an active order for this realtor and deployed address" },
+        { status: 400 }
+      );
+    }
+
+    if (nextStatus !== "DEPLOYED") {
+      nextAssignedToOrderId = null;
+    }
 
     const updatedSign = await prisma.sign.update({
       where: { id: signId },
@@ -55,17 +92,23 @@ export async function PUT(
         ...(deployedLat !== undefined && { deployedLat }),
         ...(deployedLng !== undefined && { deployedLng }),
         ...(assignedToUserId !== undefined && { assignedToUserId }),
+        assignedToOrderId: nextAssignedToOrderId,
         ...(notes !== undefined && { notes }),
       },
       include: {
         assignedToUser: { select: { id: true, firstName: true, lastName: true, email: true } },
         assignedToOrder: { select: { id: true, orderNumber: true } },
+        smartSignTag: { select: { id: true } },
         reports: { where: { resolvedAt: null }, select: { id: true, type: true } },
       },
     });
 
     // Log activity if status changed
     // Note: No specific activity action for SIGN_STATUS_CHANGED yet
+
+    if (updatedSign.smartSignTag && updatedSign.assignedToUser?.id) {
+      await ensureSmartSignTrial(updatedSign.assignedToUser.id);
+    }
 
     // Check low inventory after status update
     await checkAndAlertLowInventory(updatedSign.type);
@@ -91,7 +134,7 @@ export async function GET(
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
   if (user.role !== "ADMIN") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }

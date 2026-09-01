@@ -6,7 +6,7 @@ import { getAccessibleBrokerages, resolveAccessibleBrokerageId } from "@/lib/bro
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || role !== "BROKERAGE") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -26,8 +26,8 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get("status");
     const memberId = searchParams.get("memberId");
     const search = searchParams.get("search")?.trim();
-    const limit = Math.min(50, parseInt(searchParams.get("limit") || "20", 10));
-    const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
+    const offset = Math.max(0, parseInt(searchParams.get("offset") || "0", 10) || 0);
 
     const baseWhere: any = {
       status: { not: "DRAFT" },

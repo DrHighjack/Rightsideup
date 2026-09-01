@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { getPrinterPartnershipRequestEmail, sendEmail } from "@/lib/email";
 
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as { role?: string } | undefined)?.role;
+    const role = session?.user?.role;
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     if (role !== "REALTOR" && role !== "TC") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
@@ -22,10 +22,15 @@ export async function POST(request: NextRequest) {
     const adminEmail = process.env.ADMIN_ALERT_EMAIL;
     if (adminEmail) {
       try {
+        const email = getPrinterPartnershipRequestEmail({
+          printerName: name,
+          website,
+          requestedBy: session.user.email || session.user.id,
+        });
         await sendEmail({
           to: adminEmail,
-          subject: `New printer partnership request: ${name}`,
-          html: `<p>A realtor requested a new printer partnership.</p><p><strong>Printer:</strong> ${name}</p><p><strong>Website:</strong> <a href="${website}">${website}</a></p><p><strong>Requested by:</strong> ${session.user.email || session.user.id}</p>`,
+          subject: email.subject,
+          html: email.html,
         });
       } catch (emailError) { console.error("Printer request email failed:", emailError); }
     }

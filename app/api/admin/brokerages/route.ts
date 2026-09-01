@@ -29,15 +29,48 @@ const brokerageSchema = z.object({
       password: z.string().min(6),
     })
     .optional(),
+  allowSimilar: z.boolean().optional().default(false),
 });
 
-export async function GET(_request: NextRequest) {
+function normalizeBrokerageName(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function similarity(left: string, right: string) {
+  const leftWords = new Set(normalizeBrokerageName(left).split(" ").filter(Boolean));
+  const rightWords = new Set(normalizeBrokerageName(right).split(" ").filter(Boolean));
+  const shared = [...leftWords].filter((word) => rightWords.has(word)).length;
+  const total = new Set([...leftWords, ...rightWords]).size;
+  return total ? shared / total : 0;
+}
+
+async function findBrokerageMatches(name: string) {
+  const brokerages = await prisma.brokerage.findMany({
+    select: { id: true, name: true, address: true, email: true, phone: true, isActive: true },
+    orderBy: { name: "asc" },
+  });
+  const normalizedName = normalizeBrokerageName(name);
+  const exact = brokerages.find((brokerage) => normalizeBrokerageName(brokerage.name) === normalizedName) || null;
+  const similar = brokerages
+    .filter((brokerage) => brokerage.id !== exact?.id && similarity(brokerage.name, name) >= 0.5)
+    .map((brokerage) => ({ ...brokerage, score: similarity(brokerage.name, name) }))
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 5);
+  return { exact, similar };
+}
+
+export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const matchName = new URL(request.url).searchParams.get("match")?.trim();
+    if (matchName) {
+      return NextResponse.json(await findBrokerageMatches(matchName));
     }
 
     const brokerages = await prisma.brokerage.findMany({
@@ -98,7 +131,7 @@ export async function GET(_request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -116,8 +149,23 @@ export async function POST(request: NextRequest) {
       basePriceDollars,
       basePriceCents,
       brokerageAccount,
+      allowSimilar,
     } =
       brokerageSchema.parse(body);
+
+    const matches = await findBrokerageMatches(name);
+    if (matches.exact) {
+      return NextResponse.json(
+        { error: `A brokerage named ${matches.exact.name} already exists`, code: "EXACT_NAME_MATCH", brokerage: matches.exact },
+        { status: 409 }
+      );
+    }
+    if (matches.similar.length && !allowSimilar) {
+      return NextResponse.json(
+        { error: "Similar brokerages already exist", code: "SIMILAR_NAME_MATCH", matches: matches.similar },
+        { status: 409 }
+      );
+    }
 
     const normalizedBasePriceCents =
       basePriceDollars !== undefined

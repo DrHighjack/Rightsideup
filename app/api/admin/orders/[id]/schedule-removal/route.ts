@@ -14,7 +14,7 @@ export async function POST(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -32,7 +32,10 @@ export async function POST(
     // Fetch the original installation order
     const installationOrder = await prisma.order.findUnique({
       where: { id },
-      include: { realtor: true },
+      include: {
+        realtor: true,
+        assignedSigns: { where: { status: "DEPLOYED" }, select: { id: true }, take: 1 },
+      },
     });
 
     if (!installationOrder) {
@@ -59,6 +62,7 @@ export async function POST(
         addressLat: installationOrder.addressLat,
         addressLng: installationOrder.addressLng,
         scheduledDate: new Date(removalScheduledDate),
+        removalSignId: installationOrder.assignedSigns[0]?.id || null,
         notes: removalNotes || `Removal scheduled for ${installationOrder.orderNumber}`,
         realtorId: installationOrder.realtorId,
         adminNotes: `Linked to installation order: ${installationOrder.orderNumber}`,

@@ -41,7 +41,7 @@ export default function SalesmenDashboard() {
     if (status === "unauthenticated") {
       router.push("/login");
     } else if (status === "authenticated") {
-      const userRole = (sessionData?.user as any)?.role;
+      const userRole = sessionData?.user?.role;
       if (!["ADMIN", "SALESMEN"].includes(userRole)) {
         router.push("/login");
       }
@@ -98,7 +98,7 @@ export default function SalesmenDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">Salesmen Dashboard</h1>
             <p className="text-gray-600 mt-2">Track your clients and install allocations</p>
           </div>
-          {(sessionData?.user as any)?.role === "ADMIN" && (
+          {sessionData?.user?.role === "ADMIN" && (
             <Link href="/admin" className="text-green-600 hover:text-green-700 font-medium">
               ← Back to Admin
             </Link>
@@ -209,7 +209,7 @@ export default function SalesmenDashboard() {
           </Link>
 
           {/* Admin Dashboard Card */}
-          {(sessionData?.user as any)?.role === "ADMIN" && (
+          {sessionData?.user?.role === "ADMIN" && (
             <Link
               href="/admin"
               className="bg-white rounded-lg shadow hover:shadow-lg transition-shadow p-6 border-l-4 border-green-600 cursor-pointer"

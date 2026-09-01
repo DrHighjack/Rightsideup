@@ -3461,6 +3461,174 @@ function escapeHtml(value: string): string {
         .replace(/'/g, "&#039;");
 }
 
+export function buildBrandedEmailHtml(input: {
+    title: string;
+    subtitle?: string;
+    contentHtml: string;
+}) {
+    const title = escapeHtml(input.title);
+    const subtitle = input.subtitle ? escapeHtml(input.subtitle) : "North Shore Sign Co";
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>${title}</title>
+</head>
+<body style="margin:0;background:#f3f4f6;font-family:Arial,sans-serif;color:#1f2937">
+    <div style="max-width:640px;margin:0 auto;padding:32px 16px">
+        <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
+            <div style="background:#0f3d5e;color:#ffffff;padding:28px">
+                <div style="font-size:13px;font-weight:700;text-transform:uppercase">North Shore Sign Co</div>
+                <h1 style="margin:8px 0 0;font-size:26px;line-height:1.25">${title}</h1>
+                <p style="margin:8px 0 0;font-size:15px;color:#dbeafe">${subtitle}</p>
+            </div>
+            <div style="padding:28px;line-height:1.6">
+                ${input.contentHtml}
+            </div>
+            ${STANDARD_FOOTER_HTML}
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+export function getBrandedNotificationEmail(subject: string, body: string, allowHtml = false) {
+    const contentHtml = allowHtml
+        ? body
+        : `<p style="margin:0">${escapeHtml(body).replace(/\n/g, "<br>")}</p>`;
+
+    return {
+        subject,
+        html: /^\s*<!doctype html/i.test(body)
+            ? body
+            : buildBrandedEmailHtml({ title: subject, contentHtml }),
+    };
+}
+
+export function getPaymentConfirmationEmail(input: {
+    recipientName: string;
+    invoiceNumber: string;
+    amountPaid: number;
+    payerType?: string;
+}) {
+    const recipientName = escapeHtml(input.recipientName);
+    const invoiceNumber = escapeHtml(input.invoiceNumber);
+    const payerRow = input.payerType
+        ? `<p style="margin:8px 0 0"><strong>Paid by:</strong> ${escapeHtml(input.payerType)}</p>`
+        : "";
+
+    return {
+        subject: `Payment received for invoice ${input.invoiceNumber}`,
+        html: buildBrandedEmailHtml({
+            title: "Payment Received",
+            subtitle: `Invoice ${input.invoiceNumber}`,
+            contentHtml: `
+                <p style="margin-top:0">Hi ${recipientName},</p>
+                <p>We received the payment for invoice <strong>${invoiceNumber}</strong>. Thank you for your business.</p>
+                <div style="margin:24px 0;padding:18px;background:#ecfdf5;border:1px solid #a7f3d0;border-radius:6px">
+                    <p style="margin:0;font-size:20px;color:#065f46"><strong>Amount paid: $${input.amountPaid.toFixed(2)}</strong></p>
+                    ${payerRow}
+                </div>
+                <p style="margin-bottom:0;color:#4b5563">No further action is required for this payment.</p>`,
+        }),
+    };
+}
+
+export function getPrinterPartnershipRequestEmail(input: {
+    printerName: string;
+    website: string;
+    requestedBy: string;
+}) {
+    const printerName = escapeHtml(input.printerName);
+    const website = escapeHtml(input.website);
+    const requestedBy = escapeHtml(input.requestedBy);
+
+    return {
+        subject: `New printer partnership request: ${input.printerName}`,
+        html: buildBrandedEmailHtml({
+            title: "Printer Partnership Request",
+            subtitle: "Admin review required",
+            contentHtml: `
+                <p style="margin-top:0">A realtor requested a new printer partnership.</p>
+                <div style="margin:22px 0;padding:18px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px">
+                    <p style="margin:0 0 10px"><strong>Printer:</strong> ${printerName}</p>
+                    <p style="margin:0 0 10px"><strong>Website:</strong> <a href="${website}" style="color:#0369a1">${website}</a></p>
+                    <p style="margin:0"><strong>Requested by:</strong> ${requestedBy}</p>
+                </div>
+                <p style="margin-bottom:0;color:#4b5563">Review this request in the admin portal before enabling the printer.</p>`,
+        }),
+    };
+}
+
+export function getSignPickupRequestEmail(input: {
+    requesterName: string;
+    realtorName: string;
+    realtorEmail: string;
+    requestedByTc: boolean;
+    preferredDate: string;
+    notes?: string;
+    signs: Array<{ id: string; signNumber: string | null; type: string; deployedAddress: string | null; status: string }>;
+}) {
+    const realtorName = escapeHtml(input.realtorName);
+    const signRows = input.signs.map((sign) => `
+        <tr>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb"><strong>${escapeHtml(sign.signNumber || sign.id)}</strong></td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb">${escapeHtml(sign.type)}</td>
+            <td style="padding:10px;border-bottom:1px solid #e5e7eb">${escapeHtml(sign.deployedAddress || "Not deployed")}</td>
+        </tr>`).join("");
+    const tcRow = input.requestedByTc
+        ? `<p style="margin:8px 0 0"><strong>Acting for:</strong> ${realtorName} (${escapeHtml(input.realtorEmail)})</p>`
+        : "";
+    const notesRow = input.notes
+        ? `<div style="margin-top:18px;padding:14px;background:#fff7ed;border-left:4px solid #ea580c"><strong>Notes:</strong><br>${escapeHtml(input.notes).replace(/\n/g, "<br>")}</div>`
+        : "";
+
+    return {
+        subject: `Pickup Request: ${input.signs.length} sign${input.signs.length === 1 ? "" : "s"} for ${input.realtorName}`,
+        html: buildBrandedEmailHtml({
+            title: "Sign Pickup Request",
+            subtitle: "Scheduling review required",
+            contentHtml: `
+                <p style="margin-top:0"><strong>Requested by:</strong> ${escapeHtml(input.requesterName)}</p>
+                ${tcRow}
+                <p><strong>Preferred pickup date:</strong> ${escapeHtml(input.preferredDate)}</p>
+                <table role="presentation" style="width:100%;border-collapse:collapse;margin-top:20px;border:1px solid #e5e7eb">
+                    <thead><tr style="background:#f8fafc"><th align="left" style="padding:10px">Sign</th><th align="left" style="padding:10px">Type</th><th align="left" style="padding:10px">Location</th></tr></thead>
+                    <tbody>${signRows}</tbody>
+                </table>
+                ${notesRow}`,
+        }),
+    };
+}
+
+export function getSmartSignTrialReminderEmail(input: {
+    firstName: string;
+    totalTaps: number;
+    topListing?: { address: string; tapCount: number };
+    dashboardUrl: string;
+}) {
+    const engagement = input.topListing
+        ? `Your top listing is <strong>${escapeHtml(input.topListing.address)}</strong> with ${input.topListing.tapCount} tap${input.topListing.tapCount === 1 ? "" : "s"}.`
+        : "Add a tagged post to start tracking engagement.";
+
+    return {
+        subject: "Your Smart Sign trial is getting attention",
+        html: buildBrandedEmailHtml({
+            title: "Your Smart Sign Is Getting Attention",
+            subtitle: "Trial activity summary",
+            contentHtml: `
+                <p style="margin-top:0">Hi ${escapeHtml(input.firstName || "there")},</p>
+                <p>Your trial has recorded <strong>${input.totalTaps} tap${input.totalTaps === 1 ? "" : "s"}</strong>. ${engagement}</p>
+                <div style="margin:24px 0;padding:18px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px">
+                    <p style="margin:0">Your three-month trial ends soon. Add a saved card to continue for <strong>$29/month</strong> without interruption.</p>
+                </div>
+                <p style="margin:24px 0 0"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:700">Open Smart Sign Dashboard</a></p>`,
+        }),
+    };
+}
+
 function buildAlertEmail({
     title,
     subtitle,

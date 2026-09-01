@@ -3,9 +3,9 @@
  * Handles SMS and Email notifications for orders and events
  */
 
-import nodemailer from 'nodemailer';
 import twilio from 'twilio';
 import { prisma } from '@/lib/prisma';
+import { getBrandedNotificationEmail, sendEmail } from '@/lib/email';
 
 // Twilio client
 const twilioClient = twilio(
@@ -147,33 +147,6 @@ export async function sendSMS(
 /**
  * Get email transporter
  */
-async function getEmailTransporter() {
-  if (process.env.SMTP_HOST && process.env.SMTP_PORT && process.env.SMTP_USER && process.env.SMTP_PASS) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === "true",
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-    });
-  }
-
-  // Fallback to test account
-  console.warn("Email: Using test account (Ethereal) for development");
-  const testAccount = await nodemailer.createTestAccount();
-  return nodemailer.createTransport({
-    host: "smtp.ethereal.email",
-    port: 587,
-    secure: false,
-    auth: {
-      user: testAccount.user,
-      pass: testAccount.pass,
-    },
-  });
-}
-
 export async function sendEmailNotification(
   toEmail: string,
   subject: string,
@@ -181,16 +154,11 @@ export async function sendEmailNotification(
   options?: { allowHtml?: boolean }
 ): Promise<boolean> {
   try {
-    const transporter = await getEmailTransporter();
-    const html = options?.allowHtml
-      ? body
-      : `<p>${escapeHtml(body).replace(/\n/g, '<br>')}</p>`;
-
-    await transporter.sendMail({
-      from: process.env.SMTP_FROM || 'noreply@northshoresignco.com',
+    const email = getBrandedNotificationEmail(subject, body, options?.allowHtml);
+    await sendEmail({
       to: toEmail,
-      subject,
-      html,
+      subject: email.subject,
+      html: email.html,
     });
     console.log(`✅ Email sent to ${toEmail}`);
     return true;

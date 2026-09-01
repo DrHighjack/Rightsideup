@@ -15,13 +15,13 @@ export default function Home() {
 
     if (!session) {
       router.push("/login");
-    } else if ((session.user as any).role === "ADMIN") {
+    } else if (session.user.role === "ADMIN") {
       router.push("/admin");
-    } else if ((session.user as any).role === "SALESMEN") {
+    } else if (session.user.role === "SALESMEN") {
       router.push("/admin");
     } else if (
-      (session.user as any).role === "BROKERAGE" &&
-      (session.user as any).accountTitle !== "Accountant"
+      session.user.role === "BROKERAGE" &&
+      session.user.accountTitle !== "Accountant"
     ) {
       router.push("/brokerage");
     } else {

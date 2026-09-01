@@ -5,7 +5,7 @@ export function initSentryServer() {
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
     environment: process.env.NODE_ENV,
-    tracesSampleRate: 1.0,
+    tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
     debug: process.env.NODE_ENV === 'development',
     beforeSend(event, hint) {
       const error = hint.originalException;

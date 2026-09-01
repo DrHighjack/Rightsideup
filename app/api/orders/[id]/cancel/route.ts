@@ -13,7 +13,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "REALTOR", "TC"].includes((session.user as any).role)) {
+    if (!["ADMIN", "REALTOR", "TC"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -30,13 +30,13 @@ export async function PUT(
 
     // Realtors can only cancel their own orders
     if (
-      (session.user as any).role === "REALTOR" &&
+      session.user.role === "REALTOR" &&
       order.realtorId !== session.user.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if ((session.user as any).role === "TC") {
+    if (session.user.role === "TC") {
       const link = await prisma.tCAgentLink.findUnique({
         where: {
           tcUserId_agentUserId: {
@@ -54,7 +54,7 @@ export async function PUT(
 
     // Realtors and TCs can cancel before 811 clearance or scheduling begins.
     if (
-      ["REALTOR", "TC"].includes((session.user as any).role) &&
+      ["REALTOR", "TC"].includes(session.user.role) &&
       !["PENDING", "CONFIRMED"].includes(order.status)
     ) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function PUT(
       );
     }
 
-    if ((session.user as any).role === "REALTOR" || (session.user as any).role === "TC") {
+    if (session.user.role === "REALTOR" || session.user.role === "TC") {
       const existingTicket = await prisma.ticket811.findFirst({
         where: {
           OR: [

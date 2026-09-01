@@ -48,7 +48,7 @@ export async function POST(
     }
 
     // Check permissions
-    if (session.user?.id !== order.realtorId && (session.user as any)?.role !== 'ADMIN') {
+    if (session.user?.id !== order.realtorId && session.user?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -120,7 +120,7 @@ export async function DELETE(
     }
 
     // Check permissions
-    if (session.user?.id !== order.realtorId && (session.user as any)?.role !== 'ADMIN') {
+    if (session.user?.id !== order.realtorId && session.user?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

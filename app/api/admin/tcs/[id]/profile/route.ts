@@ -15,7 +15,7 @@ export async function GET(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -125,7 +125,7 @@ export async function PUT(
   try {
     const session = await auth();
 
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

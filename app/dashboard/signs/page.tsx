@@ -44,7 +44,7 @@ const initialPickupForm: PickupForm = {
 
 export default function DashboardSignsPage() {
   const { data: session, status: sessionStatus } = useSession();
-  const userRole = (session?.user as any)?.role as string | undefined;
+  const userRole = session?.user?.role as string | undefined;
   const isTC = userRole === "TC";
   const [signs, setSigns] = useState<Sign[]>([]);
   const [loading, setLoading] = useState(true);

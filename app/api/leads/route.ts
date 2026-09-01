@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getIdentifier, leadsLimiter } from '@/lib/ratelimit';
 
 // Get CORS headers based on origin
 function getCorsHeaders(origin?: string) {
@@ -38,6 +39,15 @@ export async function POST(request: NextRequest) {
   const corsHeaders = getCorsHeaders(origin);
   
   try {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || '';
+    const { success } = await leadsLimiter.limit(getIdentifier(ip));
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many submissions. Please try again later.' },
+        { status: 429, headers: corsHeaders }
+      );
+    }
+
     const body = await request.json();
     
     const { fullName, phone, email, brokerage } = body;

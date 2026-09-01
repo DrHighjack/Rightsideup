@@ -259,7 +259,6 @@ RESEND_FROM_EMAIL    # Verified sender email
 
 ## What's Not Included (Later Phases)
 
-- QuickBooks integration
 - SMS/Twilio notifications
 - Transaction Coordinator (TC) accounts
 - Sign inventory module

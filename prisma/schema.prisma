@@ -89,8 +89,6 @@ enum ActivityAction {
   JOB_COMPLETED
   JOB_FLAGGED
   COUPON_REDEEMED
-  QB_CONNECTED
-  QB_DISCONNECTED
 }
 
 model User {
@@ -110,7 +108,6 @@ model User {
   emailVerificationToken String? @unique
   emailVerificationExpiresAt DateTime?
   paymentMethod  String?    @default("OFFICE")  // OFFICE or SELF
-  qboCustomerId  String?    // QuickBooks customer ID for this realtor
   vaultId        String?    @unique // FluidPay vault record ID for saved card on file
   paymentCardLast4 String?
   paymentCardNickname String?
@@ -192,6 +189,9 @@ model Order {
   areaPriceGroupName String?
   areaPriceCents     Int      @default(0)
   scheduledDate  DateTime?
+  rfidListingUrl String?
+  removalSignId  String?
+  removalSign    Sign?         @relation("RemovalTargetSign", fields: [removalSignId], references: [id], onDelete: SetNull)
   notes          String?
   adminNotes     String?
   cancelledAt    DateTime?
@@ -214,8 +214,10 @@ model Order {
   @@index([realtorId])
   @@index([placedByTCId])
   @@index([status])
+  @@index([createdAt])
   @@index([heldAt])
   @@index([areaPriceGroupId])
+  @@index([removalSignId])
 }
 
 model Invoice {
@@ -223,16 +225,15 @@ model Invoice {
   userId            String
   user              User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   orderId           String?          // Link to order if created from order
-  invoiceNumber     String?          @unique // QB invoice number
-  qboInvoiceId      String?          @unique // QB Online invoice ID
-  amount            Float?
-  discountAmount    Float?           @default(0)
+  invoiceNumber     String?          @unique
+  amount            Int?               // cents
+  discountAmount    Int?               @default(0) // cents
   taxRateBps        Int              @default(0)
   taxAmount         Int              @default(0)
   status            InvoiceStatus    @default(DRAFT)
   dueDate           DateTime?
   paidAt            DateTime?
-  paidAmount        Float?
+  paidAmount        Int?               // cents
   paidByType        String?
   paidByUserId      String?
   paymentCardId     String?
@@ -250,6 +251,7 @@ model Invoice {
   @@index([userId])
   @@index([status])
   @@index([dueDate])
+  @@index([paidAt])
   @@index([fluidpayTransactionId])
 }
 
@@ -287,6 +289,7 @@ model Sign {
   orderItems        OrderItem[]
   reports           SignReport[]
   smartSignTag      SmartSignTag?
+  removalOrders     Order[]    @relation("RemovalTargetSign")
   
   @@map("signs")
   @@index([status])
@@ -341,13 +344,22 @@ model SmartSignTapEvent {
   id          String   @id @default(cuid())
   tagId       String
   tag         SmartSignTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  orderId     String?
+  agentId     String?
+  listingAddress String?
+  listingUrl  String?
   tappedAt    DateTime @default(now())
+  userAgent   String?
+  referrer    String?
+  ipHash      String?
   latitude    Float?
   longitude   Float?
   deviceType  String?
 
   @@map("smart_sign_tap_events")
   @@index([tagId, tappedAt])
+  @@index([agentId, tappedAt])
+  @@index([orderId, tappedAt])
   @@index([tappedAt])
 }
 
@@ -451,29 +463,12 @@ model BrokerageStatement {
   @@index([status, autoPayScheduledAt])
 }
 
-model QBOConnection {
-  id             String     @id @default(cuid())
-  realmId        String     @unique
-  companyName    String?
-  accessToken    String     // Encrypted
-  refreshToken   String     // Encrypted
-  expiresAt      DateTime
-  refreshExpiresAt DateTime?
-  isConnected    Boolean    @default(true)
-  connectedAt    DateTime   @default(now())
-  disconnectedAt DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  
-  @@map("qbo_connections")
-}
-
 model Coupon {
   id             String     @id @default(cuid())
   code           String     @unique
   type           String     @default("FIXED")  // FIXED or PERCENTAGE
-  value          Float      // Dollar amount or percentage
-  remainingValue Float?     @default(0)         // Remaining credit balance for credit-style coupons
+  value          Int         // FIXED: cents. PERCENTAGE: whole percent (0-100)
+  remainingValue Int?         @default(0)         // Remaining credit balance in cents for credit-style coupons
   isCredit       Boolean    @default(false)     // True when this coupon represents a reusable realtor credit
   maxUses        Int?       // null = unlimited
   usedCount      Int        @default(0)
@@ -544,7 +539,7 @@ model InvoicePayment {
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   paymentCardId  String?
   paymentCard    PaymentCard? @relation(fields: [paymentCardId], references: [id], onDelete: SetNull)
-  amount         Float
+  amount         Int // cents
   status         String   @default("PAID") // PAID | FAILED
   payerType      String   // AGENT | BROKERAGE
   processedAt    DateTime @default(now())
@@ -585,7 +580,7 @@ model OrderDiscount {
   order          Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
   couponId       String
   coupon         Coupon     @relation(fields: [couponId], references: [id], onDelete: Restrict)
-  discountAmount Float      // Calculated discount amount
+  discountAmount Int      // Calculated discount amount in cents
   createdAt      DateTime   @default(now())
   
   @@map("order_discounts")
@@ -713,6 +708,7 @@ model Ticket811 {
   @@map("tickets_811")
   @@index([status])
   @@index([createdAt])
+  @@index([status, createdAt])
   @@index([ticketNumber])
   @@index([clearedByUserId])
   @@index([realtorId])
@@ -894,6 +890,25 @@ model PrinterPartnershipRequest {
   @@map("printer_partnership_requests")
   @@index([requestedByUserId])
   @@index([status])
+}
+
+model ListingLinkRequest {
+  id              String   @id @default(cuid())
+  orderId         String
+  requestedById   String
+  requesterRole   String
+  requestedUrl    String
+  status          String   @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewNotes     String?
+  reviewedById    String?
+  reviewedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("listing_link_requests")
+  @@index([orderId])
+  @@index([requestedById, createdAt])
+  @@index([status, createdAt])
 }
 
 model InventoryItemPrinter {

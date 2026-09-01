@@ -4,7 +4,7 @@ import { resolveAreaPriceGroup } from "@/lib/area-pricing";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
-  const role = (session?.user as { role?: string } | undefined)?.role;
+  const role = session?.user?.role;
   if (!session?.user?.id || !role || !["REALTOR", "TC", "ADMIN"].includes(role)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

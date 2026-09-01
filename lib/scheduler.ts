@@ -50,14 +50,18 @@ async function sendPending811LineResponseEmails() {
 
     const ticketLink = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'https://app.northshoresignco.com'}/dashboard/811`;
     await Promise.all(Array.from(recipients.entries()).map(async ([email, firstName]) => {
-      const message = get811LinesRespondedEmail(
-        firstName,
-        ticket.ticketNumber || 'Pending',
-        ticket.order?.address || ticket.parsedAddress || 'Listing address unavailable',
-        pendingLines.map((line) => ({ name: line.name, status: line.status })),
-        ticketLink
-      );
-      await sendEmail({ to: email, subject: message.subject, html: message.html });
+      try {
+        const message = get811LinesRespondedEmail(
+          firstName,
+          ticket.ticketNumber || 'Pending',
+          ticket.order?.address || ticket.parsedAddress || 'Listing address unavailable',
+          pendingLines.map((line) => ({ name: line.name, status: line.status })),
+          ticketLink
+        );
+        await sendEmail({ to: email, subject: message.subject, html: message.html });
+      } catch (emailError) {
+        console.error(`Failed to send 811 line update email to ${email}:`, emailError);
+      }
     }));
 
     const sentAt = new Date().toISOString();
@@ -86,7 +90,6 @@ async function checkInvoiceAging() {
     // Get all invoices with SENT or OVERDUE status
     const invoices = await prisma.invoice.findMany({
       where: {
-        qboInvoiceId: null,
         status: {
           in: ['SENT', 'OVERDUE'],
         },
@@ -143,7 +146,7 @@ async function checkInvoiceAging() {
         console.log(`[SCHEDULER] Sending reminder for invoice ${invoice.id} - ${reminderTrigger}`);
 
         const invoiceUrl = `${process.env.NEXTAUTH_URL || 'https://app.northshoresignco.com'}/dashboard/invoices/${invoice.id}`;
-        const amountStr = invoice.amount ? `$${invoice.amount.toFixed(2)}` : 'Amount pending';
+        const amountStr = invoice.amount ? `$${(invoice.amount / 100).toFixed(2)}` : 'Amount pending';
         const reminderEmail = getInvoiceReminderEmail(
           invoice.user.firstName || 'there',
           invoice.id,

@@ -8,7 +8,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 
-const getPortalPath = (user: { role?: string; accountTitle?: string } | null | undefined) => {
+const getPortalPath = (user: { role?: string; accountTitle?: string | null } | null | undefined) => {
   if (user?.role === "ADMIN" || user?.role === "SALESMEN") return "/admin";
   if (user?.role === "BROKERAGE" && user.accountTitle !== "Accountant") return "/brokerage";
   return "/dashboard";
@@ -32,7 +32,7 @@ function LoginPageContent() {
   // If already logged in, redirect to appropriate dashboard
   useEffect(() => {
     if (session?.user) {
-      router.push(getPortalPath(session.user as any));
+      router.push(getPortalPath(session.user));
     }
   }, [session, router]);
 

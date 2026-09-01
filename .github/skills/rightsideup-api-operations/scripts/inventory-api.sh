@@ -19,7 +19,7 @@ while IFS= read -r route_file; do
   auth='inspect handler'
   if grep -Eq 'auth\(\)|CRON_SECRET|Authorization|authorization' "$route_file"; then
     auth='protected/inspect role'
-  elif [[ "$route" =~ ^/(auth|leads|smart-sign/\[tagCode\]/tap|quickbooks/webhook) ]]; then
+  elif [[ "$route" =~ ^/(auth|leads|smart-sign/\[tagCode\]/tap) ]]; then
     auth='public or external'
   fi
 

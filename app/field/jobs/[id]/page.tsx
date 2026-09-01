@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
+import { FieldTabs } from '../../FieldTabs';
 
 interface JobAssignment {
   id: string;
@@ -533,6 +534,7 @@ export default function JobDetailPage() {
           </div>
         </div>
       )}
+      <FieldTabs />
     </div>
   );
 }

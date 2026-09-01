@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
 
-    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
+    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "10");
     const skip = (page - 1) * limit;
-    const userRole = (session.user as any).role;
+    const userRole = session.user.role;
     const userId = session.user.id;
 
     // Build search filter

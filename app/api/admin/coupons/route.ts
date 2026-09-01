@@ -14,7 +14,7 @@ export async function GET() {
   try {
     const session = await auth();
 
-    if (!session || (session.user as any)?.role !== 'ADMIN') {
+    if (!session || session.user?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   try {
     const session = await auth();
 
-    if (!session || (session.user as any)?.role !== 'ADMIN') {
+    if (!session || session.user?.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -84,11 +84,13 @@ export async function POST(req: Request) {
     }
 
     const creditCode = `CREDIT-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const isPercentage = !isCredit && type === 'PERCENTAGE';
+    const storedValue = isPercentage ? Math.round(numericValue) : Math.round(numericValue * 100);
     const coupon = await createCoupon({
       code: isCredit ? creditCode : code,
       type: isCredit ? 'FIXED' : type,
-      value: numericValue,
-      remainingValue: isCredit ? numericValue : undefined,
+      value: storedValue,
+      remainingValue: isCredit ? storedValue : undefined,
       isCredit: Boolean(isCredit),
       assignedUserId: isCredit ? assignedUserId : undefined,
       description,

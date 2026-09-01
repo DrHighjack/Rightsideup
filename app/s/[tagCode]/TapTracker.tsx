@@ -2,26 +2,28 @@
 
 import { useEffect, useState } from "react";
 
-export function TapTracker({ tagCode }: { tagCode: string }) {
+export function TapTracker({ tagCode, signId }: { tagCode?: string; signId?: string }) {
   const [locationStatus, setLocationStatus] = useState<"idle" | "sharing" | "shared" | "unavailable">("idle");
+  const endpoint = tagCode ? `/api/smart-sign/${encodeURIComponent(tagCode)}/tap` : signId ? `/api/tap/${encodeURIComponent(signId)}/tap` : null;
 
   useEffect(() => {
-    void fetch(`/api/smart-sign/${encodeURIComponent(tagCode)}/tap`, {
+    if (!endpoint) return;
+    void fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ deviceType: /Android/i.test(navigator.userAgent) ? "Android" : /iPhone|iPad/i.test(navigator.userAgent) ? "iOS" : "Web" }),
     });
-  }, [tagCode]);
+  }, [endpoint]);
 
   const shareLocation = () => {
-    if (!navigator.geolocation) {
+    if (!navigator.geolocation || !endpoint) {
       setLocationStatus("unavailable");
       return;
     }
     setLocationStatus("sharing");
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        void fetch(`/api/smart-sign/${encodeURIComponent(tagCode)}/tap`, {
+        void fetch(endpoint, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

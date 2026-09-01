@@ -14,19 +14,13 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const role = (session.user as { role?: string }).role;
+    const role = session.user.role;
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
       include: { user: { select: { firstName: true, lastName: true } } },
     });
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
-    if (invoice.qboInvoiceId) {
-      return NextResponse.json(
-        { error: "Credits cannot be applied to imported QuickBooks invoices" },
-        { status: 409 }
-      );
     }
     if (role !== "ADMIN" && invoice.userId !== session.user.id) {
       const link = role === "TC"
@@ -69,10 +63,9 @@ export async function POST(
         throw new Error("No active credit is available for this invoice");
       }
 
-      const creditCents = Math.round((credit.remainingValue || 0) * 100);
+      const creditCents = Math.round(credit.remainingValue || 0);
       const appliedCents = Math.min(balanceCents, creditCents);
-      const appliedDollars = appliedCents / 100;
-      const remainingCredit = Math.max(0, (credit.remainingValue || 0) - appliedDollars);
+      const remainingCredit = Math.max(0, creditCents - appliedCents);
       const newDiscountAmount = (invoice.discountAmount || 0) + appliedCents;
       const newTaxAmount = calculateTaxAmount(
         invoice.amount || 0,
@@ -109,7 +102,7 @@ export async function POST(
         data: {
           invoiceId: invoice.id,
           userId: invoice.userId,
-          amount: appliedDollars,
+          amount: appliedCents,
           status: "PAID",
           payerType: "AGENT",
           notes: `Paid with credit ${credit.code}`,

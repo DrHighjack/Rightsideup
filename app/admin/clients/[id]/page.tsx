@@ -249,7 +249,7 @@ export default function RealtorDetailPage() {
       const newNote: AdminNote = {
         text: noteText.trim(),
         createdAt: new Date().toISOString(),
-        adminId: (sessionData?.user as any)?.id || "unknown",
+        adminId: sessionData?.user?.id || "unknown",
       };
 
       const updatedNotes = [...notes, newNote];
@@ -512,7 +512,7 @@ export default function RealtorDetailPage() {
   };
 
   const selectedCloser = closers.find((c) => c.id === realtor?.freeInstallGivenBy);
-  const isAdmin = (sessionData?.user as any)?.role === "ADMIN";
+  const isAdmin = sessionData?.user?.role === "ADMIN";
   const isInactive = realtor?.tags.includes("INACTIVE") ?? false;
 
   const filteredOrders = orders.filter((order) => {

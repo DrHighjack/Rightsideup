@@ -8,7 +8,7 @@ import { ZodError } from "zod";
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as { role?: string } | undefined)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

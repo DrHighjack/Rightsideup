@@ -1,7 +1,12 @@
 import { createHash, randomBytes } from "crypto";
 import { chargeVaultRecord } from "@/lib/fluidpay";
 import { prisma } from "@/lib/prisma";
-import { sendEmail } from "@/lib/email";
+import { getSmartSignTrialReminderEmail, sendEmail } from "@/lib/email";
+
+function hashIpValue(value: string) {
+  const salt = process.env.SMART_SIGN_TAP_SALT || "northshore-smart-sign";
+  return createHash("sha256").update(`${salt}:${value.trim()}`).digest("hex");
+}
 
 export const SMART_SIGN_MONTHLY_PRICE_CENTS = 2900;
 export const SMART_SIGN_BUYOUT_PRICE_CENTS = 9900;
@@ -17,10 +22,36 @@ export function createSmartSignTagCode() {
   return randomBytes(9).toString("base64url").toUpperCase();
 }
 
+function safePublicUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value.trim());
+    return url.protocol === "http:" || url.protocol === "https:" ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function getOrderListingUrl(order: { rfidListingUrl?: string | null; notes?: string | null }) {
+  const savedUrl = safePublicUrl(order.rfidListingUrl);
+  if (savedUrl) return savedUrl;
+
+  const legacyMatch = order.notes?.match(/^RFID listing website:\s*(\S+)$/im);
+  return safePublicUrl(legacyMatch?.[1]);
+}
+
 export function addMonths(from: Date, months: number) {
   const result = new Date(from);
   result.setUTCMonth(result.getUTCMonth() + months);
   return result;
+}
+
+export async function getPublicTapMortgageCta() {
+  const enabledSetting = await prisma.appSettings.findUnique({ where: { key: "publicTap.raticanMortgageCtaEnabled" } });
+  const urlSetting = await prisma.appSettings.findUnique({ where: { key: "publicTap.raticanMortgageCtaUrl" } });
+  const enabled = enabledSetting ? String(enabledSetting.value).toLowerCase() === "true" : false;
+  const url = urlSetting && urlSetting.value ? String(urlSetting.value) : "https://raticanmortgage.com/";
+  return { enabled, url };
 }
 
 export async function ensureSmartSignTrial(agentId: string, now = new Date()) {
@@ -67,11 +98,20 @@ export async function getSmartSignAgentDashboard(agentId: string) {
           signNumber: true,
           status: true,
           deployedAddress: true,
-          assignedToOrder: { select: { id: true, address: true, photos: true } },
+          assignedToOrder: { select: { id: true, address: true, photos: true, rfidListingUrl: true, notes: true } },
         },
       },
-      _count: { select: { tapEvents: true } },
-      tapEvents: { orderBy: { tappedAt: "desc" }, take: 1, select: { tappedAt: true } },
+      _count: {
+        select: {
+          tapEvents: { where: { OR: [{ agentId }, { agentId: null }] } },
+        },
+      },
+      tapEvents: {
+        where: { OR: [{ agentId }, { agentId: null }] },
+        orderBy: { tappedAt: "desc" },
+        take: 1,
+        select: { tappedAt: true },
+      },
     },
     orderBy: { installedAt: "desc" },
   });
@@ -80,16 +120,26 @@ export async function getSmartSignAgentDashboard(agentId: string) {
   weekAgo.setUTCDate(weekAgo.getUTCDate() - 7);
   const twoWeeksAgo = new Date();
   twoWeeksAgo.setUTCDate(twoWeeksAgo.getUTCDate() - 14);
-  const tagIds = tags.map((tag) => tag.id);
+  const attributedTapWhere = {
+    OR: [
+      { agentId },
+      { agentId: null, tag: { sign: { assignedToUserId: agentId } } },
+    ],
+  };
 
-  const [totalTaps, tapsThisWeek, tapsPreviousWeek, dailyTaps] = await Promise.all([
-    prisma.smartSignTapEvent.count({ where: { tagId: { in: tagIds } } }),
-    prisma.smartSignTapEvent.count({ where: { tagId: { in: tagIds }, tappedAt: { gte: weekAgo } } }),
-    prisma.smartSignTapEvent.count({ where: { tagId: { in: tagIds }, tappedAt: { gte: twoWeeksAgo, lt: weekAgo } } }),
+  const [totalTaps, tapsThisWeek, tapsPreviousWeek, dailyTaps, listingEvents] = await Promise.all([
+    prisma.smartSignTapEvent.count({ where: attributedTapWhere }),
+    prisma.smartSignTapEvent.count({ where: { AND: [attributedTapWhere, { tappedAt: { gte: weekAgo } }] } }),
+    prisma.smartSignTapEvent.count({ where: { AND: [attributedTapWhere, { tappedAt: { gte: twoWeeksAgo, lt: weekAgo } }] } }),
     prisma.smartSignTapEvent.findMany({
-      where: { tagId: { in: tagIds }, tappedAt: { gte: weekAgo } },
+      where: { AND: [attributedTapWhere, { tappedAt: { gte: weekAgo } }] },
       select: { tappedAt: true },
       orderBy: { tappedAt: "asc" },
+    }),
+    prisma.smartSignTapEvent.findMany({
+      where: { agentId },
+      select: { orderId: true, listingAddress: true, listingUrl: true, tappedAt: true },
+      orderBy: { tappedAt: "desc" },
     }),
   ]);
 
@@ -106,6 +156,22 @@ export async function getSmartSignAgentDashboard(agentId: string) {
     const key = tap.tappedAt.toISOString().slice(0, 10);
     dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
   });
+  const listingMap = new Map<string, { orderId: string | null; address: string; listingUrl: string | null; taps: number; lastTapAt: Date }>();
+  listingEvents.forEach((tap) => {
+    const key = tap.orderId || tap.listingAddress || "unknown";
+    const existing = listingMap.get(key);
+    if (existing) {
+      existing.taps += 1;
+      return;
+    }
+    listingMap.set(key, {
+      orderId: tap.orderId,
+      address: tap.listingAddress || "Unknown listing",
+      listingUrl: tap.listingUrl,
+      taps: 1,
+      lastTapAt: tap.tappedAt,
+    });
+  });
 
   return {
     subscription,
@@ -115,12 +181,14 @@ export async function getSmartSignAgentDashboard(agentId: string) {
       signNumber: tag.sign.signNumber,
       status: tag.sign.status,
       listingAddress: tag.sign.assignedToOrder?.address || tag.sign.deployedAddress || "No active listing",
+      listingUrl: tag.sign.assignedToOrder ? getOrderListingUrl(tag.sign.assignedToOrder) : null,
       tapCount: tag._count.tapEvents,
       lastTapAt: tag.tapEvents[0]?.tappedAt || null,
       url: getSmartSignUrl(tag.tagCode),
     })),
     summary: { totalTaps, tapsThisWeek, trend },
     dailyTaps: Array.from(dailyMap, ([date, taps]) => ({ date, taps })),
+    listingBreakdown: Array.from(listingMap.values()).sort((left, right) => right.taps - left.taps),
   };
 }
 
@@ -131,43 +199,168 @@ export async function getPublicSmartSignContext(tagCode: string) {
       sign: {
         include: {
           assignedToUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
-          assignedToOrder: { select: { id: true, address: true, photos: true, status: true } },
+          assignedToOrder: { select: { id: true, address: true, photos: true, status: true, rfidListingUrl: true, notes: true } },
         },
       },
     },
   });
-  if (!tag || !tag.isActive || !tag.sign.assignedToUser || !tag.sign.assignedToOrder) return null;
+  if (!tag) return null;
 
-  let subscription = await prisma.smartSignSubscription.findUnique({ where: { agentId: tag.sign.assignedToUser.id } });
-  if (!subscription) subscription = await ensureSmartSignTrial(tag.sign.assignedToUser.id);
+  const sign = tag.sign;
+  const hasActiveListing = Boolean(tag.isActive && sign.assignedToUser && sign.assignedToOrder);
+  let subscription = null as Awaited<ReturnType<typeof prisma.smartSignSubscription.findUnique>> | null;
+  if (sign.assignedToUser) {
+    subscription = await prisma.smartSignSubscription.findUnique({ where: { agentId: sign.assignedToUser.id } });
+    if (!subscription) subscription = await ensureSmartSignTrial(sign.assignedToUser.id);
+  }
+
   const now = new Date();
-  const isLive = Boolean(subscription && (
+  const isLive = Boolean(subscription && hasActiveListing && (
     subscription.status === "ACTIVE" ||
     subscription.status === "BUYOUT" ||
     (subscription.status === "TRIAL" && subscription.trialEndsAt > now)
   ));
 
-  return { tag, subscription, isLive };
+  return {
+    tag,
+    sign,
+    subscription,
+    isLive,
+    hasActiveListing,
+    listingUrl: sign.assignedToOrder ? getOrderListingUrl(sign.assignedToOrder) : null,
+  };
+}
+
+export async function getPublicSmartSignContextBySignId(signId: string) {
+  const sign = await prisma.sign.findFirst({
+    where: { OR: [{ signNumber: signId }, { id: signId }] },
+    include: {
+      smartSignTag: {
+        include: {
+          sign: {
+            include: {
+              assignedToUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+              assignedToOrder: { select: { id: true, address: true, photos: true, status: true, rfidListingUrl: true, notes: true } },
+            },
+          },
+        },
+      },
+      assignedToUser: { select: { id: true, firstName: true, lastName: true, phone: true, email: true } },
+      assignedToOrder: { select: { id: true, address: true, photos: true, status: true, rfidListingUrl: true, notes: true } },
+    },
+  });
+
+  if (!sign) return null;
+
+  const tag = sign.smartSignTag ?? null;
+  const hasActiveListing = Boolean(tag?.isActive && sign.assignedToUser && sign.assignedToOrder);
+  let subscription = null as Awaited<ReturnType<typeof prisma.smartSignSubscription.findUnique>> | null;
+  if (sign.assignedToUser) {
+    subscription = await prisma.smartSignSubscription.findUnique({ where: { agentId: sign.assignedToUser.id } });
+    if (!subscription) subscription = await ensureSmartSignTrial(sign.assignedToUser.id);
+  }
+
+  const now = new Date();
+  const isLive = Boolean(subscription && hasActiveListing && (
+    subscription.status === "ACTIVE" ||
+    subscription.status === "BUYOUT" ||
+    (subscription.status === "TRIAL" && subscription.trialEndsAt > now)
+  ));
+
+  return {
+    tag,
+    sign,
+    subscription,
+    isLive,
+    hasActiveListing,
+    listingUrl: sign.assignedToOrder ? getOrderListingUrl(sign.assignedToOrder) : null,
+  };
 }
 
 export async function recordSmartSignTap(input: {
-  tagCode: string;
+  tagCode?: string;
+  signId?: string;
   latitude?: number;
   longitude?: number;
   deviceType?: string;
+  userAgent?: string;
+  referrer?: string;
+  ip?: string;
 }) {
-  const context = await getPublicSmartSignContext(input.tagCode);
-  if (!context?.isLive) return { recorded: false, isLive: false };
+  const tag = input.tagCode
+    ? await prisma.smartSignTag.findUnique({
+        where: { tagCode: input.tagCode },
+        include: { sign: { include: { assignedToUser: true, assignedToOrder: true } } },
+      })
+    : input.signId
+      ? await prisma.smartSignTag.findFirst({
+          where: {
+            sign: {
+              OR: [{ signNumber: input.signId }, { id: input.signId }],
+            },
+          },
+          include: { sign: { include: { assignedToUser: true, assignedToOrder: true } } },
+        })
+      : null;
+
+  if (!tag) {
+    const sign = input.signId
+      ? await prisma.sign.findFirst({
+          where: { OR: [{ signNumber: input.signId }, { id: input.signId }] },
+          include: { assignedToUser: true, assignedToOrder: true },
+        })
+      : null;
+    if (!sign) return { recorded: false, isLive: false };
+
+    const tagRecord = await prisma.smartSignTag.findFirst({ where: { signId: sign.id } }) ?? await (async () => {
+      let tagCode = createSmartSignTagCode();
+      while (await prisma.smartSignTag.findUnique({ where: { tagCode }, select: { id: true } })) {
+        tagCode = createSmartSignTagCode();
+      }
+      return prisma.smartSignTag.create({
+        data: { signId: sign.id, tagCode },
+      });
+    })();
+
+    await prisma.smartSignTapEvent.create({
+      data: {
+        tagId: tagRecord.id,
+        orderId: sign.assignedToOrder?.id || null,
+        agentId: sign.assignedToUser?.id || null,
+        listingAddress: sign.assignedToOrder?.address || sign.deployedAddress || null,
+        listingUrl: sign.assignedToOrder ? getOrderListingUrl(sign.assignedToOrder) : null,
+        latitude: input.latitude,
+        longitude: input.longitude,
+        deviceType: input.deviceType?.slice(0, 30),
+        userAgent: input.userAgent?.slice(0, 500) || null,
+        referrer: input.referrer?.slice(0, 500) || null,
+        ipHash: input.ip ? hashIpValue(input.ip) : null,
+      },
+    });
+    return { recorded: true, isLive: false };
+  }
+
+  if (!tag.isActive) return { recorded: false, isLive: false };
+
+  const context = await getPublicSmartSignContext(tag.tagCode);
+  const isLive = Boolean(context?.isLive);
 
   await prisma.smartSignTapEvent.create({
     data: {
-      tagId: context.tag.id,
+      tagId: tag.id,
+      orderId: context?.sign.assignedToOrder?.id || null,
+      agentId: context?.sign.assignedToUser?.id || null,
+      listingAddress: context?.sign.assignedToOrder?.address || context?.sign.deployedAddress || null,
+      listingUrl: context?.listingUrl || null,
       latitude: input.latitude,
       longitude: input.longitude,
       deviceType: input.deviceType?.slice(0, 30),
+      userAgent: input.userAgent?.slice(0, 500) || null,
+      referrer: input.referrer?.slice(0, 500) || null,
+      ipHash: input.ip ? hashIpValue(input.ip) : null,
     },
   });
-  return { recorded: true, isLive: true };
+  return { recorded: true, isLive };
 }
 
 function getTopTag(tags: Awaited<ReturnType<typeof getSmartSignAgentDashboard>>["tags"]) {
@@ -186,10 +379,16 @@ export async function processSmartSignSubscriptions(now = new Date()) {
     const dashboard = await getSmartSignAgentDashboard(subscription.agentId);
     const topTag = getTopTag(dashboard.tags);
     try {
+      const email = getSmartSignTrialReminderEmail({
+        firstName: subscription.agent.firstName,
+        totalTaps: dashboard.summary.totalTaps,
+        topListing: topTag ? { address: topTag.listingAddress, tapCount: topTag.tapCount } : undefined,
+        dashboardUrl: `${process.env.NEXT_PUBLIC_APP_URL || "https://app.northshoresignco.com"}/dashboard/smart-signs`,
+      });
       await sendEmail({
         to: subscription.agent.email,
-        subject: "Your Smart Sign trial is getting attention",
-        html: `<p>Hi ${subscription.agent.firstName},</p><p>Your Smart Sign trial has recorded <strong>${dashboard.summary.totalTaps} tap${dashboard.summary.totalTaps === 1 ? "" : "s"}</strong>.</p><p>${topTag ? `Your top listing is <strong>${topTag.listingAddress}</strong> with ${topTag.tapCount} taps.` : "Add a tagged post to start tracking engagement."}</p><p>Your 3-month trial ends soon. Add a saved card in your Smart Sign dashboard to continue for $29/month without interruption.</p>`,
+        subject: email.subject,
+        html: email.html,
       });
       await prisma.smartSignSubscription.update({ where: { id: subscription.id }, data: { reminderSentAt: now } });
     } catch (error) {

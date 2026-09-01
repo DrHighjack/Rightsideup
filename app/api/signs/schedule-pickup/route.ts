@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { sendEmail } from "@/lib/email";
+import { getSignPickupRequestEmail, sendEmail } from "@/lib/email";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = session.user as any;
+    const user = session.user;
     if (!["REALTOR", "TC", "ADMIN"].includes(user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -102,36 +102,20 @@ export async function POST(request: Request) {
     const realtorName = `${realtor.firstName} ${realtor.lastName}`.trim();
     const adminEmail = process.env.ADMIN_ALERT_EMAIL || "admin@signpost.local";
 
-    const signListHtml = signs
-      .map(
-        (sign) => `
-          <li>
-            <strong>${sign.signNumber || sign.id}</strong> - ${sign.type}${
-              sign.deployedAddress ? ` - ${sign.deployedAddress}` : ""
-            } (${sign.status})
-          </li>`
-      )
-      .join("");
-
-    const actingAsHtml =
-      user.role === "TC"
-        ? `<p><strong>Acting for realtor:</strong> ${realtorName} (${realtor.email})</p>`
-        : "";
+    const email = getSignPickupRequestEmail({
+      requesterName,
+      realtorName,
+      realtorEmail: realtor.email,
+      requestedByTc: user.role === "TC",
+      preferredDate,
+      notes,
+      signs,
+    });
 
     await sendEmail({
       to: adminEmail,
-      subject: `Pickup Request: ${signs.length} sign${signs.length === 1 ? "" : "s"} for ${realtorName}`,
-      html: `
-        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-          <h2 style="margin-bottom: 12px;">Sign Pickup Request</h2>
-          <p><strong>Requested by:</strong> ${requesterName}</p>
-          ${actingAsHtml}
-          <p><strong>Preferred pickup date:</strong> ${preferredDate}</p>
-          ${notes ? `<p><strong>Notes:</strong> ${notes}</p>` : ""}
-          <p><strong>Signs requested for pickup:</strong></p>
-          <ul>${signListHtml}</ul>
-        </div>
-      `,
+      subject: email.subject,
+      html: email.html,
     });
 
     return NextResponse.json(

@@ -20,7 +20,7 @@ interface PendingInvite {
 
 export default function MyAgentsPage() {
   const { data: session, status } = useSession();
-  const userRole = (session?.user as any)?.role as string | undefined;
+  const userRole = session?.user?.role as string | undefined;
   const isTC = userRole === "TC";
 
   const [loading, setLoading] = useState(true);

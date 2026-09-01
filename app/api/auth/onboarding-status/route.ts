@@ -10,7 +10,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userRole = (session.user as any).role;
+    const userRole = session.user.role;
     if (userRole !== "REALTOR") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

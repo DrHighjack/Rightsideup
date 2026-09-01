@@ -19,7 +19,7 @@ export async function POST(
 ) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

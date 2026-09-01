@@ -39,7 +39,7 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const authorization = await getAuthorizedOrder(params.id, session.user.id, (session.user as any).role);
+    const authorization = await getAuthorizedOrder(params.id, session.user.id, session.user.role);
     if ('error' in authorization) {
       return NextResponse.json({ error: authorization.error }, { status: authorization.status });
     }
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const authorization = await getAuthorizedOrder(params.id, session.user.id, (session.user as any).role);
+    const authorization = await getAuthorizedOrder(params.id, session.user.id, session.user.role);
     if ('error' in authorization) {
       return NextResponse.json({ error: authorization.error }, { status: authorization.status });
     }

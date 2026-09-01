@@ -73,7 +73,7 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session?.user) return;
     
-    const user = session.user as any;
+    const user = session.user;
     if (user.role !== "REALTOR" && user.role !== "ADMIN") {
       return;
     }
@@ -105,7 +105,7 @@ export default function AccountPage() {
   }, [session?.user]);
 
   useEffect(() => {
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
     if (role !== "REALTOR" && role !== "TC") return;
 
     const fetchCardOnFile = async () => {
@@ -285,7 +285,7 @@ export default function AccountPage() {
 
   const handleSendPasswordReset = async (userEmail?: string) => {
     setPasswordResetMessage("");
-    const emailToUse = userEmail || (session?.user as any)?.email;
+    const emailToUse = userEmail || session?.user?.email;
     if (!emailToUse) {
       setPasswordResetMessage("No email found for this account.");
       return;
@@ -317,7 +317,7 @@ export default function AccountPage() {
     return <PageSkeleton variant="form" />;
   }
 
-  const user = session.user as any;
+  const user = session.user;
   const roleLabel =
     user.accountTitle || (user.role === "TC"
       ? "Transaction Coordinator"

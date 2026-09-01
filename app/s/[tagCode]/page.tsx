@@ -15,22 +15,24 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
   const context = await getPublicSmartSignContext(params.tagCode);
   if (!context) notFound();
 
-  const { tag, isLive } = context;
-  if (!isLive) {
+  const { tag, sign, isLive, hasActiveListing, listingUrl } = context;
+  if (!tag || !sign) notFound();
+
+  if (!isLive || !hasActiveListing || !sign.assignedToUser || !sign.assignedToOrder) {
     return (
       <main className="min-h-screen bg-slate-950 px-5 py-16 text-white">
         <section className="mx-auto max-w-md text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-300">North Shore Sign Co</p>
-          <h1 className="mt-5 text-4xl font-semibold">Ask your agent about this listing.</h1>
-          <p className="mt-4 text-slate-300">This Smart Sign is not currently sharing live listing details.</p>
+          <h1 className="mt-5 text-4xl font-semibold">{hasActiveListing ? "Ask your agent about this listing." : "Coming soon."}</h1>
+          <p className="mt-4 text-slate-300">{hasActiveListing ? "This Smart Sign is not currently sharing live listing details." : "This sign is in inventory or not yet assigned to an active listing."}</p>
           <TapTracker tagCode={params.tagCode} />
         </section>
       </main>
     );
   }
 
-  const order = tag.sign.assignedToOrder!;
-  const agent = tag.sign.assignedToUser!;
+  const order = sign.assignedToOrder!;
+  const agent = sign.assignedToUser!;
   const images = photoUrls(order.photos);
   const heroImage = images[0];
   const agentName = `${agent.firstName} ${agent.lastName}`.trim();
@@ -54,6 +56,12 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
           {agent.phone && <a href={`tel:${agent.phone}`} className="mt-3 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Call {agentName}</a>}
           {!agent.phone && <a href={`mailto:${agent.email}`} className="mt-3 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Contact {agentName}</a>}
         </section>
+
+        {listingUrl && (
+          <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-sky-700 px-4 py-3 text-sm font-semibold text-white">
+            View Full Listing
+          </a>
+        )}
 
         {images.length > 1 && (
           <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">

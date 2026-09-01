@@ -380,9 +380,9 @@ export default function CouponsPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">
                         {coupon.isCredit
-                          ? `$${(coupon.remainingValue || 0).toFixed(2)} remaining of $${coupon.value.toFixed(2)}`
+                          ? `$${((coupon.remainingValue || 0) / 100).toFixed(2)} remaining of $${(coupon.value / 100).toFixed(2)}`
                           : coupon.type === 'FIXED'
-                          ? `$${coupon.value.toFixed(2)}`
+                          ? `$${(coupon.value / 100).toFixed(2)}`
                           : `${coupon.value}%`}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">

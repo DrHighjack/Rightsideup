@@ -64,7 +64,6 @@ This catalog is a routing aid, not a contract. Before acting, inspect the route 
 |---|---|---|
 | Settings | `/api/admin/settings`, `/test-imap`, `/test-discord`, `/api/admin/2fa/**` | ADMIN. Sensitive stored values are encrypted; do not log decrypted values. |
 | Discord settings | Stored in `AppSettings`; notification categories are configured through Admin Settings | Webhook URL is secret. Test endpoint sends a real message. |
-| QuickBooks | `/api/quickbooks/connect`, `/callback`, `/webhook`, `/api/admin/quickbooks/**` | OAuth and accounting side effects. Inspect handler before action. |
 | Notifications/activity | `/api/notifications`, `/read`, `/api/admin/activity`, `/api/admin/sms-logs` | In-app events/audit records. |
 | Leads | `/api/leads`, `/api/admin/leads/**` | Legacy Facebook-ad workflow is retained but not currently surfaced in navigation. |
 

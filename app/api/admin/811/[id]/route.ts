@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
 import {
   get811HoldReleasedEmail,
@@ -21,7 +22,7 @@ export async function GET(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== 'ADMIN') {
+    if (!session?.user?.id || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
@@ -68,12 +69,21 @@ export async function PUT(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== 'ADMIN') {
+    if (!session?.user?.id || session.user.role !== 'ADMIN') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     const { id } = params;
-    const body = await request.json();
+    const parsedBody = z.object({
+      action: z.enum(['clear', 'dismiss', 'update']),
+      adminNotes: z.string().max(2000).optional(),
+      parsedAddress: z.string().max(500).optional(),
+      matchedOrderIds: z.array(z.string()).optional(),
+    }).safeParse(await request.json());
+    if (!parsedBody.success) {
+      return NextResponse.json({ error: 'Invalid request body', details: parsedBody.error.flatten() }, { status: 400 });
+    }
+    const body = parsedBody.data;
     const { action } = body;
 
     console.log('[811API PUT] Updating ticket:', id, 'Action:', action);

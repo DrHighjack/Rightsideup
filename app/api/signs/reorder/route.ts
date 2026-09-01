@@ -11,7 +11,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user as any;
+  const user = session.user;
   if (user.role !== "REALTOR" && user.role !== "TC" && user.role !== "ADMIN") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -59,10 +59,11 @@ export async function POST(request: Request) {
         );
       }
 
-      subject = `Inventory Reorder: ${quantity} x ${item.name} from ${user.name || user.email}`;
+      const requesterName = user.name || user.email || "Unknown user";
+      subject = `Inventory Reorder: ${quantity} x ${item.name} from ${requesterName}`;
       emailTemplate = getReorderRequestAlertEmail(
         "Inventory Reorder",
-        user.name || user.email,
+        requesterName,
         quantity,
         item.name,
         printer.name,
@@ -70,10 +71,11 @@ export async function POST(request: Request) {
       );
     } else {
       // Traditional sign reorder (legacy format)
-      subject = `Sign Reorder Request: ${quantity} signs from ${user.name || user.email}`;
+      const requesterName = user.name || user.email || "Unknown user";
+      subject = `Sign Reorder Request: ${quantity} signs from ${requesterName}`;
       emailTemplate = getReorderRequestAlertEmail(
         "Sign Reorder Request",
-        user.name || user.email,
+        requesterName,
         quantity,
         type || "Any",
         undefined,
@@ -96,7 +98,7 @@ export async function POST(request: Request) {
     }
 
     sendReorderRequestDiscordWebhook({
-      realtorName: user.name || user.email,
+      realtorName: user.name || user.email || "Unknown user",
       items: isInventoryReorder ? subject : `${quantity} x ${type || "Any"} signs`,
     }).catch((error) => console.error("Failed to send Discord reorder webhook:", error));
 

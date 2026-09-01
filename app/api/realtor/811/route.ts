@@ -15,7 +15,7 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = (session.user as any).role;
+    const userRole = session.user.role;
     const userId = session.user.id;
 
     const ticketInclude = {
@@ -129,7 +129,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = (session.user as any).role;
+    const userRole = session.user.role;
     if (userRole !== 'REALTOR' && userRole !== 'TC') {
       return NextResponse.json(
         { error: 'Only realtors and TCs can create tickets from this page' },

@@ -41,7 +41,7 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const role = (session.user as any).role;
+    const role = session.user.role;
     if (invoice.status === "DRAFT" && role !== "ADMIN") {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
@@ -115,7 +115,7 @@ export async function PUT(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const role = (session.user as any).role;
+    const role = session.user.role;
     if (role === "TC" || (role !== "ADMIN" && invoice.userId !== session.user.id)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }

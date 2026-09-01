@@ -27,6 +27,7 @@ interface InvoiceStats {
   outstandingAmount: number;
   paidInvoices: number;
   unpaidInvoices: number;
+  unsentInvoices: number;
   averageInvoice: number;
 }
 
@@ -36,6 +37,7 @@ const emptyInvoiceStats: InvoiceStats = {
   outstandingAmount: 0,
   paidInvoices: 0,
   unpaidInvoices: 0,
+  unsentInvoices: 0,
   averageInvoice: 0,
 };
 
@@ -136,7 +138,7 @@ export default function AdminInvoicesPage() {
           </Link>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
           <div className="rounded-lg border border-gray-200 bg-white p-5">
             <p className="text-sm font-medium text-gray-600">Total Invoices</p>
             <p className="mt-2 text-3xl font-bold text-gray-900">{invoiceStats.totalInvoices}</p>
@@ -156,6 +158,10 @@ export default function AdminInvoicesPage() {
           <div className="rounded-lg border border-gray-200 bg-white p-5">
             <p className="text-sm font-medium text-gray-600">Unpaid Invoices</p>
             <p className="mt-2 text-3xl font-bold text-orange-600">{invoiceStats.unpaidInvoices}</p>
+          </div>
+          <div className="rounded-lg border border-gray-200 bg-white p-5">
+            <p className="text-sm font-medium text-gray-600">Unsent Invoices</p>
+            <p className="mt-2 text-3xl font-bold text-gray-600">{invoiceStats.unsentInvoices}</p>
           </div>
           <div className="rounded-lg border border-gray-200 bg-white p-5">
             <p className="text-sm font-medium text-gray-600">Average Invoice</p>

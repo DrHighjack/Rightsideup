@@ -18,7 +18,7 @@ import { ZodError } from "zod";
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       statsWhere.userId = userId;
     }
 
-    const [invoices, total, statsTotal, paidStats, unpaidStats, averageStats] = await Promise.all([
+    const [invoices, total, statsTotal, paidStats, unpaidStats, averageStats, unsentInvoices] = await Promise.all([
       prisma.invoice.findMany({
         where,
         include: {
@@ -77,6 +77,7 @@ export async function GET(request: NextRequest) {
         where: statsWhere,
         _sum: { amount: true, discountAmount: true, taxAmount: true },
       }),
+      prisma.invoice.count({ where: { ...statsWhere, status: "DRAFT" } }),
     ]);
 
     // Transform response to include computed name field
@@ -104,6 +105,7 @@ export async function GET(request: NextRequest) {
           (unpaidStats._sum.taxAmount || 0),
         paidInvoices: paidStats._count,
         unpaidInvoices: unpaidStats._count,
+        unsentInvoices,
         averageInvoice: statsTotal > 0
           ? ((averageStats._sum.amount || 0) -
               (averageStats._sum.discountAmount || 0) +
@@ -130,7 +132,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -139,20 +141,21 @@ export async function POST(request: NextRequest) {
     const normalizedLineItems = lineItems?.map((item) => ({
       description: item.description,
       quantity: item.quantity,
-      unitAmount: item.unitAmount,
-      totalAmount: item.quantity * item.unitAmount,
+      unitAmount: Math.round(item.unitAmount),
+      totalAmount: Math.round(item.quantity * item.unitAmount),
     }));
-    const amount = normalizedLineItems
+    const amount = Math.round(normalizedLineItems
       ? normalizedLineItems.reduce((sum, item) => sum + item.totalAmount, 0)
-      : requestedAmount!;
+      : requestedAmount!);
+    const discountCents = Math.round(discountAmount || 0);
 
     if (amount <= 0) {
       return NextResponse.json({ error: "Invoice total must be greater than 0" }, { status: 400 });
     }
-    if (discountAmount > amount) {
+    if (discountCents > amount) {
       return NextResponse.json({ error: "Discount cannot exceed the invoice subtotal" }, { status: 400 });
     }
-    const taxAmount = calculateTaxAmount(amount, discountAmount, taxRateBps);
+    const taxAmount = calculateTaxAmount(amount, discountCents, taxRateBps);
 
     // Verify user exists
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -173,7 +176,7 @@ export async function POST(request: NextRequest) {
         orderId,
         invoiceNumber,
         amount,
-        discountAmount: discountAmount || 0,
+        discountAmount: discountCents,
         taxRateBps,
         taxAmount,
         dueDate: dueDate ? new Date(dueDate) : undefined,

@@ -30,11 +30,11 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get("type");
     const requestedRealtorId = searchParams.get("realtorId");
     const search = searchParams.get("search")?.trim();
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = Math.max(1, parseInt(searchParams.get("page") || "1", 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
 
     const where: any = {};
-    const role = (session.user as any).role;
+    const role = session.user.role;
 
     if (role === "REALTOR") {
       where.realtorId = session.user.id;
@@ -312,6 +312,7 @@ export async function POST(request: NextRequest) {
     });
 
     const metadataLines: string[] = [];
+    let normalizedRfidListingUrl: string | null = null;
     if (typeof signSetup === 'string') {
       metadataLines.push(`Sign setup: ${signSetup}`);
     }
@@ -326,11 +327,13 @@ export async function POST(request: NextRequest) {
     }
     if (typeof rfidListingUrl === 'string' && rfidListingUrl.trim()) {
       try {
-        new URL(rfidListingUrl);
+        const parsedUrl = new URL(rfidListingUrl.trim());
+        if (!['http:', 'https:'].includes(parsedUrl.protocol)) throw new Error('Unsupported protocol');
+        normalizedRfidListingUrl = parsedUrl.toString();
       } catch {
-        return NextResponse.json({ error: 'RFID listing website URL must be valid' }, { status: 400 });
+        return NextResponse.json({ error: 'RFID listing website URL must use http or https' }, { status: 400 });
       }
-      metadataLines.push(`RFID listing website: ${rfidListingUrl.trim()}`);
+      metadataLines.push(`RFID listing website: ${normalizedRfidListingUrl}`);
     }
 
     const combinedNotes = [
@@ -437,6 +440,8 @@ export async function POST(request: NextRequest) {
           areaPriceGroupName: areaPriceGroup?.name || null,
           areaPriceCents: areaPriceGroup?.amountCents || 0,
           scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
+          rfidListingUrl: normalizedRfidListingUrl,
+          removalSignId: type === 'REMOVAL' ? removalSignId : null,
           notes: combinedNotes || null,
           self811Accepted: self811Accepted || false,
           addons: {
@@ -448,12 +453,6 @@ export async function POST(request: NextRequest) {
         },
       });
       console.log(`✅ Order created: ${order.orderNumber}`);
-      if (type === 'REMOVAL' && removalSignId) {
-        await prisma.sign.update({
-          where: { id: removalSignId },
-          data: { assignedToOrderId: order.id },
-        });
-      }
     } catch (createErr: any) {
       console.error('❌ Prisma create failed:', {
         message: createErr.message,

@@ -13,7 +13,7 @@ const areaPriceGroupSchema = z.object({
 
 async function requireAdmin() {
   const session = await auth();
-  return session?.user?.id && (session.user as { role?: string }).role === "ADMIN";
+  return session?.user?.id && session.user.role === "ADMIN";
 }
 
 export async function GET() {

@@ -27,7 +27,7 @@ const manageAgentSchema = z
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || role !== "BROKERAGE") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || role !== "BROKERAGE") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const session = await auth();
-    const role = (session?.user as any)?.role;
+    const role = session?.user?.role;
 
     if (!session?.user?.id || role !== "BROKERAGE") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

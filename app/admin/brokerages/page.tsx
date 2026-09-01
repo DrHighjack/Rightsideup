@@ -173,6 +173,11 @@ export default function ManagementPage() {
   const [editingBrokerageId, setEditingBrokerageId] = useState<string | null>(null);
   const [brokerageSubmitting, setBrokerageSubmitting] = useState(false);
   const [brokerageError, setBrokerageError] = useState("");
+  const [brokerageMatch, setBrokerageMatch] = useState<{
+    type: "exact" | "similar";
+    brokerage?: Brokerage;
+    matches?: Brokerage[];
+  } | null>(null);
   const [brokerageForm, setBrokerageForm] = useState({
     name: "",
     address: "",
@@ -384,6 +389,14 @@ export default function ManagementPage() {
 
       const data = await res.json();
       if (!res.ok) {
+        if (!editingBrokerageId && res.status === 409 && data.code === "EXACT_NAME_MATCH") {
+          setBrokerageMatch({ type: "exact", brokerage: data.brokerage });
+          return;
+        }
+        if (!editingBrokerageId && res.status === 409 && data.code === "SIMILAR_NAME_MATCH") {
+          setBrokerageMatch({ type: "similar", matches: data.matches || [] });
+          return;
+        }
         setBrokerageError(data.error || "Failed to save brokerage");
         return;
       }
@@ -395,6 +408,92 @@ export default function ManagementPage() {
       setBrokerageError("Failed to save brokerage");
     } finally {
       setBrokerageSubmitting(false);
+    }
+  };
+
+  const updateExistingBrokerage = async (brokerage: Brokerage) => {
+    try {
+      setBrokerageSubmitting(true);
+      const basePriceDollars = brokerageForm.basePrice.trim() ? Number(brokerageForm.basePrice) : undefined;
+      const response = await fetch(`/api/admin/brokerages/${brokerage.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...(brokerageForm.address.trim() ? { address: brokerageForm.address.trim() } : {}),
+          ...(brokerageForm.phone.trim() ? { phone: brokerageForm.phone.trim() } : {}),
+          ...(brokerageForm.email.trim() ? { email: brokerageForm.email.trim() } : {}),
+          ...(basePriceDollars !== undefined ? { basePriceDollars } : {}),
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update existing brokerage");
+      await fetchBrokerages();
+      setBrokerageMatch(null);
+      setShowBrokerageModal(false);
+      resetBrokerageModal();
+      router.push(`/admin/brokerages/${brokerage.id}`);
+    } catch (error) {
+      setBrokerageError(error instanceof Error ? error.message : "Failed to update existing brokerage");
+      setBrokerageMatch(null);
+    } finally {
+      setBrokerageSubmitting(false);
+    }
+  };
+
+  const createDistinctBrokerage = async () => {
+    setBrokerageMatch(null);
+    try {
+      setBrokerageSubmitting(true);
+      const response = await fetch("/api/admin/brokerages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: brokerageForm.name.trim(),
+          address: brokerageForm.address.trim() || undefined,
+          phone: brokerageForm.phone.trim() || undefined,
+          email: brokerageForm.email.trim() || undefined,
+          billingType: brokerageForm.billingType,
+          basePriceDollars: brokerageForm.basePrice.trim() ? Number(brokerageForm.basePrice) : null,
+          brokerageAccount: brokerageForm.createOwnerAccount ? {
+            firstName: brokerageForm.ownerFirstName.trim(),
+            lastName: brokerageForm.ownerLastName.trim(),
+            email: brokerageForm.ownerEmail.trim().toLowerCase(),
+            password: brokerageForm.ownerPassword,
+          } : undefined,
+          allowSimilar: true,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to create brokerage");
+      await fetchBrokerages();
+      setShowBrokerageModal(false);
+      resetBrokerageModal();
+      router.push(`/admin/brokerages/${data.id}`);
+    } catch (error) {
+      setBrokerageError(error instanceof Error ? error.message : "Failed to create brokerage");
+    } finally {
+      setBrokerageSubmitting(false);
+    }
+  };
+
+  const moveRealtorToBrokerage = async (realtorId: string, brokerageId: string) => {
+    const brokerage = brokerages.find((candidate) => candidate.id === brokerageId);
+    if (!brokerage || !confirm(`Move this realtor to ${brokerage.name}?`)) return;
+    try {
+      setAgentUpdatingId(realtorId);
+      const response = await fetch(`/api/admin/brokerages/${brokerage.id}/agents/attach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ realtorId }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to move realtor");
+      const refreshed = await fetch("/api/admin/users?limit=500");
+      if (refreshed.ok) setAgents((await refreshed.json()).users || []);
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to move realtor");
+    } finally {
+      setAgentUpdatingId(null);
     }
   };
 
@@ -1496,6 +1595,45 @@ export default function ManagementPage() {
                 </div>
               </div>
             )}
+
+            {brokerageMatch && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-50 p-4">
+                <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-lg">
+                  {brokerageMatch.type === "exact" && brokerageMatch.brokerage ? (
+                    <>
+                      <h3 className="text-xl font-bold text-gray-900">Existing brokerage found</h3>
+                      <p className="mt-2 text-gray-600"><strong>{brokerageMatch.brokerage.name}</strong> already exists. A duplicate cannot be created.</p>
+                      <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700">
+                        <p>{brokerageMatch.brokerage.address || "No address on file"}</p>
+                        <p>{brokerageMatch.brokerage.email || "No email on file"}</p>
+                      </div>
+                      <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => setBrokerageMatch(null)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700">Back</button>
+                        <button type="button" onClick={() => router.push(`/admin/brokerages/${brokerageMatch.brokerage!.id}`)} className="flex-1 rounded-lg bg-navy-900 px-4 py-2 font-medium text-white">Open existing brokerage</button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className="text-xl font-bold text-gray-900">Similar brokerages found</h3>
+                      <p className="mt-2 text-gray-600">Choose an existing brokerage to update with only the new details you entered, or confirm that this is separate.</p>
+                      <div className="mt-4 max-h-52 space-y-2 overflow-y-auto">
+                        {brokerageMatch.matches?.map((brokerage) => (
+                          <div key={brokerage.id} className="rounded-lg border border-gray-200 p-3">
+                            <p className="font-semibold text-gray-900">{brokerage.name}</p>
+                            <p className="text-sm text-gray-600">{brokerage.address || "No address"}</p>
+                            <button type="button" onClick={() => void updateExistingBrokerage(brokerage)} disabled={brokerageSubmitting} className="mt-2 text-sm font-semibold text-blue-700">Update existing brokerage</button>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-5 flex gap-3">
+                        <button type="button" onClick={() => setBrokerageMatch(null)} className="flex-1 rounded-lg border border-gray-300 px-4 py-2 font-medium text-gray-700">Back</button>
+                        <button type="button" onClick={() => void createDistinctBrokerage()} disabled={brokerageSubmitting} className="flex-1 rounded-lg bg-navy-900 px-4 py-2 font-medium text-white">Create separate brokerage</button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -1612,7 +1750,17 @@ export default function ManagementPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{agent.email}</td>
                       <td className="px-6 py-4 text-sm text-gray-600">
-                        {agent.brokerageName || "—"}
+                        <select
+                          value={agent.brokerageId || ""}
+                          onChange={(event) => void moveRealtorToBrokerage(agent.id, event.target.value)}
+                          disabled={agentUpdatingId === agent.id}
+                          className="max-w-52 rounded-md border border-gray-300 bg-white px-2 py-1 text-sm"
+                        >
+                          <option value="" disabled>Choose brokerage</option>
+                          {brokerages.filter((brokerage) => brokerage.isActive).map((brokerage) => (
+                            <option key={brokerage.id} value={brokerage.id}>{brokerage.name}</option>
+                          ))}
+                        </select>
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600">{agent.phone || "—"}</td>
                       <td className="px-6 py-4 text-sm">
@@ -1791,7 +1939,9 @@ export default function ManagementPage() {
                         <button
                           key={brokerage.id}
                           type="button"
+                          disabled={!brokerage.isActive}
                           onClick={() => {
+                            if (!brokerage.isActive) return;
                             setNewClient((prev) => ({
                               ...prev,
                               brokerageId: brokerage.id,
@@ -1800,9 +1950,9 @@ export default function ManagementPage() {
                             setBrokerageSearchQuery(brokerage.name);
                             setShowBrokerageDropdown(false);
                           }}
-                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          className={`w-full text-left px-3 py-2 text-sm ${brokerage.isActive ? "text-gray-700 hover:bg-gray-50" : "cursor-not-allowed bg-gray-50 text-gray-400"}`}
                         >
-                          {brokerage.name}
+                          {brokerage.name}{!brokerage.isActive ? " (inactive)" : ""}
                         </button>
                       ))}
                     {brokerages.filter((brokerage) =>

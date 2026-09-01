@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const cronSecret = process.env.CRON_SECRET;
 
     const session = await auth();
-    const isAdmin = (session?.user as any)?.role === "ADMIN";
+    const isAdmin = session?.user?.role === "ADMIN";
     const isCron = Boolean(cronSecret && bearer && bearer === cronSecret);
 
     if (!isAdmin && !isCron) {

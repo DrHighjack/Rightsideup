@@ -41,7 +41,7 @@ export async function GET(
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (invoice.userId !== session.user.id && (session.user as any).role !== "ADMIN") {
+    if (invoice.userId !== session.user.id && session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -86,22 +86,15 @@ export async function POST(
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
-      select: { id: true, userId: true, status: true, qboInvoiceId: true },
+      select: { id: true, userId: true, status: true },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (invoice.userId !== session.user.id && (session.user as any).role !== "ADMIN") {
+    if (invoice.userId !== session.user.id && session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    if (invoice.qboInvoiceId) {
-      return NextResponse.json(
-        { error: "Payment schedules cannot be added to imported QuickBooks invoices" },
-        { status: 409 }
-      );
     }
 
     if (invoice.status === "PAID" || invoice.status === "VOIDED") {

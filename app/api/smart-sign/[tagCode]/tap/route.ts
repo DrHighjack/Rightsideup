@@ -12,6 +12,16 @@ export async function POST(request: NextRequest, { params }: { params: { tagCode
   const parsed = tapSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "Invalid tap event" }, { status: 400 });
 
-  const result = await recordSmartSignTap({ tagCode: params.tagCode, ...parsed.data });
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "";
+  const referrer = request.headers.get("referer") || "";
+  const userAgent = request.headers.get("user-agent") || "";
+
+  const result = await recordSmartSignTap({
+    tagCode: params.tagCode,
+    ...parsed.data,
+    userAgent,
+    referrer,
+    ip,
+  });
   return NextResponse.json(result, { status: 202 });
 }

@@ -90,7 +90,7 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
   try {
     const session = await auth();
     if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    const role = (session.user as { role?: string }).role || "";
+    const role = session.user.role || "";
     const invoice = await prisma.invoice.findUnique({ where: { id: params.id }, include: { lineItems: true, user: { select: { firstName: true, lastName: true, email: true } } } });
     if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     if (invoice.status === "DRAFT" && role !== "ADMIN") return NextResponse.json({ error: "Invoice not found" }, { status: 404 });

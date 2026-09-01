@@ -69,6 +69,17 @@ export const couponLimiter = hasUpstashConfig ? couponLimiterConfigured : passTh
 export const apiLimiter = hasUpstashConfig ? apiLimiterConfigured : passThroughLimiter;
 
 /**
+ * Public lead capture limiter: 5 submissions per hour per IP.
+ */
+const leadsLimiterConfigured = new Ratelimit({
+  redis: (redis as any),
+  limiter: Ratelimit.slidingWindow(5, '1 h'),
+  analytics: true,
+  prefix: '@upstash/ratelimit/leads',
+});
+export const leadsLimiter = hasUpstashConfig ? leadsLimiterConfigured : passThroughLimiter;
+
+/**
  * Helper function to get identifier for rate limiting
  * @param ip - IP address for IP-based limiting
  * @param userId - User ID for user-based limiting

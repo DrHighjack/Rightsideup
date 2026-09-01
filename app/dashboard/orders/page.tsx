@@ -24,8 +24,8 @@ interface OrderData {
 export default function OrdersPage() {
   const { data: session } = useSession();
   const isSharedAccountant =
-    (session?.user as any)?.role === "BROKERAGE" &&
-    (session?.user as any)?.accountTitle === "Accountant";
+    session?.user?.role === "BROKERAGE" &&
+    session?.user?.accountTitle === "Accountant";
   const [orders, setOrders] = useState<OrderData[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [search, setSearch] = useState("");

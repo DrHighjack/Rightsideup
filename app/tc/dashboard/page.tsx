@@ -254,6 +254,9 @@ export default function TCDashboardPage() {
           >
             💰 Pricing
           </Link>
+          <Link href="/tc/listing-links" className="text-gray-700 hover:text-indigo-600 font-medium transition-colors">
+            Listing Links
+          </Link>
         </div>
       </div>
 

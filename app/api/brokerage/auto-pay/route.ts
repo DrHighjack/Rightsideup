@@ -36,7 +36,7 @@ async function getAutoPaySettings(userId: string) {
 
 export async function GET() {
   const session = await auth();
-  if (!session?.user?.id || (session.user as { role?: string }).role !== "BROKERAGE") {
+  if (!session?.user?.id || session.user.role !== "BROKERAGE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const settings = await getAutoPaySettings(session.user.id);
@@ -46,7 +46,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id || (session.user as { role?: string }).role !== "BROKERAGE") {
+  if (!session?.user?.id || session.user.role !== "BROKERAGE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const actorUserId = session.user.id;

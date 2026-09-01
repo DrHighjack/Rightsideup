@@ -19,7 +19,7 @@ export async function POST(
       "https://app.northshoresignco.com";
 
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -45,13 +45,6 @@ export async function POST(
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
-    }
-
-    if (invoice.qboInvoiceId) {
-      return NextResponse.json(
-        { error: "Imported QuickBooks invoices are historical records and cannot be sent" },
-        { status: 409 }
-      );
     }
 
     // Update invoice status to SENT

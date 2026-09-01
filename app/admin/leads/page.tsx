@@ -73,7 +73,7 @@ export default function LeadResponsesPage() {
       return;
     }
 
-    if (status === 'authenticated' && (session?.user as any)?.role !== 'ADMIN') {
+    if (status === 'authenticated' && session?.user?.role !== 'ADMIN') {
       router.push('/dashboard');
       return;
     }

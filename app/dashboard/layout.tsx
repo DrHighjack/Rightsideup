@@ -24,6 +24,7 @@ const NAV_ITEMS = [
   { href: "/dashboard/orders/new", label: "New Order", short: "New", icon: PlusCircleIcon },
   { href: "/dashboard/inventory", label: "Signs & Inventory", short: "Signs", icon: SignpostIcon },
   { href: "/dashboard/smart-sign", label: "Smart Sign", short: "Smart", icon: SignpostIcon },
+  { href: "/dashboard/listing-links", label: "Listing Links", short: "Links", icon: DocumentIcon },
   { href: "/dashboard/811", label: "811 Tracker", short: "811", icon: ShieldIcon },
   { href: "/dashboard/invoices", label: "Invoices", short: "Bills", icon: CreditCardIcon },
   { href: "/dashboard/account", label: "Account", short: "Account", icon: UserIcon },
@@ -53,17 +54,17 @@ export default function DashboardLayout({
 }) {
   const router = useRouter();
   const { data: session } = useSession();
-  const userRole = (session?.user as any)?.role as string | undefined;
+  const userRole = session?.user?.role as string | undefined;
   const isTC = userRole === "TC";
-  const isSharedAccountant = userRole === "BROKERAGE" && (session?.user as any)?.accountTitle === "Accountant";
+  const isSharedAccountant = userRole === "BROKERAGE" && session?.user?.accountTitle === "Accountant";
 
   const navItems = isSharedAccountant
     ? [
         NAV_ITEMS[0],
         NAV_ITEMS[1],
-        { ...NAV_ITEMS[5], href: "/brokerage?tab=billing" },
-        NAV_ITEMS[6],
+        { ...NAV_ITEMS[6], href: "/brokerage?tab=billing" },
         NAV_ITEMS[7],
+        NAV_ITEMS[8],
       ]
     : isTC
       ? [...NAV_ITEMS.slice(0, 2), MY_AGENTS_ITEM, ...NAV_ITEMS.slice(2, 4), ...NAV_ITEMS.slice(5)]

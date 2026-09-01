@@ -116,8 +116,8 @@ const resolvePhotoSrc = (raw?: string | null): string | null => {
 export default function DashboardPage() {
   const { data: session, status: sessionStatus } = useSession();
   const isSharedAccountant =
-    (session?.user as any)?.role === "BROKERAGE" &&
-    (session?.user as any)?.accountTitle === "Accountant";
+    session?.user?.role === "BROKERAGE" &&
+    session?.user?.accountTitle === "Accountant";
   const [stats, setStats] = useState<DashboardStats>({
     active: 0,
     completedThisMonth: 0,
@@ -214,7 +214,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const userRole = (session?.user as any)?.role;
+    const userRole = session?.user?.role;
     const isRealtor = userRole === "REALTOR";
 
     if (sessionStatus !== "authenticated" || !isRealtor) {
@@ -390,7 +390,7 @@ export default function DashboardPage() {
     );
   }
 
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   const shouldShowOnboardingBanner =
     userRole === "REALTOR" &&
     Boolean(onboardingStatus) &&

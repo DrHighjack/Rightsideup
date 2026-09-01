@@ -13,7 +13,7 @@ export async function POST(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
+    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -81,7 +81,7 @@ export async function DELETE(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes((session.user as any).role)) {
+    if (!session?.user?.id || !["ADMIN", "SALESMEN"].includes(session.user.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

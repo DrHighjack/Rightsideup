@@ -20,7 +20,7 @@ export default function BrokerageLayout({
       return;
     }
 
-    const role = (session.user as any).role;
+    const role = session.user.role;
     if (role !== "BROKERAGE") {
       if (role === "ADMIN" || role === "SALESMEN") {
         router.push("/admin");
@@ -57,6 +57,9 @@ export default function BrokerageLayout({
               className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
             >
               Billing
+            </Link>
+            <Link href="/brokerage/listing-links" className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">
+              Listing Links
             </Link>
             <button
               type="button"

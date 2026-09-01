@@ -8,7 +8,7 @@ import {
 
 export async function POST(request: NextRequest) {
   const session = await auth();
-  if (!session?.user?.id || (session.user as { role?: string }).role !== "BROKERAGE") {
+  if (!session?.user?.id || session.user.role !== "BROKERAGE") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

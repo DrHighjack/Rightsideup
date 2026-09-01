@@ -1,5 +1,18 @@
 # Testing Guide
 
+## Automated Tests
+
+Run `npm test` (Vitest) before committing. Coverage currently includes invoice money
+math (integer cents), zod API input boundaries, rate-limit identifiers, and the
+magic-login redirect guard. Add a test under `tests/` whenever you change money,
+auth, or validation logic.
+
+## Smart Sign / NFC Notes
+
+- Web NFC scanning (installer "Scan NFC Box") requires Android Chrome over HTTPS.
+  On other browsers, installers must paste the box URL or enter the printed code.
+- QR codes are the volume driver; every tag also supports manual entry.
+
 ## Test Accounts
 
 ### Admin

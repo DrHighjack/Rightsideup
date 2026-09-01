@@ -57,12 +57,12 @@ export const saveCardSchema = z.object({
 });
 
 export const invoicePaySchema = z.object({
-  paymentCardId: z.string().min(1, "paymentCardId is required"),
+  paymentCardId: z.string().trim().min(1, "paymentCardId is required"),
   payerType: z.enum(["AGENT", "BROKERAGE"]).optional().default("AGENT"),
 });
 
 export const invoicePaymentScheduleCreateSchema = z.object({
-  paymentCardId: z.string().min(1, "paymentCardId is required"),
+  paymentCardId: z.string().trim().min(1, "paymentCardId is required"),
   dayOfMonth: z
     .number()
     .int("dayOfMonth must be an integer")

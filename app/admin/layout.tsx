@@ -33,15 +33,12 @@ function Ticket811Badge() {
   useEffect(() => {
     async function fetchCount() {
       try {
-        const res = await fetch("/api/admin/811?status=ACTIVE");
-        const activeTickets = await res.json();
-        const activeCount = Array.isArray(activeTickets) ? activeTickets.length : 0;
-
-        const res2 = await fetch("/api/admin/811?status=NEEDS_REVIEW");
-        const reviewTickets = await res2.json();
-        const reviewCount = Array.isArray(reviewTickets) ? reviewTickets.length : 0;
-
-        setCount(activeCount + reviewCount);
+        const res = await fetch("/api/admin/811");
+        const tickets = await res.json();
+        const actionable = Array.isArray(tickets)
+          ? tickets.filter((ticket: { status?: string }) => ticket.status === "ACTIVE" || ticket.status === "NEEDS_REVIEW").length
+          : 0;
+        setCount(actionable);
       } catch (error) {
         console.error("Failed to fetch ticket count:", error);
       }
@@ -102,6 +99,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/inventory", label: "Inventory", icon: PackageIcon },
       { href: "/admin/smart-sign", label: "Smart Sign", icon: SignpostIcon },
+      { href: "/admin/listing-links", label: "Listing Link Approvals", icon: DocumentIcon },
       { href: "/admin/analytics", label: "Analytics", icon: ChartIcon },
       { href: "/admin/reports", label: "Reports", icon: DocumentIcon },
     ],
@@ -165,7 +163,7 @@ export default function AdminLayout({
 }) {
   const router = useRouter();
   const { data: sessionData } = useSession();
-  const userRole = (sessionData?.user as any)?.role;
+  const userRole = sessionData?.user?.role;
 
   const isSalesmenOnly = userRole === "SALESMEN";
   const isAdmin = userRole === "ADMIN";

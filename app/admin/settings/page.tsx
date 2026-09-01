@@ -19,6 +19,10 @@ interface SettingsState {
   // Inventory
   lowInventoryThreshold: string;
 
+  // Public tap CTA
+  raticanMortgageCtaEnabled: boolean;
+  raticanMortgageCtaUrl: string;
+
   // Discord
   discordWebhookUrl: string;
 }
@@ -47,6 +51,8 @@ export default function AdminSettingsPage() {
     invoiceReminderDays: '7,14,30',
     smsOptInDefault: false,
     lowInventoryThreshold: '5',
+    raticanMortgageCtaEnabled: false,
+    raticanMortgageCtaUrl: 'https://raticanmortgage.com/',
     discordWebhookUrl: '',
   });
 
@@ -101,6 +107,8 @@ export default function AdminSettingsPage() {
           invoiceReminderDays: data['notifications.invoiceReminderDays'] || '7,14,30',
           smsOptInDefault: data['notifications.smsOptInDefault'] === 'true' || false,
           lowInventoryThreshold: data['inventory.lowInventoryThreshold'] || '5',
+          raticanMortgageCtaEnabled: data['publicTap.raticanMortgageCtaEnabled'] === true || data['publicTap.raticanMortgageCtaEnabled'] === 'true' || false,
+          raticanMortgageCtaUrl: data['publicTap.raticanMortgageCtaUrl'] || 'https://raticanmortgage.com/',
           discordWebhookUrl: data['discord.webhookUrl'] || '',
         }));
 
@@ -355,6 +363,42 @@ export default function AdminSettingsPage() {
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <p className="text-gray-600 mt-1">Configure system settings and integrations</p>
+      </div>
+
+      <div className="bg-white rounded-lg border border-gray-200 p-6">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Public tap mortgage CTA</h2>
+        <div className="space-y-4">
+          <label className="flex items-center gap-3 text-sm font-medium text-gray-700">
+            <input
+              type="checkbox"
+              checked={settings.raticanMortgageCtaEnabled}
+              onChange={(event) => setSettings((prev) => ({ ...prev, raticanMortgageCtaEnabled: event.target.checked }))}
+              className="h-4 w-4 rounded border-gray-300 text-sky-600 focus:ring-sky-500"
+            />
+            Show Ratican Mortgage CTA on public tap pages
+          </label>
+          <label className="block text-sm font-medium text-gray-700">
+            CTA URL
+            <input
+              type="url"
+              value={settings.raticanMortgageCtaUrl}
+              onChange={(event) => setSettings((prev) => ({ ...prev, raticanMortgageCtaUrl: event.target.value }))}
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+              placeholder="https://raticanmortgage.com/"
+            />
+          </label>
+          <button
+            type="button"
+            onClick={() => saveSection('publicTap', {
+              raticanMortgageCtaEnabled: settings.raticanMortgageCtaEnabled,
+              raticanMortgageCtaUrl: settings.raticanMortgageCtaUrl,
+            })}
+            disabled={saving.publicTap}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50"
+          >
+            {saving.publicTap ? 'Saving...' : 'Save CTA setting'}
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border border-gray-200 p-6">

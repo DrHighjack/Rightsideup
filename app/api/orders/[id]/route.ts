@@ -49,13 +49,13 @@ export async function GET(
 
     // Realtors can only view their own orders
     if (
-      (session.user as any).role === "REALTOR" &&
+      session.user.role === "REALTOR" &&
       order.realtorId !== session.user.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if ((session.user as any).role === "TC") {
+    if (session.user.role === "TC") {
       const link = await prisma.tCAgentLink.findUnique({
         where: {
           tcUserId_agentUserId: {
@@ -71,7 +71,7 @@ export async function GET(
       }
     }
 
-    if ((session.user as any).role === "BROKERAGE") {
+    if (session.user.role === "BROKERAGE") {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { tags: true },
@@ -107,7 +107,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const role = (session.user as any).role as string;
+    const role = session.user.role as string;
 
     const currentOrder = await prisma.order.findUnique({
       where: { id: params.id },
@@ -285,7 +285,7 @@ export async function DELETE(
   try {
     const session = await auth();
 
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

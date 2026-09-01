@@ -15,7 +15,7 @@ export async function GET(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -66,7 +66,7 @@ export async function PUT(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -82,8 +82,8 @@ export async function PUT(
 
     const updateData: any = {};
     if (status) updateData.status = status;
-    if (amount) updateData.amount = amount;
-    if (discountAmount !== undefined) updateData.discountAmount = discountAmount;
+    if (amount) updateData.amount = Math.round(amount);
+    if (discountAmount !== undefined) updateData.discountAmount = Math.round(discountAmount);
     if (amount !== undefined || discountAmount !== undefined || taxRateBps !== undefined) {
       const currentInvoice = await prisma.invoice.findUnique({
         where: { id: params.id },
@@ -95,13 +95,13 @@ export async function PUT(
       const nextTaxRateBps = taxRateBps ?? currentInvoice.taxRateBps;
       updateData.taxRateBps = nextTaxRateBps;
       updateData.taxAmount = calculateTaxAmount(
-        amount ?? currentInvoice.amount ?? 0,
-        discountAmount ?? currentInvoice.discountAmount ?? 0,
+        Math.round(amount ?? currentInvoice.amount ?? 0),
+        Math.round(discountAmount ?? currentInvoice.discountAmount ?? 0),
         nextTaxRateBps
       );
     }
     if (dueDate) updateData.dueDate = new Date(dueDate);
-    if (paidAmount !== undefined) updateData.paidAmount = paidAmount;
+    if (paidAmount !== undefined) updateData.paidAmount = Math.round(paidAmount);
     if (paidAt) updateData.paidAt = new Date(paidAt);
 
     const invoice = await prisma.invoice.update({
@@ -151,7 +151,7 @@ export async function DELETE(
 ) {
   try {
     const session = await auth();
-    if (!session?.user?.id || (session.user as any).role !== "ADMIN") {
+    if (!session?.user?.id || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

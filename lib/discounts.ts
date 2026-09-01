@@ -230,7 +230,7 @@ export async function applyCouponToOrder(orderId: string, couponId: string, disc
       return orderDiscountRow;
     });
 
-    console.log(`✅ Coupon applied to order ${orderId}: -$${discountAmount.toFixed(2)}`);
+    console.log(`✅ Coupon applied to order ${orderId}: -$${(discountAmount / 100).toFixed(2)}`);
     return orderDiscount;
   } catch (error) {
     console.error('Error applying coupon:', error);

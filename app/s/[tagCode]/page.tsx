@@ -19,6 +19,15 @@ const twinBrooksPhotos = [
 ];
 
 function getListingDetails(address: string) {
+  if (address.toLowerCase().includes("10709 valley view")) {
+    return {
+      price: "$479,950",
+      facts: ["3 beds", "2 baths", "Built 2003", "Contemporary", "$500 fees", "$4,010 taxes"],
+      description: "Finding a 3-bedroom condo in an amazing Downtown Bothell location is rare. This ground-floor corner unit offers true one-level living, 2 parking spaces, no rental cap, an open-concept living space, fresh interior paint, engineered wood floors, new carpet, a stone eat-in bar, a cozy gas fireplace, and a private outdoor patio. The primary suite includes a walk-in closet and en-suite bath, while two additional bedrooms offer flexibility for guests, an office, or hobbies. Full-size in-unit laundry and two storage units make everyday living easy, with downtown restaurants, shops, UW Bothell, Bothell Landing, and the Burke-Gilman Trail nearby.",
+      mls: "MLS #2577646",
+      disclaimer: "Listing information is provided for personal, noncommercial use and is based on information supplied by the listing source. It is not guaranteed and should be independently reviewed and verified. North Shore Sign Co LLC is not the listing broker and does not endorse any real estate professional.",
+    };
+  }
   if (!address.toLowerCase().includes("518 twin brooks")) return null;
   return {
     price: "$795,000",

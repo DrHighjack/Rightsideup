@@ -378,7 +378,7 @@ export default function AdminOrderDetailPage() {
                 type="url"
                 value={editData.rfidListingUrl || ""}
                 onChange={(e) => setEditData((prev) => ({ ...prev, rfidListingUrl: e.target.value }))}
-                placeholder="https://www.zillow.com/..."
+                placeholder="https://listing-website.example/..."
                 className="w-full rounded-md border border-gray-300 px-4 py-2"
               />
               <p className="mt-1 text-xs text-gray-500">This is the link visitors open from the Smart Sign page. Leave blank to remove it.</p>

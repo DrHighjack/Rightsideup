@@ -106,7 +106,7 @@ export async function PUT(
     const updateData: any = {};
     
     // Only allow these specific fields to be updated
-    const allowedFields = ['status', 'notes', 'adminNotes', 'scheduledDate', 'address', 'addressLat', 'addressLng'];
+    const allowedFields = ['status', 'notes', 'adminNotes', 'scheduledDate', 'address', 'addressLat', 'addressLng', 'rfidListingUrl'];
     
     for (const field of allowedFields) {
       if (field in body && body[field] !== undefined) {
@@ -116,6 +116,18 @@ export async function PUT(
           updateData[field] = body[field];
         }
       }
+    }
+
+    if (updateData.rfidListingUrl !== undefined && updateData.rfidListingUrl !== null && updateData.rfidListingUrl !== '') {
+      try {
+        const listingUrl = new URL(updateData.rfidListingUrl);
+        if (!['http:', 'https:'].includes(listingUrl.protocol)) throw new Error('Invalid protocol');
+        updateData.rfidListingUrl = listingUrl.toString();
+      } catch {
+        return NextResponse.json({ error: 'Listing website must be a valid http or https URL' }, { status: 400 });
+      }
+    } else if (updateData.rfidListingUrl === '') {
+      updateData.rfidListingUrl = null;
     }
 
     // Validate status is a valid enum value

@@ -15,6 +15,7 @@ interface OrderDetail {
   addressLat?: number;
   addressLng?: number;
   scheduledDate?: string;
+  rfidListingUrl?: string;
   notes?: string;
   adminNotes?: string;
   createdAt: string;
@@ -372,6 +373,18 @@ export default function AdminOrderDetailPage() {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Public Listing Website</label>
+              <input
+                type="url"
+                value={editData.rfidListingUrl || ""}
+                onChange={(e) => setEditData((prev) => ({ ...prev, rfidListingUrl: e.target.value }))}
+                placeholder="https://www.zillow.com/..."
+                className="w-full rounded-md border border-gray-300 px-4 py-2"
+              />
+              <p className="mt-1 text-xs text-gray-500">This is the link visitors open from the Smart Sign page. Leave blank to remove it.</p>
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
               <textarea
                 value={editData.notes || ""}
@@ -419,6 +432,13 @@ export default function AdminOrderDetailPage() {
                 <p className="text-gray-900 font-medium">
                   {new Date(order.scheduledDate).toLocaleDateString()}
                 </p>
+              </div>
+            )}
+
+            {order.rfidListingUrl && (
+              <div>
+                <p className="text-sm text-gray-600">Public Listing Website</p>
+                <a href={order.rfidListingUrl} target="_blank" rel="noopener noreferrer" className="break-all text-sky-700 underline">{order.rfidListingUrl}</a>
               </div>
             )}
 

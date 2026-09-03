@@ -63,6 +63,12 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
         <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-5xl">{order.address}</h1>
         <p className="mt-3 text-base text-slate-600">Listing details shared by {agentName}</p>
 
+        {heroImage ? (
+          <img src={heroImage} alt={`Listing at ${order.address}`} className="mt-7 aspect-[16/10] w-full rounded-lg object-cover shadow-sm" />
+        ) : (
+          <div className="mt-7 flex aspect-[16/10] items-center justify-center rounded-lg bg-slate-200 text-sm text-slate-500">Listing details available from the agent</div>
+        )}
+
         {listingDetails && (
           <section className="mt-5 border-y border-slate-200 py-5">
             <div className="flex flex-wrap items-end justify-between gap-3">
@@ -79,12 +85,6 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
           </section>
         )}
 
-        {heroImage ? (
-          <img src={heroImage} alt={`Listing at ${order.address}`} className="mt-7 aspect-[16/10] w-full rounded-lg object-cover shadow-sm" />
-        ) : (
-          <div className="mt-7 flex aspect-[16/10] items-center justify-center rounded-lg bg-slate-200 text-sm text-slate-500">Listing details available from the agent</div>
-        )}
-
         <section className="mt-7 border-y border-slate-200 py-6">
           <p className="text-sm font-medium text-slate-500">Your listing agent</p>
           <p className="mt-1 text-xl font-semibold">{agentName}</p>
@@ -92,13 +92,13 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
           {!agent.phone && <a href={`mailto:${agent.email}`} className="mt-3 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Contact {agentName}</a>}
         </section>
 
+        <InquiryForms tagCode={params.tagCode} orderId={order.id} agentName={agentName} />
+
         {listingUrl && (
-          <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex w-full items-center justify-center rounded-md bg-sky-700 px-4 py-3 text-sm font-semibold text-white">
-            View Full Listing
+          <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white">
+            See More Pictures
           </a>
         )}
-
-        <InquiryForms tagCode={params.tagCode} orderId={order.id} agentName={agentName} />
 
         {images.length > 1 && (
           <section className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-3">

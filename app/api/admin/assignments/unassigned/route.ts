@@ -12,10 +12,10 @@ export async function GET(_: NextRequest) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get all SCHEDULED orders that don't have a JobAssignment
+    // Cleared orders are ready for installer assignment even before a date is set.
     const unassignedOrders = await prisma.order.findMany({
       where: {
-        status: 'SCHEDULED',
+        status: { in: ['READY_TO_SCHEDULE', 'SCHEDULED'] },
         jobAssignment: null,
       },
       include: {

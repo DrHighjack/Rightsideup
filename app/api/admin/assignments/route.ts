@@ -118,10 +118,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (order.status !== 'SCHEDULED') {
+    if (!['READY_TO_SCHEDULE', 'SCHEDULED'].includes(order.status)) {
       return NextResponse.json(
         {
-          error: `Order must be SCHEDULED before assigning an installer. Current status: ${order.status}`,
+          error: `Order must be ready to schedule before assigning an installer. Current status: ${order.status}`,
         },
         { status: 400 }
       );

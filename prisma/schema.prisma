@@ -363,6 +363,25 @@ model SmartSignTapEvent {
   @@index([tappedAt])
 }
 
+model SmartSignInquiry {
+  id             String   @id @default(cuid())
+  tagCode        String
+  orderId        String?
+  inquiryType    String
+  name           String?
+  phone          String
+  email          String
+  message        String?
+  notifyWhen     String?
+  termsAccepted  Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  @@map("smart_sign_inquiries")
+  @@index([tagCode])
+  @@index([email])
+  @@index([createdAt])
+}
+
 model OrderItem {
   id             String     @id @default(cuid())
   orderId        String

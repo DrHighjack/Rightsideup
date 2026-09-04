@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { sendNewOrderDiscordWebhook } from "@/lib/discord";
 
 /**
  * POST /api/admin/orders/[id]/schedule-removal
@@ -80,6 +81,17 @@ export async function POST(
         },
       });
     }
+
+    await sendNewOrderDiscordWebhook({
+      orderId: removalOrder.id,
+      orderNumber: removalOrder.orderNumber,
+      type: removalOrder.type,
+      address: removalOrder.address,
+      realtorName: `${installationOrder.realtor.firstName} ${installationOrder.realtor.lastName}`,
+      realtorEmail: installationOrder.realtor.email,
+      scheduledDate: removalOrder.scheduledDate,
+      placedByRole: "ADMIN",
+    }).catch((error) => console.error("Failed to send Discord order webhook:", error));
 
     return NextResponse.json(
       {

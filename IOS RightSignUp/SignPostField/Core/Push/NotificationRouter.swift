@@ -10,6 +10,7 @@ enum DeepLinkDestination: Equatable {
     case ticket811(id: String)
 }
 
+@MainActor
 @Observable
 final class NotificationRouter {
     static let shared = NotificationRouter()

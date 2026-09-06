@@ -40,6 +40,6 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         didReceive response: UNNotificationResponse
     ) async {
         let userInfo = response.notification.request.content.userInfo
-        NotificationRouter.shared.handle(userInfo: userInfo)
+        await NotificationRouter.shared.handle(userInfo: userInfo)
     }
 }

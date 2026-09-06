@@ -3,7 +3,7 @@ import Security
 
 /// Stores the mobile JWT (from `/api/auth/mobile-login`) in the iOS Keychain instead of
 /// UserDefaults, since it's a long-lived (30 day) bearer credential.
-final class KeychainTokenStore {
+final class KeychainTokenStore: @unchecked Sendable {
     static let shared = KeychainTokenStore()
 
     private let service = "com.northshoresignco.signpostfield.auth"

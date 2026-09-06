@@ -1,0 +1,54 @@
+name: SignPostField
+options:
+  bundleIdPrefix: com.northshoresignco
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+configs:
+  Debug: debug
+  Release: release
+
+settings:
+  base:
+    SWIFT_VERSION: 6.0
+    DEVELOPMENT_TEAM: ""
+    TARGETED_DEVICE_FAMILY: "1"
+
+targets:
+  SignPostField:
+    type: application
+    platform: iOS
+    sources:
+      - path: SignPostField
+    resources:
+      - path: SignPostField/Resources/Assets.xcassets
+    info:
+      path: SignPostField/Resources/Info.plist
+      properties:
+        UILaunchScreen: {}
+        CFBundleDisplayName: SignPost Field
+        NSCameraUsageDescription: SignPost Field uses your camera to capture job completion photos.
+        NSPhotoLibraryUsageDescription: SignPost Field lets you attach photos from your library to job completions.
+        NSLocationWhenInUseUsageDescription: SignPost Field uses your location to show directions to job sites.
+        UIBackgroundModes: [remote-notification]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.northshoresignco.signpostfield
+        INFOPLIST_KEY_UILaunchScreen_Generation: true
+        SWIFT_EMIT_LOC_STRINGS: true
+        CODE_SIGN_ENTITLEMENTS: SignPostField/Resources/SignPostField.entitlements
+    capabilities:
+      com.apple.Push: {}
+    dependencies: []
+
+schemes:
+  SignPostField:
+    build:
+      targets:
+        SignPostField: all
+    run:
+      config: Debug
+    archive:
+      config: Release

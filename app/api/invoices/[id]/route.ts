@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 

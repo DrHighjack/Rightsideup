@@ -27,10 +27,13 @@ type ListingDetails = {
 };
 
 function getSavedListingDetails(notes: string | null): ListingDetails | null {
-  const match = notes?.match(/--- Smart Sign Listing ---\s*([\s\S]*?)\s*--- End Smart Sign Listing ---/);
-  if (!match) return null;
+  const startMarker = "--- Smart Sign Listing ---";
+  const endMarker = "--- End Smart Sign Listing ---";
+  const start = notes?.indexOf(startMarker) ?? -1;
+  const end = notes?.indexOf(endMarker, start + startMarker.length) ?? -1;
+  if (start < 0 || end < 0 || !notes) return null;
   try {
-    const value = JSON.parse(match[1]) as Partial<ListingDetails>;
+    const value = JSON.parse(notes.slice(start + startMarker.length, end).trim()) as Partial<ListingDetails>;
     if (!value.price || !Array.isArray(value.facts) || !value.description || !value.mls || !value.disclaimer) return null;
     return { price: value.price, facts: value.facts, description: value.description, mls: value.mls, disclaimer: value.disclaimer };
   } catch {

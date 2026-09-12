@@ -65,7 +65,6 @@ export async function GET(request: NextRequest) {
       prisma.invoice.findMany({
         where,
         include: {
-          order: { select: { id: true, orderNumber: true, address: true } },
           user: {
             select: { id: true, firstName: true, lastName: true, email: true },
           },

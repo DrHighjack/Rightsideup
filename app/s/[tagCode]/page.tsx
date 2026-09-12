@@ -18,7 +18,29 @@ const twinBrooksPhotos = [
   "https://photos.zillowstatic.com/fp/3166852a093ee846594ac55263d14fe6-d_d.webp",
 ];
 
-function getListingDetails(address: string) {
+type ListingDetails = {
+  price: string;
+  facts: string[];
+  description: string;
+  mls: string;
+  disclaimer: string;
+};
+
+function getSavedListingDetails(notes: string | null): ListingDetails | null {
+  const match = notes?.match(/--- Smart Sign Listing ---\s*([\s\S]*?)\s*--- End Smart Sign Listing ---/);
+  if (!match) return null;
+  try {
+    const value = JSON.parse(match[1]) as Partial<ListingDetails>;
+    if (!value.price || !Array.isArray(value.facts) || !value.description || !value.mls || !value.disclaimer) return null;
+    return { price: value.price, facts: value.facts, description: value.description, mls: value.mls, disclaimer: value.disclaimer };
+  } catch {
+    return null;
+  }
+}
+
+function getListingDetails(address: string, notes: string | null) {
+  const savedDetails = getSavedListingDetails(notes);
+  if (savedDetails) return savedDetails;
   if (address.toLowerCase().includes("10709 valley view")) {
     return {
       price: "$479,950",
@@ -60,7 +82,7 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
 
   const order = sign.assignedToOrder!;
   const agent = sign.assignedToUser!;
-  const listingDetails = getListingDetails(order.address);
+  const listingDetails = getListingDetails(order.address, order.notes);
   const images = photoUrls(order.photos).length > 0 ? photoUrls(order.photos) : (listingDetails ? twinBrooksPhotos : []);
   const heroImage = images[0];
   const agentName = `${agent.firstName} ${agent.lastName}`.trim();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { chargeToken, chargeVaultRecord } from "@/lib/fluidpay";
 import { calculateInvoiceBalance } from "@/lib/invoice-totals";
@@ -10,13 +10,13 @@ import { ZodError } from "zod";
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
-    const role = session?.user?.role;
+    const requestUser = await getRequestUser(request);
+    const role = requestUser?.role;
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const actorUserId = session.user.id;
+    const actorUserId = requestUser.id;
 
     if (role !== "REALTOR" && role !== "TC" && role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -126,16 +126,29 @@ export async function POST(request: NextRequest) {
           return chargeToken(token, amountCents, invoice.id);
         })();
 
-    await prisma.invoice.update({
-      where: { id: invoice.id },
-      data: {
-        status: "PAID",
-        paidAt: new Date(),
-        paidAmount: (invoice.paidAmount || 0) + totalDue,
-        paidByType: useVault ? "VAULT" : "TOKEN",
-        paidByUserId: actorUserId,
-        fluidpayTransactionId: chargeResult.transactionId,
-      },
+    await prisma.$transaction(async (tx) => {
+      await tx.invoicePayment.create({
+        data: {
+          invoiceId: invoice.id,
+          userId: actorUserId,
+          amount: totalDue,
+          status: "PAID",
+          payerType: useVault ? "VAULT" : "TOKEN",
+          notes: `FluidPay transaction ${chargeResult.transactionId}`,
+        },
+      });
+
+      await tx.invoice.update({
+        where: { id: invoice.id },
+        data: {
+          status: "PAID",
+          paidAt: new Date(),
+          paidAmount: (invoice.paidAmount || 0) + totalDue,
+          paidByType: useVault ? "VAULT" : "TOKEN",
+          paidByUserId: actorUserId,
+          fluidpayTransactionId: chargeResult.transactionId,
+        },
+      });
     });
 
     const invoiceNumber = invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`;

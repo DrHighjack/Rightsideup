@@ -32,6 +32,7 @@ interface Invoice {
   availableCreditAmount?: number;
   availableCredits?: Array<{ id: string; code: string; remainingValue: number | null }>;
   createdAt: string;
+  order: { id: string; orderNumber: string; address: string } | null;
   lineItems?: Array<{ id: string; description: string; quantity: number; unitAmount: number; totalAmount: number }>;
 }
 
@@ -421,6 +422,14 @@ export default function InvoiceDetailPage() {
             <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
               <div className="mb-6 pb-6 border-b border-gray-200">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoice Details</h2>
+
+                {invoice.order && (
+                  <div className="mb-5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-blue-700">Listing address</p>
+                    <p className="mt-1 font-medium text-gray-900">{invoice.order.address}</p>
+                    <p className="mt-1 text-xs text-gray-600">Order {invoice.order.orderNumber}</p>
+                  </div>
+                )}
 
                 <div className="mb-5 overflow-x-auto rounded-lg border border-gray-200">
                   <table className="w-full text-left text-sm">

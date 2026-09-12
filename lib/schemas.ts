@@ -114,6 +114,7 @@ export const adminInvoiceCreateSchema = z.object({
 
 export const adminInvoiceUpdateSchema = z
   .object({
+    orderId: z.string().min(1).nullable().optional(),
     status: z.enum(["DRAFT", "SENT", "VIEWED", "PAID", "VOIDED", "OVERDUE"]).optional(),
     amount: z.number().finite().positive().optional(),
     discountAmount: z.number().finite().min(0).optional(),

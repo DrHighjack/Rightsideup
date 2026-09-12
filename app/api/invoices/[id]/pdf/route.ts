@@ -44,7 +44,7 @@ async function canAccessInvoice(userId: string, role: string, invoiceUserId: str
   return Boolean(link);
 }
 
-function InvoicePdf({ invoice }: { invoice: { invoiceNumber: string | null; amount: number | null; discountAmount: number | null; taxRateBps: number; taxAmount: number; paidAmount: number | null; status: string; dueDate: Date | null; createdAt: Date; paidAt: Date | null; paidByType: string | null; fluidpayTransactionId: string | null; lineItems: Array<{ description: string; quantity: number; unitAmount: number; totalAmount: number }>; user: { firstName: string; lastName: string; email: string } } }) {
+function InvoicePdf({ invoice }: { invoice: { invoiceNumber: string | null; amount: number | null; discountAmount: number | null; taxRateBps: number; taxAmount: number; paidAmount: number | null; status: string; dueDate: Date | null; createdAt: Date; paidAt: Date | null; paidByType: string | null; fluidpayTransactionId: string | null; lineItems: Array<{ description: string; quantity: number; unitAmount: number; totalAmount: number }>; order: { orderNumber: string; address: string } | null; user: { firstName: string; lastName: string; email: string } } }) {
   const amount = invoice.amount || 0;
   const discount = invoice.discountAmount || 0;
   const paid = invoice.paidAmount || 0;
@@ -62,7 +62,8 @@ function InvoicePdf({ invoice }: { invoice: { invoiceNumber: string | null; amou
       React.createElement(View, { style: styles.section },
         React.createElement(Text, { style: styles.sectionTitle }, "BILLED TO"),
         React.createElement(Text, null, `${invoice.user.firstName} ${invoice.user.lastName}`.trim()),
-        React.createElement(Text, { style: { color: "#64748b", fontSize: 10, marginTop: 4 } }, invoice.user.email)
+        React.createElement(Text, { style: { color: "#64748b", fontSize: 10, marginTop: 4 } }, invoice.user.email),
+        invoice.order ? React.createElement(Text, { style: { color: "#475569", fontSize: 10, marginTop: 8 } }, `Listing address: ${invoice.order.address}`) : null
       ),
       React.createElement(View, { style: styles.section },
         React.createElement(Text, { style: styles.sectionTitle }, "INVOICE DETAILS"),
@@ -95,7 +96,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
     if (!invoice) return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     if (invoice.status === "DRAFT" && role !== "ADMIN") return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     if (!(await canAccessInvoice(session.user.id, role, invoice.userId))) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    const pdfElement = React.createElement(InvoicePdf, { invoice }) as unknown as React.ReactElement;
+    const order = invoice.orderId ? await prisma.order.findUnique({ where: { id: invoice.orderId }, select: { orderNumber: true, address: true } }) : null;
+    const pdfElement = React.createElement(InvoicePdf, { invoice: { ...invoice, order } }) as unknown as React.ReactElement;
     const buffer = await renderToBuffer(pdfElement as React.ReactElement<React.ComponentProps<typeof Document>>);
     return new NextResponse(buffer as unknown as BodyInit, { status: 200, headers: { "Content-Type": "application/pdf", "Content-Disposition": `attachment; filename="${invoice.invoiceNumber || "invoice"}.pdf"`, "Cache-Control": "no-store" } });
   } catch (error) {

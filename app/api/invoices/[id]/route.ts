@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
 async function canAccessInvoice(userId: string, role: string, invoiceUserId: string) {
@@ -23,32 +23,38 @@ async function canAccessInvoice(userId: string, role: string, invoiceUserId: str
  * Get a single invoice for the logged-in realtor
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const requestUser = await getRequestUser(request);
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
-      include: { lineItems: true },
+      include: {
+        lineItems: true,
+      },
     });
 
     if (!invoice) {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    const role = session.user.role;
+    const role = requestUser.role;
     if (invoice.status === "DRAFT" && role !== "ADMIN") {
       return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
     }
 
-    if (!(await canAccessInvoice(session.user.id, role, invoice.userId))) {
+    if (!(await canAccessInvoice(requestUser.id, role, invoice.userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
+
+    const order = invoice.orderId
+      ? await prisma.order.findUnique({ where: { id: invoice.orderId }, select: { id: true, orderNumber: true, address: true } })
+      : null;
 
     const availableCredits = await prisma.coupon.findMany({
       where: {
@@ -70,6 +76,7 @@ export async function GET(
 
     return NextResponse.json({
       ...invoice,
+      order,
       availableCreditAmount,
       availableCredits,
     });

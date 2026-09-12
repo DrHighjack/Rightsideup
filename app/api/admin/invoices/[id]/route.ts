@@ -22,6 +22,7 @@ export async function GET(
     const invoice = await prisma.invoice.findUnique({
       where: { id: params.id },
       include: {
+        lineItems: true,
         user: {
           select: {
             id: true,
@@ -71,6 +72,7 @@ export async function PUT(
     }
 
     const {
+      orderId,
       status,
       amount,
       discountAmount,
@@ -81,6 +83,18 @@ export async function PUT(
     } = adminInvoiceUpdateSchema.parse(await request.json());
 
     const updateData: any = {};
+    if (orderId !== undefined) {
+      if (orderId === null) {
+        updateData.orderId = null;
+      } else {
+        const order = await prisma.order.findFirst({
+          where: { id: orderId, realtorId: (await prisma.invoice.findUnique({ where: { id: params.id }, select: { userId: true } }))?.userId },
+          select: { id: true },
+        });
+        if (!order) return NextResponse.json({ error: "Order does not belong to this invoice's realtor" }, { status: 400 });
+        updateData.orderId = order.id;
+      }
+    }
     if (status) updateData.status = status;
     if (amount) updateData.amount = Math.round(amount);
     if (discountAmount !== undefined) updateData.discountAmount = Math.round(discountAmount);

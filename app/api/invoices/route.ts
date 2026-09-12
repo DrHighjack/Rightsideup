@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { isOutstandingInvoiceStatus } from "@/lib/invoice-totals";
 
@@ -9,8 +9,8 @@ import { isOutstandingInvoiceStatus } from "@/lib/invoice-totals";
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const requestUser = await getRequestUser(request);
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -21,17 +21,17 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0", 10);
 
     const sessionUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: requestUser.id },
       select: { role: true },
     });
     if (!sessionUser) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let invoiceUserIds = [session.user.id];
+    let invoiceUserIds = [requestUser.id];
     if (sessionUser.role === "TC") {
       const links = await prisma.tCAgentLink.findMany({
-        where: { tcUserId: session.user.id },
+        where: { tcUserId: requestUser.id },
         select: { agentUserId: true },
       });
       invoiceUserIds = links.map((link) => link.agentUserId);
@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
       prisma.invoice.findMany({
         where,
         include: {
+          order: { select: { id: true, orderNumber: true, address: true } },
           user: {
             select: { id: true, firstName: true, lastName: true, email: true },
           },
@@ -97,8 +98,14 @@ export async function GET(request: NextRequest) {
       return sum + (credit.remainingValue || 0);
     }, 0);
 
+    const orderIds = invoices.map((invoice) => invoice.orderId).filter((id): id is string => Boolean(id));
+    const orders = orderIds.length
+      ? await prisma.order.findMany({ where: { id: { in: orderIds } }, select: { id: true, orderNumber: true, address: true } })
+      : [];
+    const orderById = new Map(orders.map((order) => [order.id, order]));
+
     return NextResponse.json({
-      invoices,
+      invoices: invoices.map((invoice) => ({ ...invoice, order: invoice.orderId ? orderById.get(invoice.orderId) || null : null })),
       total,
       limit,
       offset,

@@ -2796,15 +2796,27 @@ export function getInvoiceReminderEmail(
     _termsUrl?: string
 ) {
     const reminderConfig = [
-        { title: "7-Day Invoice Reminder", subtitle: "Your invoice is 7 days overdue", accent: "#2563eb" },
-        { title: "14-Day Invoice Reminder", subtitle: "Your invoice is 14 days overdue", accent: "#d97706" },
-        { title: "30-Day Invoice Reminder", subtitle: "Your invoice is 30 days overdue", accent: "#dc2626" },
+        {
+            title: "Friendly Invoice Reminder",
+            subtitle: "This is a friendly reminder that your invoice is past due.",
+            accent: "#2563eb",
+        },
+        {
+            title: "Invoice Due Tomorrow",
+            subtitle: "Your invoice is due tomorrow.",
+            accent: "#d97706",
+        },
+        {
+            title: "Invoice Overdue + Fee",
+            subtitle: "Your invoice is overdue and a late fee may apply.",
+            accent: "#dc2626",
+        },
     ][Math.min(Math.max(reminderCount, 0), 2)];
 
     const html = buildAlertEmail({
         title: reminderConfig.title,
         subtitle: reminderConfig.subtitle,
-        intro: `Hi ${escapeHtml(customerName)}, this is a friendly reminder that invoice ${escapeHtml(invoiceNumber)} is currently ${daysOverdue} days overdue.`,
+        intro: `Hi ${escapeHtml(customerName)}, this is a reminder that invoice ${escapeHtml(invoiceNumber)} is currently ${daysOverdue} days overdue.`,
         fields: [
             { label: "Invoice #", value: escapeHtml(invoiceNumber) },
             { label: "Due Date", value: escapeHtml(dueDate) },
@@ -2813,7 +2825,9 @@ export function getInvoiceReminderEmail(
         ],
         ctaLabel: "Pay Invoice Now",
         ctaLink: paymentLink,
-        note: "Please pay as soon as possible to keep your account in good standing.",
+        note: reminderCount >= 2
+            ? "Please pay immediately to avoid additional late fees and keep your account in good standing."
+            : "Please pay as soon as possible to keep your account in good standing.",
         theme: reminderCount >= 2 ? ALERT_THEMES.danger : reminderCount === 1 ? ALERT_THEMES.warning : ALERT_THEMES.info,
     });
 

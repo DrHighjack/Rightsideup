@@ -75,11 +75,23 @@ export async function GET(
       return sum + (credit.remainingValue || 0);
     }, 0);
 
+    const fluidPayConfig = {
+      publicKey:
+        process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY ||
+        process.env.FLUIDPAY_PUBLIC_KEY ||
+        "pub_3IFJ9AyNLIrn8p5tWxOuu99Wgqa",
+      baseUrl:
+        process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL ||
+        process.env.FLUIDPAY_BASE_URL ||
+        "https://app.fluidpay.com",
+    };
+
     return NextResponse.json({
       ...invoice,
       order,
       availableCreditAmount,
       availableCredits,
+      fluidPay: fluidPayConfig,
     });
   } catch (error) {
     console.error("Failed to fetch invoice:", error);

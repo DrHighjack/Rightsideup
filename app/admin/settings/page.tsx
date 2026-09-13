@@ -48,7 +48,7 @@ export default function AdminSettingsPage() {
     imapPassword: '',
     pollInterval: '5',
     adminAlertEmail: '',
-    invoiceReminderDays: '7,14,30',
+    invoiceReminderDays: '7,14,16',
     smsOptInDefault: false,
     lowInventoryThreshold: '5',
     raticanMortgageCtaEnabled: false,
@@ -104,7 +104,7 @@ export default function AdminSettingsPage() {
           imapPassword: data['imap.imapPassword'] || '',
           pollInterval: data['imap.pollInterval'] || '5',
           adminAlertEmail: data['notifications.adminAlertEmail'] || '',
-          invoiceReminderDays: data['notifications.invoiceReminderDays'] || '7,14,30',
+          invoiceReminderDays: data['notifications.invoiceReminderDays'] || '7,14,16',
           smsOptInDefault: data['notifications.smsOptInDefault'] === 'true' || false,
           lowInventoryThreshold: data['inventory.lowInventoryThreshold'] || '5',
           raticanMortgageCtaEnabled: data['publicTap.raticanMortgageCtaEnabled'] === true || data['publicTap.raticanMortgageCtaEnabled'] === 'true' || false,
@@ -673,7 +673,7 @@ export default function AdminSettingsPage() {
               type="text"
               value={settings.invoiceReminderDays}
               onChange={(e) => setSettings({ ...settings, invoiceReminderDays: e.target.value })}
-              placeholder="7,14,30"
+              placeholder="7,14,16"
               className="w-full rounded-md border border-gray-300 px-4 py-2"
             />
           </div>

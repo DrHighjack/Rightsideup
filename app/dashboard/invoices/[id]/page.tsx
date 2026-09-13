@@ -13,6 +13,7 @@ declare global {
       url: string;
       apikey: string;
       container: string;
+      onLoad?: () => void;
       submission: (resp: { status?: string; token?: string; message?: string }) => void;
     }) => { submit?: () => void };
   }
@@ -53,9 +54,13 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   OVERDUE: { bg: "bg-orange-100", text: "text-orange-800" },
 };
 
-const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
-const fluidPayBaseUrl =
-  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
+const DEFAULT_FLUIDPAY_PUBLIC_KEY = "pub_3IFJ9AyNLIrn8p5tWxOuu99Wgqa";
+const DEFAULT_FLUIDPAY_BASE_URL = "https://app.fluidpay.com";
+
+const envFluidPayPublicKey =
+  process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || DEFAULT_FLUIDPAY_PUBLIC_KEY;
+const envFluidPayBaseUrl =
+  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || DEFAULT_FLUIDPAY_BASE_URL;
 
 export default function InvoiceDetailPage() {
   const { data: session, status: sessionStatus } = useSession();
@@ -67,6 +72,11 @@ export default function InvoiceDetailPage() {
   const [loading, setLoading] = useState(true);
   const [invoiceError, setInvoiceError] = useState("");
 
+  const [fluidPayConfig, setFluidPayConfig] = useState({
+    publicKey: envFluidPayPublicKey,
+    baseUrl: envFluidPayBaseUrl,
+  });
+
   const [cardOnFile, setCardOnFile] = useState<boolean | null>(null);
   const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
   const [selectedCardId, setSelectedCardId] = useState("");
@@ -76,7 +86,9 @@ export default function InvoiceDetailPage() {
   const [saveCardForFuture, setSaveCardForFuture] = useState(true);
   const saveCardForFutureRef = useRef(true);
 
-  const [tokenizerScriptLoaded, setTokenizerScriptLoaded] = useState(false);
+  const [tokenizerScriptLoaded, setTokenizerScriptLoaded] = useState(() => {
+    return typeof window !== "undefined" && Boolean(window.Tokenizer);
+  });
   const [tokenizerReady, setTokenizerReady] = useState(false);
   const tokenizerRef = useRef<{ submit?: () => void } | null>(null);
 
@@ -99,8 +111,16 @@ export default function InvoiceDetailPage() {
         throw new Error(data.error || `Unable to load invoice (HTTP ${res.status})`);
       }
 
-      const data = (await res.json()) as Invoice;
+      const data = (await res.json()) as Invoice & {
+        fluidPay?: { publicKey?: string; baseUrl?: string };
+      };
       setInvoice(data);
+      if (data.fluidPay?.publicKey) {
+        setFluidPayConfig({
+          publicKey: data.fluidPay.publicKey,
+          baseUrl: data.fluidPay.baseUrl || DEFAULT_FLUIDPAY_BASE_URL,
+        });
+      }
     } catch (error) {
       console.error("Failed to fetch invoice:", error);
       setInvoiceError(error instanceof Error ? error.message : "Unable to load invoice");
@@ -119,11 +139,21 @@ export default function InvoiceDetailPage() {
         return;
       }
 
-      const data = (await res.json()) as { hasCard?: boolean; cards?: SavedPaymentMethod[] };
+      const data = (await res.json()) as {
+        hasCard?: boolean;
+        cards?: SavedPaymentMethod[];
+        fluidPay?: { publicKey?: string; baseUrl?: string };
+      };
       const cards = data.cards || [];
       setSavedCards(cards);
       setSelectedCardId((current) => current || cards[0]?.id || "");
       setCardOnFile(Boolean(data.hasCard));
+      if (data.fluidPay?.publicKey) {
+        setFluidPayConfig({
+          publicKey: data.fluidPay.publicKey,
+          baseUrl: data.fluidPay.baseUrl || DEFAULT_FLUIDPAY_BASE_URL,
+        });
+      }
       if (data.hasCard) {
         setShowDifferentCard(false);
       }
@@ -140,6 +170,48 @@ export default function InvoiceDetailPage() {
     if (sessionStatus === "loading") return;
     void fetchCardOnFile();
   }, [invoiceId, isTC, sessionStatus]);
+
+  // Robust script loader
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.Tokenizer) {
+      setTokenizerScriptLoaded(true);
+      return;
+    }
+
+    const scriptSrc = `${fluidPayConfig.baseUrl}/tokenizer/tokenizer.js`;
+    let script = document.querySelector(`script[src="${scriptSrc}"]`) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.src = scriptSrc;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    const handleLoad = () => {
+      setTokenizerScriptLoaded(true);
+      setPaymentError("");
+    };
+    const handleError = () => {
+      setPaymentError("Failed to load payment form script.");
+    };
+
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
+
+    const interval = setInterval(() => {
+      if (window.Tokenizer) {
+        setTokenizerScriptLoaded(true);
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => {
+      script?.removeEventListener("load", handleLoad);
+      script?.removeEventListener("error", handleError);
+      clearInterval(interval);
+    };
+  }, [fluidPayConfig.baseUrl]);
 
   const canPayInvoice =
     invoice?.status === "SENT" || invoice?.status === "VIEWED" || invoice?.status === "OVERDUE";
@@ -236,7 +308,8 @@ export default function InvoiceDetailPage() {
       return;
     }
 
-    if (!fluidPayPublicKey) {
+    const apiKey = fluidPayConfig.publicKey || envFluidPayPublicKey;
+    if (!apiKey) {
       setPaymentError("FluidPay public key is not configured");
       return;
     }
@@ -250,21 +323,25 @@ export default function InvoiceDetailPage() {
 
     try {
       tokenizerRef.current = new window.Tokenizer({
-        url: fluidPayBaseUrl,
-        apikey: fluidPayPublicKey,
+        url: fluidPayConfig.baseUrl,
+        apikey: apiKey,
         container: "#payment-form",
+        onLoad: () => {
+          setTokenizerReady(true);
+          setPaymentError("");
+        },
         submission: (resp) => {
           void handleTokenizerSubmission(resp);
         },
       });
-      setTokenizerReady(true);
+      setTokenizerReady(Boolean(tokenizerRef.current.submit));
       setPaymentError("");
     } catch (error) {
       setTokenizerReady(false);
       setPaymentError("Failed to initialize payment form");
       console.error("Tokenizer init failed:", error);
     }
-  }, [handleTokenizerSubmission, shouldRenderTokenizer, tokenizerScriptLoaded]);
+  }, [handleTokenizerSubmission, shouldRenderTokenizer, tokenizerScriptLoaded, fluidPayConfig]);
 
   useEffect(() => {
     initializeTokenizer();
@@ -372,7 +449,7 @@ export default function InvoiceDetailPage() {
     <>
       {sessionStatus === "authenticated" && (
         <Script
-          src={`${fluidPayBaseUrl}/tokenizer/tokenizer.js`}
+          src={`${fluidPayConfig.baseUrl}/tokenizer/tokenizer.js`}
           strategy="afterInteractive"
           onLoad={() => setTokenizerScriptLoaded(true)}
           onError={() => setPaymentError("Failed to load payment form script")}

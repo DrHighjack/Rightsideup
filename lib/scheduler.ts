@@ -1,5 +1,6 @@
 import cron from 'node-cron';
 import * as Sentry from '@sentry/nextjs';
+import { getInvoiceReminderStage } from './invoice-reminders';
 
 interface NotifiableUtilityLine {
   name: string;
@@ -127,19 +128,13 @@ async function checkInvoiceAging() {
         console.log(`[SCHEDULER] Invoice ${invoice.id} marked as OVERDUE (${daysOverdue} days past due)`);
       }
 
-      // Check if we should send a reminder
+      const reminderStage = getInvoiceReminderStage(daysOverdue);
       let shouldSendReminder = false;
       let reminderTrigger = '';
 
-      if (daysOverdue >= 7 && invoice.reminderCount === 0) {
+      if (reminderStage && invoice.reminderCount === reminderStage.reminderCount) {
         shouldSendReminder = true;
-        reminderTrigger = '7 days overdue (1st reminder)';
-      } else if (daysOverdue >= 14 && invoice.reminderCount === 1) {
-        shouldSendReminder = true;
-        reminderTrigger = '14 days overdue (2nd reminder)';
-      } else if (daysOverdue >= 30 && invoice.reminderCount === 2) {
-        shouldSendReminder = true;
-        reminderTrigger = '30 days overdue (3rd reminder)';
+        reminderTrigger = `${reminderStage.days} days overdue (${reminderStage.level})`;
       }
 
       if (shouldSendReminder) {

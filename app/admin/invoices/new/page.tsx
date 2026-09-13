@@ -64,7 +64,8 @@ function formatServiceType(serviceType: string): string {
 
 function defaultDueDate(): string {
   const date = new Date();
-  date.setDate(date.getDate() + 30);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + 15);
   return date.toISOString().slice(0, 10);
 }
 

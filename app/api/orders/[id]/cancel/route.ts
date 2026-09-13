@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
 export async function PUT(
@@ -7,13 +7,13 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request);
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!["ADMIN", "REALTOR", "TC"].includes(session.user.role)) {
+    if (!["ADMIN", "REALTOR", "TC"].includes(requestUser.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -30,17 +30,17 @@ export async function PUT(
 
     // Realtors can only cancel their own orders
     if (
-      session.user.role === "REALTOR" &&
-      order.realtorId !== session.user.id
+      requestUser.role === "REALTOR" &&
+      order.realtorId !== requestUser.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (session.user.role === "TC") {
+    if (requestUser.role === "TC") {
       const link = await prisma.tCAgentLink.findUnique({
         where: {
           tcUserId_agentUserId: {
-            tcUserId: session.user.id,
+            tcUserId: requestUser.id,
             agentUserId: order.realtorId,
           },
         },
@@ -54,7 +54,7 @@ export async function PUT(
 
     // Realtors and TCs can cancel before 811 clearance or scheduling begins.
     if (
-      ["REALTOR", "TC"].includes(session.user.role) &&
+      ["REALTOR", "TC"].includes(requestUser.role) &&
       !["PENDING", "CONFIRMED"].includes(order.status)
     ) {
       return NextResponse.json(
@@ -63,7 +63,7 @@ export async function PUT(
       );
     }
 
-    if (session.user.role === "REALTOR" || session.user.role === "TC") {
+    if (requestUser.role === "REALTOR" || requestUser.role === "TC") {
       const existingTicket = await prisma.ticket811.findFirst({
         where: {
           OR: [

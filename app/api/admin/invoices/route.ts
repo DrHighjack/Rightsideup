@@ -170,6 +170,8 @@ export async function POST(request: NextRequest) {
     const invoiceCount = await prisma.invoice.count();
     const invoiceNumber = `INV-${Date.now()}-${invoiceCount + 1}`;
 
+    const normalizedDueDate = dueDate ? new Date(dueDate) : new Date(Date.now() + 15 * 24 * 60 * 60 * 1000);
+
     const invoice = await prisma.invoice.create({
       data: {
         userId,
@@ -179,7 +181,7 @@ export async function POST(request: NextRequest) {
         discountAmount: discountCents,
         taxRateBps,
         taxAmount,
-        dueDate: dueDate ? new Date(dueDate) : undefined,
+        dueDate: normalizedDueDate,
         status: "DRAFT",
         lineItems: {
           create: normalizedLineItems || [{

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { logActivity } from "@/lib/activityLog";
 import { isOrderReadyToSchedule, ORDER_STATUSES } from "@/lib/order-status";
@@ -29,9 +29,9 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const user = await getRequestUser(_request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -49,17 +49,17 @@ export async function GET(
 
     // Realtors can only view their own orders
     if (
-      session.user.role === "REALTOR" &&
-      order.realtorId !== session.user.id
+      user.role === "REALTOR" &&
+      order.realtorId !== user.id
     ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (session.user.role === "TC") {
+    if (user.role === "TC") {
       const link = await prisma.tCAgentLink.findUnique({
         where: {
           tcUserId_agentUserId: {
-            tcUserId: session.user.id,
+            tcUserId: user.id,
             agentUserId: order.realtorId,
           },
         },
@@ -71,14 +71,14 @@ export async function GET(
       }
     }
 
-    if (session.user.role === "BROKERAGE") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
+    if (user.role === "BROKERAGE") {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
         select: { tags: true },
       });
       const accessibleIds = new Set(
-        user?.tags.includes("SHARED_ACCOUNTANT")
-          ? (await getAccessibleBrokerages(session.user.id)).map((brokerage) => brokerage.id)
+        dbUser?.tags.includes("SHARED_ACCOUNTANT")
+          ? (await getAccessibleBrokerages(user.id)).map((brokerage) => brokerage.id)
           : []
       );
       if (!order.realtor.brokerageId || !accessibleIds.has(order.realtor.brokerageId)) {
@@ -100,14 +100,14 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request);
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    const role = session.user.role as string;
+    const role = requestUser.role as string;
 
     const currentOrder = await prisma.order.findUnique({
       where: { id: params.id },
@@ -124,12 +124,12 @@ export async function PUT(
     });
 
     if (role !== "ADMIN") {
-      let canReschedule = role === "REALTOR" && currentOrder.realtorId === session.user.id;
+      let canReschedule = role === "REALTOR" && currentOrder.realtorId === requestUser.id;
       if (role === "TC") {
         const link = await prisma.tCAgentLink.findUnique({
           where: {
             tcUserId_agentUserId: {
-              tcUserId: session.user.id,
+              tcUserId: requestUser.id,
               agentUserId: currentOrder.realtorId,
             },
           },
@@ -177,7 +177,7 @@ export async function PUT(
       });
 
       await logActivity({
-        userId: session.user.id,
+        userId: requestUser.id,
         action: "ORDER_STATUS_CHANGED",
         entityType: "Order",
         entityId: currentOrder.id,
@@ -203,7 +203,7 @@ export async function PUT(
           type: "ORDER_RESCHEDULED",
           link: `/admin/orders/${currentOrder.id}`,
         }));
-        if (session.user.id !== currentOrder.realtorId) {
+        if (requestUser.id !== currentOrder.realtorId) {
           notifications.push({
             userId: currentOrder.realtorId,
             title: "Order Date Changed",
@@ -283,9 +283,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request);
 
-    if (!session?.user?.id || session.user.role !== "ADMIN") {
+    if (!requestUser?.id || requestUser.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

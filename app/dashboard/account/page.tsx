@@ -11,14 +11,19 @@ declare global {
       url: string;
       apikey: string;
       container: string;
+      onLoad?: () => void;
       submission: (resp: { status?: string; token?: string; message?: string }) => void;
     }) => { submit?: () => void };
   }
 }
 
-const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
-const fluidPayBaseUrl =
-  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
+const DEFAULT_FLUIDPAY_PUBLIC_KEY = "pub_3IFJ9AyNLIrn8p5tWxOuu99Wgqa";
+const DEFAULT_FLUIDPAY_BASE_URL = "https://app.fluidpay.com";
+
+const envFluidPayPublicKey =
+  process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || DEFAULT_FLUIDPAY_PUBLIC_KEY;
+const envFluidPayBaseUrl =
+  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || DEFAULT_FLUIDPAY_BASE_URL;
 
 interface TCAgent {
   linkId: string;
@@ -57,8 +62,14 @@ export default function AccountPage() {
   const [cardOnFile, setCardOnFile] = useState<boolean | null>(null);
   const [savedCards, setSavedCards] = useState<SavedPaymentMethod[]>([]);
   const [accountCreditAmount, setAccountCreditAmount] = useState(0);
+  const [fluidPayConfig, setFluidPayConfig] = useState({
+    publicKey: envFluidPayPublicKey,
+    baseUrl: envFluidPayBaseUrl,
+  });
   const [addingPaymentMethod, setAddingPaymentMethod] = useState(false);
-  const [paymentScriptLoaded, setPaymentScriptLoaded] = useState(false);
+  const [paymentScriptLoaded, setPaymentScriptLoaded] = useState(() => {
+    return typeof window !== "undefined" && Boolean(window.Tokenizer);
+  });
   const [paymentFormReady, setPaymentFormReady] = useState(false);
   const [savingPaymentMethod, setSavingPaymentMethod] = useState(false);
   const [paymentError, setPaymentError] = useState("");
@@ -115,10 +126,17 @@ export default function AccountPage() {
           hasCard?: boolean;
           cards?: SavedPaymentMethod[];
           accountCreditAmount?: number;
+          fluidPay?: { publicKey?: string; baseUrl?: string };
         };
         setCardOnFile(response.ok ? Boolean(data.hasCard) : false);
         setSavedCards(data.cards || []);
         setAccountCreditAmount(data.accountCreditAmount || 0);
+        if (data.fluidPay?.publicKey) {
+          setFluidPayConfig({
+            publicKey: data.fluidPay.publicKey,
+            baseUrl: data.fluidPay.baseUrl || DEFAULT_FLUIDPAY_BASE_URL,
+          });
+        }
       } catch (error) {
         console.error("Failed to check payment method:", error);
         setCardOnFile(false);
@@ -128,57 +146,137 @@ export default function AccountPage() {
     void fetchCardOnFile();
   }, [session?.user]);
 
+  // Robust script loader ensuring window.Tokenizer is available
   useEffect(() => {
-    if (!paymentScriptLoaded || (!addingPaymentMethod && cardOnFile !== false) || !window.Tokenizer) return;
+    if (typeof window === "undefined") return;
+    if (window.Tokenizer) {
+      setPaymentScriptLoaded(true);
+      return;
+    }
 
-    if (!fluidPayPublicKey) {
+    const scriptSrc = `${fluidPayConfig.baseUrl}/tokenizer/tokenizer.js`;
+    let script = document.querySelector(`script[src="${scriptSrc}"]`) as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement("script");
+      script.src = scriptSrc;
+      script.async = true;
+      document.head.appendChild(script);
+    }
+
+    const handleLoad = () => {
+      setPaymentScriptLoaded(true);
+      setPaymentError("");
+    };
+    const handleError = () => {
+      setPaymentError("Failed to load payment form.");
+    };
+
+    script.addEventListener("load", handleLoad);
+    script.addEventListener("error", handleError);
+
+    const interval = setInterval(() => {
+      if (window.Tokenizer) {
+        setPaymentScriptLoaded(true);
+        clearInterval(interval);
+      }
+    }, 200);
+
+    return () => {
+      script?.removeEventListener("load", handleLoad);
+      script?.removeEventListener("error", handleError);
+      clearInterval(interval);
+    };
+  }, [fluidPayConfig.baseUrl]);
+
+  useEffect(() => {
+    const shouldMountForm = cardOnFile === false || addingPaymentMethod;
+    if (!shouldMountForm) return;
+
+    if (!paymentScriptLoaded || !window.Tokenizer) return;
+
+    const apiKey = fluidPayConfig.publicKey || envFluidPayPublicKey;
+    if (!apiKey) {
       setPaymentError("FluidPay public key is not configured.");
       return;
     }
 
-    const container = document.getElementById("account-payment-form");
-    if (!container) return;
-    container.replaceChildren();
+    let isMounted = true;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
-    try {
-      const tokenizer = new window.Tokenizer({
-        url: fluidPayBaseUrl,
-        apikey: fluidPayPublicKey,
-        container: "#account-payment-form",
-        submission: async (response) => {
-          if (response.status !== "success" || !response.token) {
-            setPaymentError(response.message || "Card tokenization failed.");
-            setSavingPaymentMethod(false);
-            return;
-          }
+    const mountTokenizer = () => {
+      if (!window.Tokenizer) {
+        retryTimer = setTimeout(mountTokenizer, 100);
+        return;
+      }
 
-          try {
-            const saveResponse = await fetch("/api/payments/save-card", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ token: response.token }),
-            });
-            const data = (await saveResponse.json()) as { error?: string; card?: SavedPaymentMethod };
-            if (!saveResponse.ok) throw new Error(data.error || "Failed to save payment method");
-            setCardOnFile(true);
-            if (data.card) setSavedCards((previous) => [...previous, data.card as SavedPaymentMethod]);
-            setAddingPaymentMethod(false);
-            setPaymentMessage("Payment method saved securely.");
-            setPaymentError("");
-          } catch (error) {
-            setPaymentError(error instanceof Error ? error.message : "Failed to save payment method");
-          } finally {
-            setSavingPaymentMethod(false);
-          }
-        },
-      });
-      setPaymentTokenizer(tokenizer);
-      setPaymentFormReady(Boolean(tokenizer.submit));
-    } catch (error) {
-      console.error("Payment form initialization failed:", error);
-      setPaymentError("Failed to initialize payment form.");
-    }
-  }, [addingPaymentMethod, cardOnFile, paymentScriptLoaded]);
+      const container = document.getElementById("account-payment-form");
+      if (!container) {
+        retryTimer = setTimeout(mountTokenizer, 100);
+        return;
+      }
+
+      container.replaceChildren();
+
+      try {
+        const tokenizer = new window.Tokenizer({
+          url: fluidPayConfig.baseUrl,
+          apikey: apiKey,
+          container: "#account-payment-form",
+          onLoad: () => {
+            if (isMounted) {
+              setPaymentFormReady(true);
+              setPaymentError("");
+            }
+          },
+          submission: async (response) => {
+            if (response.status !== "success" || !response.token) {
+              setPaymentError(response.message || "Card tokenization failed.");
+              setSavingPaymentMethod(false);
+              return;
+            }
+
+            try {
+              const saveResponse = await fetch("/api/payments/save-card", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ token: response.token }),
+              });
+              const data = (await saveResponse.json()) as { error?: string; card?: SavedPaymentMethod };
+              if (!saveResponse.ok) throw new Error(data.error || "Failed to save payment method");
+              setCardOnFile(true);
+              if (data.card) setSavedCards((previous) => [...previous, data.card as SavedPaymentMethod]);
+              setAddingPaymentMethod(false);
+              setPaymentMessage("Payment method saved securely.");
+              setPaymentError("");
+            } catch (error) {
+              setPaymentError(error instanceof Error ? error.message : "Failed to save payment method");
+            } finally {
+              if (isMounted) {
+                setSavingPaymentMethod(false);
+              }
+            }
+          },
+        });
+
+        if (isMounted) {
+          setPaymentTokenizer(tokenizer);
+          setPaymentFormReady(Boolean(tokenizer.submit));
+        }
+      } catch (error) {
+        console.error("Payment form initialization failed:", error);
+        if (isMounted) {
+          setPaymentError("Failed to initialize payment form.");
+        }
+      }
+    };
+
+    mountTokenizer();
+
+    return () => {
+      isMounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [addingPaymentMethod, cardOnFile, paymentScriptLoaded, fluidPayConfig]);
 
   const handleSavePaymentMethod = () => {
     setPaymentError("");
@@ -375,7 +473,7 @@ export default function AccountPage() {
         {user.role === "REALTOR" || user.role === "TC" ? (
           <>
             <Script
-              src={`${fluidPayBaseUrl}/tokenizer/tokenizer.js`}
+              src={`${fluidPayConfig.baseUrl}/tokenizer/tokenizer.js`}
               strategy="afterInteractive"
               onLoad={() => setPaymentScriptLoaded(true)}
               onError={() => setPaymentError("Failed to load payment form.")}

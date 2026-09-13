@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
-    const role = session?.user?.role;
+    const requestUser = await getRequestUser(request);
+    const role = requestUser?.role;
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    const actorUserId = session.user.id;
+    const actorUserId = requestUser.id;
     if (role !== "REALTOR" && role !== "TC" && role !== "BROKERAGE") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
@@ -117,10 +117,22 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const fluidPayConfig = {
+      publicKey:
+        process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY ||
+        process.env.FLUIDPAY_PUBLIC_KEY ||
+        "pub_3IFJ9AyNLIrn8p5tWxOuu99Wgqa",
+      baseUrl:
+        process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL ||
+        process.env.FLUIDPAY_BASE_URL ||
+        "https://app.fluidpay.com",
+    };
+
     return NextResponse.json({
       cards: labeledCards,
       hasCard: labeledCards.length > 0,
       accountCreditAmount: accountCredits._sum.remainingValue || 0,
+      fluidPay: fluidPayConfig,
     });
   } catch (error) {
     console.error("Failed to check card-on-file:", error);
@@ -130,10 +142,10 @@ export async function GET(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const session = await auth();
-    const role = session?.user?.role;
+    const requestUser = await getRequestUser(request);
+    const role = requestUser?.role;
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
     if (role !== "REALTOR" && role !== "TC" && role !== "BROKERAGE") {
@@ -149,22 +161,22 @@ export async function PATCH(request: NextRequest) {
 
     if (cardId.startsWith("legacy:")) {
       const ownerId = cardId.slice("legacy:".length);
-      if (ownerId !== session.user.id) {
+      if (ownerId !== requestUser.id) {
         return NextResponse.json({ error: "Payment method not found" }, { status: 404 });
       }
       await prisma.user.update({
-        where: { id: session.user.id },
+        where: { id: requestUser.id },
         data: { paymentCardNickname: nickname || null },
       });
     } else if (cardId) {
       const card = await prisma.savedPaymentMethod.updateMany({
-        where: { id: cardId, userId: session.user.id },
+        where: { id: cardId, userId: requestUser.id },
         data: { nickname: nickname || null },
       });
       if (!card.count) return NextResponse.json({ error: "Payment method not found" }, { status: 404 });
     } else {
       await prisma.user.update({
-        where: { id: session.user.id },
+        where: { id: requestUser.id },
         data: { paymentCardNickname: nickname || null },
       });
     }

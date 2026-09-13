@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, Suspense, useEffect, useMemo, useState } from "react";
+import { FormEvent, Fragment, Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Script from "next/script";
@@ -11,13 +11,19 @@ declare global {
       url: string;
       apikey: string;
       container: string;
+      onLoad?: () => void;
       submission: (response: { status?: string; token?: string; message?: string }) => void;
     }) => { submit?: () => void };
   }
 }
 
-const fluidPayPublicKey = process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || "";
-const fluidPayBaseUrl = process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
+const DEFAULT_FLUIDPAY_PUBLIC_KEY = "pub_3IFJ9AyNLIrn8p5tWxOuu99Wgqa";
+const DEFAULT_FLUIDPAY_BASE_URL = "https://app.fluidpay.com";
+
+const fluidPayPublicKey =
+  process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY || DEFAULT_FLUIDPAY_PUBLIC_KEY;
+const fluidPayBaseUrl =
+  process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL || DEFAULT_FLUIDPAY_BASE_URL;
 
 interface BrokerageProfile {
   id: string;
@@ -79,6 +85,7 @@ interface Invoice {
   dueDate: string | null;
   createdAt: string;
   userId: string;
+  lineItems?: Array<{ id: string; description: string; quantity: number; unitAmount: number; totalAmount: number }>;
   user: {
     id: string;
     firstName: string;
@@ -167,10 +174,13 @@ function BrokerageDashboardContent() {
   const [autoPayEnabled, setAutoPayEnabled] = useState(false);
   const [autoPaySaving, setAutoPaySaving] = useState(false);
   const [expandedStatementId, setExpandedStatementId] = useState<string | null>(null);
+  const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [generatingStatement, setGeneratingStatement] = useState(false);
   const [payingStatementId, setPayingStatementId] = useState<string | null>(null);
   const [addingCard, setAddingCard] = useState(false);
-  const [paymentScriptLoaded, setPaymentScriptLoaded] = useState(false);
+  const [paymentScriptLoaded, setPaymentScriptLoaded] = useState(() => {
+    return typeof window !== "undefined" && Boolean(window.Tokenizer);
+  });
   const [paymentFormReady, setPaymentFormReady] = useState(false);
   const [savingCard, setSavingCard] = useState(false);
   const [paymentTokenizer, setPaymentTokenizer] = useState<{ submit?: () => void } | null>(null);
@@ -1189,10 +1199,18 @@ function BrokerageDashboardContent() {
                 const discount = invoice.discountAmount || 0;
                 const paid = invoice.paidAmount || 0;
                 const balance = Math.max(0, amount - discount + invoice.taxAmount - paid);
+                const isExpanded = expandedInvoiceId === invoice.id;
                 return (
-                  <tr key={invoice.id} className="border-b border-gray-100">
+                  <Fragment key={invoice.id}>
+                  <tr className="border-b border-gray-100">
                     <td className="px-2 py-3 font-mono text-xs text-gray-900">
-                      {invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`}
+                      <button
+                        type="button"
+                        onClick={() => setExpandedInvoiceId((current) => current === invoice.id ? null : invoice.id)}
+                        className="font-mono text-xs text-blue-700 hover:text-blue-900"
+                      >
+                        {invoice.invoiceNumber || `INV-${invoice.id.slice(0, 8).toUpperCase()}`}
+                      </button>
                     </td>
                     <td className="px-2 py-3">
                       <p className="font-medium text-gray-900">{invoice.user.firstName} {invoice.user.lastName}</p>
@@ -1222,6 +1240,33 @@ function BrokerageDashboardContent() {
                       </a>
                     </td>
                   </tr>
+                  {isExpanded && (
+                    <tr className="border-b border-gray-100 bg-gray-50">
+                      <td colSpan={8} className="px-4 py-3">
+                        <table className="w-full text-left text-xs">
+                          <thead className="text-gray-500">
+                            <tr>
+                              <th className="px-2 py-1">Description</th>
+                              <th className="px-2 py-1 text-right">Qty</th>
+                              <th className="px-2 py-1 text-right">Unit price</th>
+                              <th className="px-2 py-1 text-right">Amount</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(invoice.lineItems?.length ? invoice.lineItems : [{ id: "fallback", description: "Service charge", quantity: 1, unitAmount: amount, totalAmount: amount }]).map((item) => (
+                              <tr key={item.id} className="border-t border-gray-200">
+                                <td className="px-2 py-1 font-medium text-gray-900">{item.description}</td>
+                                <td className="px-2 py-1 text-right text-gray-700">{item.quantity}</td>
+                                <td className="px-2 py-1 text-right text-gray-700">{formatMoney(item.unitAmount)}</td>
+                                <td className="px-2 py-1 text-right font-medium text-gray-900">{formatMoney(item.totalAmount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
               {invoices.length === 0 && (

@@ -1,5 +1,5 @@
 const fluidPaySecretKey = process.env.FLUIDPAY_SECRET_KEY ?? "";
-const fluidPayBaseUrl = process.env.FLUIDPAY_BASE_URL || "https://sandbox.fluidpay.com";
+const fluidPayBaseUrl = process.env.FLUIDPAY_BASE_URL || "https://app.fluidpay.com";
 
 if (!fluidPaySecretKey) {
   throw new Error("FLUIDPAY_SECRET_KEY is not configured");

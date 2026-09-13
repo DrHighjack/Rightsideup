@@ -106,6 +106,15 @@ export async function GET(request: NextRequest) {
           paidAt: true,
           createdAt: true,
           userId: true,
+          lineItems: {
+            select: {
+              id: true,
+              description: true,
+              quantity: true,
+              unitAmount: true,
+              totalAmount: true,
+            },
+          },
           user: {
             select: {
               id: true,

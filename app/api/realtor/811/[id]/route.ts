@@ -3,28 +3,24 @@
  * Auth: REALTOR or TC (can only access their own tickets)
  */
 
-import { auth } from '@/lib/auth';
+import { getRequestUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/prisma';
 import { NextResponse } from 'next/server';
 
 export async function GET(
-  _: Request,
+  request: Request,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request as any);
 
-    if (!session?.user) {
+    if (!requestUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    const userRole = session.user.role;
+    const userId = requestUser.id;
+    const userRole = requestUser.role;
     const ticketId = params.id;
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const ticket = await prisma.ticket811.findUnique({
       where: { id: ticketId },

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 import { generateOrderNumber } from "@/lib/order-utils";
 import { sendOrderConfirmationEmail } from "@/lib/email";
@@ -19,9 +19,9 @@ function isMissingEmailVerifiedColumn(error: unknown): boolean {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getRequestUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -34,13 +34,13 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get("limit") || "20", 10) || 20));
 
     const where: any = {};
-    const role = session.user.role;
+    const role = user.role;
 
     if (role === "REALTOR") {
-      where.realtorId = session.user.id;
+      where.realtorId = user.id;
     } else if (role === "TC") {
       const linkedAgents = await prisma.tCAgentLink.findMany({
-        where: { tcUserId: session.user.id },
+        where: { tcUserId: user.id },
         select: { agentUserId: true },
       });
 
@@ -67,14 +67,14 @@ export async function GET(request: NextRequest) {
         where.realtorId = { in: linkedAgentIds };
       }
     } else if (role === "BROKERAGE") {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.id },
         select: { tags: true },
       });
-      if (!user?.tags.includes("SHARED_ACCOUNTANT")) {
+      if (!dbUser?.tags.includes("SHARED_ACCOUNTANT")) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
-      const brokerageIds = (await getAccessibleBrokerages(session.user.id)).map((brokerage) => brokerage.id);
+      const brokerageIds = (await getAccessibleBrokerages(user.id)).map((brokerage) => brokerage.id);
       where.realtor = { brokerageId: { in: brokerageIds } };
     } else if (role !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -182,16 +182,16 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request);
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     let sessionUser: { id: string; role: string; emailVerifiedAt: Date | null } | null = null;
     try {
       sessionUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: requestUser.id },
         select: { id: true, role: true, emailVerifiedAt: true },
       });
     } catch (error) {
@@ -200,7 +200,7 @@ export async function POST(request: NextRequest) {
       }
 
       const legacySessionUser = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: requestUser.id },
         select: { id: true, role: true },
       });
       sessionUser = legacySessionUser
@@ -235,7 +235,7 @@ export async function POST(request: NextRequest) {
       realtorId,
     } = body;
 
-    let targetRealtorId = session.user.id;
+    let targetRealtorId = requestUser.id;
 
     if (sessionUser.role === "TC") {
       if (!realtorId || typeof realtorId !== "string") {
@@ -248,7 +248,7 @@ export async function POST(request: NextRequest) {
       const link = await prisma.tCAgentLink.findUnique({
         where: {
           tcUserId_agentUserId: {
-            tcUserId: session.user.id,
+            tcUserId: requestUser.id,
             agentUserId: realtorId,
           },
         },
@@ -431,7 +431,7 @@ export async function POST(request: NextRequest) {
         data: {
           orderNumber,
           realtorId: targetRealtorId,
-          placedByTCId: sessionUser.role === "TC" ? session.user.id : null,
+          placedByTCId: sessionUser.role === "TC" ? requestUser.id : null,
           type,
           address,
           addressLat: addressLat ? parseFloat(addressLat) : null,

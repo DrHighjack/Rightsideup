@@ -1,15 +1,14 @@
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/signs/mine - Get signs assigned to the current realtor
 export async function GET(request: Request) {
-  const session = await auth();
+  const user = await getRequestUser(request as any);
 
-  if (!session?.user) {
+  if (!user) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user;
   if (user.role !== "REALTOR" && user.role !== "TC") {
     return Response.json({ error: "Forbidden" }, { status: 403 });
   }

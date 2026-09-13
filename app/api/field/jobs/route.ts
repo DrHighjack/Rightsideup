@@ -1,18 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
+import { getRequestUser } from '@/lib/mobile-auth';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getRequestUser(request);
 
-    if (!session?.user?.id || session.user.role !== 'FIELD_TECH') {
+    if (!user?.id || user.role !== 'FIELD_TECH') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const fieldTechId = session.user.id;
+    const fieldTechId = user.id;
 
     // Get today's date
     const today = new Date();

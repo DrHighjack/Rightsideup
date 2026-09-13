@@ -1,17 +1,17 @@
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getEffectivePrice } from "@/lib/pricing";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request);
 
-    if (!session?.user || session.user.role !== "TC") {
+    if (!requestUser || requestUser.role !== "TC") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const tcUserId = session.user.id;
+    const tcUserId = requestUser.id;
 
     // Get all linked agents for this TC
     const linkedAgents = await prisma.tCAgentLink.findMany({

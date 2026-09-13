@@ -3,20 +3,20 @@
  * Auth: REALTOR or TC
  */
 
-import { auth } from '@/lib/auth';
+import { getRequestUser } from '@/lib/mobile-auth';
 import { prisma } from '@/lib/prisma';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request);
 
-    if (!session?.user) {
+    if (!requestUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = session.user.role;
-    const userId = session.user.id;
+    const userRole = requestUser.role;
+    const userId = requestUser.id;
 
     const ticketInclude = {
       realtor: {
@@ -123,13 +123,13 @@ export async function GET() {
  */
 export async function POST(request: Request) {
   try {
-    const session = await auth();
+    const requestUser = await getRequestUser(request as any);
 
-    if (!session?.user?.id) {
+    if (!requestUser?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userRole = session.user.role;
+    const userRole = requestUser.role;
     if (userRole !== 'REALTOR' && userRole !== 'TC') {
       return NextResponse.json(
         { error: 'Only realtors and TCs can create tickets from this page' },
@@ -170,10 +170,10 @@ export async function POST(request: Request) {
     let orderWhere: any = { id: orderId };
 
     if (userRole === 'REALTOR') {
-      orderWhere.realtorId = session.user.id;
+      orderWhere.realtorId = requestUser.id;
     } else {
       const linkedAgents = await prisma.tCAgentLink.findMany({
-        where: { tcUserId: session.user.id },
+        where: { tcUserId: requestUser.id },
         select: { agentUserId: true },
       });
       const linkedAgentIds = linkedAgents.map((link) => link.agentUserId);
@@ -243,7 +243,7 @@ export async function POST(request: Request) {
         ticketNumber,
         sourceEmail: 'manual-entry@northshoresignco.local',
         emailSubject: `Manual 811 Ticket Entry - ${ticketNumber}`,
-        emailBody: `Manually created by realtor ${session.user.id}`,
+        emailBody: `Manually created by realtor ${requestUser.id}`,
         parsedAddress: order.address,
         status: 'NEEDS_REVIEW',
         stage: 'TICKET_SUBMITTED',

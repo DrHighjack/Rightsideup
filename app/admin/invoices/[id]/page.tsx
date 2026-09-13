@@ -17,6 +17,7 @@ interface Invoice {
   paidAmount: number | null;
   createdAt: string;
   updatedAt: string;
+  lineItems?: Array<{ id: string; description: string; quantity: number; unitAmount: number; totalAmount: number }>;
   user: {
     id: string;
     email: string;
@@ -250,6 +251,29 @@ export default function InvoiceDetailPage() {
           <div className="lg:col-span-2 bg-white rounded-lg border border-gray-200 p-6">
             <div className="mb-6 pb-6 border-b border-gray-200">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Invoice Details</h2>
+
+              <div className="mb-5 overflow-x-auto rounded-lg border border-gray-200">
+                <table className="w-full text-left text-sm">
+                  <thead className="border-b border-gray-200 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+                    <tr>
+                      <th className="px-4 py-3">Description</th>
+                      <th className="px-4 py-3 text-right">Qty</th>
+                      <th className="px-4 py-3 text-right">Unit price</th>
+                      <th className="px-4 py-3 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(invoice.lineItems?.length ? invoice.lineItems : [{ id: "fallback", description: "Service charge", quantity: 1, unitAmount: invoice.amount, totalAmount: invoice.amount }]).map((item) => (
+                      <tr key={item.id} className="border-b border-gray-100 last:border-0">
+                        <td className="px-4 py-3 font-medium text-gray-900">{item.description}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">{item.quantity}</td>
+                        <td className="px-4 py-3 text-right text-gray-700">${(item.unitAmount / 100).toFixed(2)}</td>
+                        <td className="px-4 py-3 text-right font-medium text-gray-900">${(item.totalAmount / 100).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
               <div className="grid grid-cols-2 gap-4 mb-4 sm:grid-cols-4">
                 <div>

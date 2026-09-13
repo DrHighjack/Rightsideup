@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getRequestUser } from '@/lib/mobile-auth';
 import { getAllNotifications, getUnreadCount } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
@@ -12,9 +12,9 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getRequestUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -23,8 +23,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(50, Math.max(1, parseInt(searchParams.get('limit') || '10', 10)));
 
     // Get notifications
-    const notifications = await getAllNotifications(session.user.id, limit);
-    const unreadCount = await getUnreadCount(session.user.id);
+    const notifications = await getAllNotifications(user.id, limit);
+    const unreadCount = await getUnreadCount(user.id);
 
     return NextResponse.json({
       notifications,

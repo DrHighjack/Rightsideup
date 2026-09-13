@@ -1,15 +1,15 @@
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
 // GET /api/tc/linked-tcs - Get TCs linked to this realtor/agent
-export async function GET() {
-  const session = await auth();
+export async function GET(request: Request) {
+  const requestUser = await getRequestUser(request as any);
 
-  if (!session?.user) {
+  if (!requestUser) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const user = session.user;
+  const user = requestUser;
 
   // Only realtors and admins can see their linked TCs
   if (user.role !== "REALTOR" && user.role !== "ADMIN") {

@@ -423,6 +423,12 @@ export async function createNotification({
     });
 
     console.log(`[Notification] Created for user ${userId}: ${title}`);
+
+    // Fire-and-forget push to any registered iOS devices for this user.
+    import('@/lib/apns')
+      .then(({ sendPushToUser }) => sendPushToUser(userId, { title, body: message, data: { type, link } }))
+      .catch((error) => console.error('[Notification] Push delivery failed:', error));
+
     return notification;
   } catch (error) {
     console.error(`[Notification] Failed to create notification for user ${userId}:`, error);

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getRequestUser } from '@/lib/mobile-auth';
 import { markAllAsRead } from '@/lib/notifications';
 
 export const dynamic = 'force-dynamic';
@@ -8,15 +8,15 @@ export const dynamic = 'force-dynamic';
  * PUT /api/notifications/read
  * Marks all unread notifications as READ for the logged-in user
  */
-export async function PUT(_request: NextRequest) {
+export async function PUT(request: NextRequest) {
   try {
-    const session = await auth();
+    const user = await getRequestUser(request);
 
-    if (!session?.user?.id) {
+    if (!user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const result = await markAllAsRead(session.user.id);
+    const result = await markAllAsRead(user.id);
 
     return NextResponse.json({
       success: true,

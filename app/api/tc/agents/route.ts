@@ -1,18 +1,18 @@
-import { auth } from "@/lib/auth";
+import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/tc/agents - List agents this TC is linked to
-export async function GET(_request: Request) {
+export async function GET(request: Request) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const requestUser = await getRequestUser(request as any);
+    if (!requestUser?.id) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: requestUser.id },
     });
 
     if (!user || user.role !== "TC") {
@@ -24,7 +24,7 @@ export async function GET(_request: Request) {
 
     // Get all agents this TC is linked to
     const links = await prisma.tCAgentLink.findMany({
-      where: { tcUserId: session.user.id },
+      where: { tcUserId: requestUser.id },
       include: {
         agentUser: {
           select: {

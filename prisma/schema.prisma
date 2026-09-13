@@ -167,9 +167,24 @@ model User {
   approvedPickupRequests SignPickupRequest[] @relation("ApprovedSignPickupRequests")
   printerPartnershipRequests PrinterPartnershipRequest[]
   smartSignSubscription SmartSignSubscription?
+  deviceTokens   DeviceToken[]
   
   @@map("users")
   @@index([brokerageId])
+}
+
+// iOS/mobile push notification device registration
+model DeviceToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String   @default("ios") // ios | android
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("device_tokens")
+  @@index([userId])
 }
 
 model Order {
@@ -306,6 +321,8 @@ model SmartSignTag {
   isActive    Boolean  @default(true)
   installedAt DateTime @default(now())
   notes       String?
+  vendorId    String?  // white-label sponsor (e.g. handyman) branded on this physical post
+  vendor      SignVendor? @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -313,6 +330,26 @@ model SmartSignTag {
 
   @@map("smart_sign_tags")
   @@index([isActive])
+  @@index([vendorId])
+}
+
+model SignVendor {
+  id            String   @id @default(cuid())
+  businessName  String
+  tagline       String?
+  logoUrl       String?
+  primaryColor  String   @default("#0f172a")
+  phone         String?
+  email         String?
+  website       String?
+  servicesLabel String   @default("Handyman Services") // button label shown on the landing page
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  tags          SmartSignTag[]
+
+  @@map("sign_vendors")
 }
 
 model SmartSignSubscription {
@@ -367,18 +404,21 @@ model SmartSignInquiry {
   id             String   @id @default(cuid())
   tagCode        String
   orderId        String?
-  inquiryType    String
+  vendorId       String?  // set for HANDYMAN_SERVICE / REALTOR_MATCH leads sourced from a white-label post
+  inquiryType    String   // CONTACT | REMINDER | HANDYMAN_SERVICE | REALTOR_MATCH
   name           String?
   phone          String
   email          String
   message        String?
   notifyWhen     String?
   termsAccepted  Boolean  @default(false)
+  handledAt      DateTime? // admin marks resolved once a realtor/tech is matched or lead is closed
   createdAt      DateTime @default(now())
 
   @@map("smart_sign_inquiries")
   @@index([tagCode])
   @@index([email])
+  @@index([vendorId])
   @@index([createdAt])
 }
 

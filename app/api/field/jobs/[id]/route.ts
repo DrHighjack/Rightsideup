@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
+import { getRequestUser } from '@/lib/mobile-auth';
 
 export async function GET(
-  _: NextRequest,
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await auth();
+    const user = await getRequestUser(request);
 
-    if (!session?.user?.id || session.user.role !== 'FIELD_TECH') {
+    if (!user?.id || user.role !== 'FIELD_TECH') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const fieldTechId = session.user.id;
+    const fieldTechId = user.id;
     const { id } = params;
 
     // Get assignment - verify it belongs to this field tech

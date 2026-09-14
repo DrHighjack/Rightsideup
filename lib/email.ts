@@ -710,7 +710,7 @@ export function getWelcomeEmail(
                 <p>Hi <strong>${safeFirstName}</strong>,</p>
                 <p style="margin-top: 12px;">Your account has been created and is ready to go. Click the button below to log in and get started.</p>
             </div>
-            <a href="${safeLoginLink}" class="cta-button">Log In</a>
+            <a href="${safeLoginLink}" class="cta-button" style="color:#ffffff !important;">Log In</a>
             <div class="instructions">
                 <h3>Getting Started</h3>
                 <ol>

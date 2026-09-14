@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { Fragment, useState, useEffect } from "react";
 import Script from "next/script";
 import PageSkeleton from "../../components/PageSkeleton";
+import { describePaymentMethodFailure } from "@/lib/payment-feedback";
 
 declare global {
   interface Window {
@@ -74,6 +75,11 @@ export default function AccountPage() {
   const [savingPaymentMethod, setSavingPaymentMethod] = useState(false);
   const [paymentError, setPaymentError] = useState("");
   const [paymentMessage, setPaymentMessage] = useState("");
+  const [paymentOutcome, setPaymentOutcome] = useState<{
+    title: string;
+    message: string;
+    success: boolean;
+  } | null>(null);
   const [nicknameDraft, setNicknameDraft] = useState("");
   const [editingNickname, setEditingNickname] = useState<string | null>(null);
   const [savingNickname, setSavingNickname] = useState(false);
@@ -168,7 +174,9 @@ export default function AccountPage() {
       setPaymentError("");
     };
     const handleError = () => {
-      setPaymentError("Failed to load payment form.");
+      const message = describePaymentMethodFailure("Failed to load payment form.");
+      setPaymentError(message);
+      setPaymentOutcome({ title: "Card Form Unavailable", message, success: false });
     };
 
     script.addEventListener("load", handleLoad);
@@ -196,7 +204,9 @@ export default function AccountPage() {
 
     const apiKey = fluidPayConfig.publicKey || envFluidPayPublicKey;
     if (!apiKey) {
-      setPaymentError("FluidPay public key is not configured.");
+      const message = "The secure card form is not configured correctly. Please contact North Shore Sign Co.";
+      setPaymentError(message);
+      setPaymentOutcome({ title: "Card Form Unavailable", message, success: false });
       return;
     }
 
@@ -230,7 +240,9 @@ export default function AccountPage() {
           },
           submission: async (response) => {
             if (response.status !== "success" || !response.token) {
-              setPaymentError(response.message || "Card tokenization failed.");
+              const message = describePaymentMethodFailure(response.message || "Card tokenization failed.");
+              setPaymentError(message);
+              setPaymentOutcome({ title: "Card Could Not Be Verified", message, success: false });
               setSavingPaymentMethod(false);
               return;
             }
@@ -248,8 +260,17 @@ export default function AccountPage() {
               setAddingPaymentMethod(false);
               setPaymentMessage("Payment method saved securely.");
               setPaymentError("");
+              setPaymentOutcome({
+                title: "Card Saved",
+                message: "Your payment method was saved securely and is ready to use.",
+                success: true,
+              });
             } catch (error) {
-              setPaymentError(error instanceof Error ? error.message : "Failed to save payment method");
+              const message = describePaymentMethodFailure(
+                error instanceof Error ? error.message : "Failed to save payment method"
+              );
+              setPaymentError(message);
+              setPaymentOutcome({ title: "Card Could Not Be Saved", message, success: false });
             } finally {
               if (isMounted) {
                 setSavingPaymentMethod(false);
@@ -265,7 +286,9 @@ export default function AccountPage() {
       } catch (error) {
         console.error("Payment form initialization failed:", error);
         if (isMounted) {
-          setPaymentError("Failed to initialize payment form.");
+          const message = describePaymentMethodFailure("Failed to initialize payment form.");
+          setPaymentError(message);
+          setPaymentOutcome({ title: "Card Form Unavailable", message, success: false });
         }
       }
     };
@@ -282,7 +305,9 @@ export default function AccountPage() {
     setPaymentError("");
     setPaymentMessage("");
     if (!paymentTokenizer?.submit) {
-      setPaymentError("Payment form is still loading. Please wait a moment.");
+      const message = "The secure card fields are still loading. Wait a moment, then try again. If they stay blank, refresh the page.";
+      setPaymentError(message);
+      setPaymentOutcome({ title: "Card Form Not Ready", message, success: false });
       return;
     }
     setSavingPaymentMethod(true);
@@ -435,6 +460,26 @@ export default function AccountPage() {
         <p className="text-slate-600 mt-1">Manage your account information</p>
       </div>
 
+      {paymentOutcome ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4" role="dialog" aria-modal="true" aria-labelledby="payment-outcome-title">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl">
+            <h2 id="payment-outcome-title" className={`text-lg font-semibold ${paymentOutcome.success ? "text-emerald-800" : "text-red-800"}`}>
+              {paymentOutcome.title}
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-slate-700">{paymentOutcome.message}</p>
+            <div className="mt-6 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setPaymentOutcome(null)}
+                className="rounded-md bg-navy-900 px-4 py-2 text-sm font-semibold text-white hover:bg-navy-700"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Account info card */}
       <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm sm:p-6 space-y-4">
         <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Profile Information</h2>
@@ -476,7 +521,11 @@ export default function AccountPage() {
               src={`${fluidPayConfig.baseUrl}/tokenizer/tokenizer.js`}
               strategy="afterInteractive"
               onLoad={() => setPaymentScriptLoaded(true)}
-              onError={() => setPaymentError("Failed to load payment form.")}
+              onError={() => {
+                const message = describePaymentMethodFailure("Failed to load payment form.");
+                setPaymentError(message);
+                setPaymentOutcome({ title: "Card Form Unavailable", message, success: false });
+              }}
             />
             <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
               <p className="text-sm font-medium text-green-900">Available account credit</p>

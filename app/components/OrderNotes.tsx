@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 type StreetViewReference = {
   imageUrl: string;
@@ -37,6 +37,7 @@ function parseOrderNotes(notes: string) {
 
 export function OrderNotes({ notes, title = "Notes", compact = false }: { notes?: string | null; title?: string; compact?: boolean }) {
   const parsed = useMemo(() => parseOrderNotes(notes || ""), [notes]);
+  const [failedReferenceUrls, setFailedReferenceUrls] = useState<Set<string>>(() => new Set());
   if (!notes) return null;
 
   return (
@@ -48,7 +49,26 @@ export function OrderNotes({ notes, title = "Notes", compact = false }: { notes?
           <p className="text-sm font-semibold text-slate-900">Street View placement</p>
           {parsed.references.map((reference, index) => (
             <figure key={`${reference.imageUrl}-${index}`} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
-              <img src={reference.imageUrl} alt={`Street View placement reference ${index + 1}`} className={`w-full object-cover ${compact ? "max-h-48" : "max-h-96"}`} />
+              {failedReferenceUrls.has(reference.imageUrl) ? (
+                <div className="flex min-h-40 flex-col items-center justify-center gap-3 bg-slate-50 px-4 py-6 text-center">
+                  <p className="text-sm font-medium text-slate-700">Street View preview is unavailable.</p>
+                  <a
+                    href={`https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${encodeURIComponent(reference.coordinates?.replace(/[^0-9.,-]/g, "") || "")}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center rounded-md bg-blue-700 px-3 py-2 text-sm font-medium text-white hover:bg-blue-800"
+                  >
+                    Open in Google Maps
+                  </a>
+                </div>
+              ) : (
+                <img
+                  src={reference.imageUrl}
+                  alt={`Street View placement reference ${index + 1}`}
+                  onError={() => setFailedReferenceUrls((previous) => new Set(previous).add(reference.imageUrl))}
+                  className={`w-full object-cover ${compact ? "max-h-48" : "max-h-96"}`}
+                />
+              )}
               <figcaption className="space-y-1 p-3 text-xs text-slate-600">
                 {reference.camera && <p>{reference.camera}</p>}
                 {reference.markedPoint && <p>{reference.markedPoint}</p>}

@@ -57,6 +57,8 @@ To fix the 500 error on Vercel login, ensure these environment variables are set
 
 14. **BREVO_API_KEY** or SMTP credentials
    - Required to send the monthly statement-ready email
+   - Set `BREVO_FROM_EMAIL` to `noreply@northshoresignco.com`
+   - In Brevo, verify the `northshoresignco.com` domain and activate `noreply@northshoresignco.com` as a sender. The app will reject sends rather than fall back to a `@brevosend.com` address.
 
 ## Steps to Fix Vercel Login:
 

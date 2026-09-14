@@ -42,23 +42,21 @@ async function getVerifiedBrevoSender(preferredEmail: string) {
     const body = await response.json() as {
         senders?: Array<{ name?: string; email?: string; active?: boolean }>;
     };
-    const activeSenders = (body.senders || []).filter(
-        (sender) => sender.active && sender.email
+    const sender = (body.senders || []).find(
+        (candidate) =>
+            candidate.active &&
+            candidate.email?.toLowerCase() === preferredEmail.toLowerCase()
     );
-    const sender = activeSenders.find(
-        (candidate) => candidate.email?.toLowerCase() === preferredEmail.toLowerCase()
-    ) || activeSenders[0];
     if (!sender?.email) {
-        throw new Error("Brevo has no active verified sender");
+        throw new Error(
+            `Brevo sender ${preferredEmail} is not active. Verify noreply@northshoresignco.com in Brevo before sending email.`
+        );
     }
 
     verifiedBrevoSender = {
         name: sender.name || NORTH_SHORE_SIGN_CO,
         email: sender.email,
     };
-    if (sender.email.toLowerCase() !== preferredEmail.toLowerCase()) {
-        console.warn(`[EMAIL] Configured sender ${preferredEmail} is not active; using ${sender.email}.`);
-    }
     return verifiedBrevoSender;
 }
 
@@ -145,11 +143,11 @@ export function getBrokerageStatementEmail(input: {
 export async function sendEmail(options: EmailOptions) {
   try {
     const {
-      to,
-      subject,
-      html,
-      text,
-            from = process.env.BREVO_FROM_EMAIL || process.env.SENDGRID_FROM_EMAIL || process.env.RESEND_FROM_EMAIL || NORTH_SHORE_SENDER_EMAIL,
+    to,
+    subject,
+    html,
+    text,
+        from = NORTH_SHORE_SENDER_EMAIL,
     } = options;
 
         const normalizedRecipients = Array.isArray(to) ? to : [to];

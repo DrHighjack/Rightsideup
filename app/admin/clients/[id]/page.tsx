@@ -113,6 +113,7 @@ export default function RealtorDetailPage() {
   const [loggingInAsRealtor, setLoggingInAsRealtor] = useState(false);
   const [pendingActivationState, setPendingActivationState] = useState<boolean | null>(null);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [sendingWelcomeEmail, setSendingWelcomeEmail] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -366,6 +367,28 @@ export default function RealtorDetailPage() {
     } catch (err) {
       setError((err as Error).message || "Failed to send password reset email");
       console.error(err);
+    }
+  };
+
+  const handleSendWelcomeEmail = async () => {
+    if (!realtor || sendingWelcomeEmail) return;
+    if (!confirm(`Send a Welcome Email with a Log In button to ${realtor.email}?`)) return;
+
+    try {
+      setSendingWelcomeEmail(true);
+      setError("");
+      const response = await fetch(`/api/admin/users/${realtorId}/send-welcome`, {
+        method: "POST",
+      });
+      const data = (await response.json()) as { error?: string; email?: string };
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to send welcome email");
+      }
+      alert(`Welcome email sent to ${data.email || realtor.email}`);
+    } catch (err) {
+      setError((err as Error).message || "Failed to send welcome email");
+    } finally {
+      setSendingWelcomeEmail(false);
     }
   };
 
@@ -642,6 +665,13 @@ export default function RealtorDetailPage() {
                         className="inline-flex min-h-11 items-center justify-center rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700"
                       >
                         Reset Password
+                      </button>
+                      <button
+                        onClick={handleSendWelcomeEmail}
+                        disabled={sendingWelcomeEmail || isInactive}
+                        className="inline-flex min-h-11 items-center justify-center rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-teal-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sendingWelcomeEmail ? "Sending..." : "Send Welcome Email"}
                       </button>
                       {isAdmin && (
                         <button

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 
-type InquiryFormsProps = { tagCode: string; orderId: string; agentName: string };
+type InquiryFormsProps = { tagCode: string; orderId: string; agentName: string; units?: string[]; contactLabel?: "Agent" | "Landlord" };
 
-export function InquiryForms({ tagCode, orderId, agentName }: InquiryFormsProps) {
+export function InquiryForms({ tagCode, orderId, agentName, units = [], contactLabel = "Agent" }: InquiryFormsProps) {
   const [activeForm, setActiveForm] = useState<"contact" | "reminder" | null>(null);
   const [contact, setContact] = useState({ name: "", phone: "", email: "", message: "" });
+  const [selectedUnit, setSelectedUnit] = useState("");
   const [reminder, setReminder] = useState({ phone: "", email: "", notifyWhen: "SOLD", termsAccepted: false });
   const [status, setStatus] = useState("");
   const [saving, setSaving] = useState(false);
@@ -19,13 +20,14 @@ export function InquiryForms({ tagCode, orderId, agentName }: InquiryFormsProps)
       const response = await fetch(`/api/smart-sign/${encodeURIComponent(tagCode)}/inquiry`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...values, inquiryType, orderId }),
+        body: JSON.stringify({ ...values, inquiryType, orderId, ...(inquiryType === "CONTACT" && units.length > 0 ? { unit: selectedUnit } : {}) }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to submit your request");
       setStatus(inquiryType === "CONTACT" ? `${agentName} will be in touch soon.` : "You are signed up for listing updates.");
       setActiveForm(null);
       setContact({ name: "", phone: "", email: "", message: "" });
+      setSelectedUnit("");
       setReminder({ phone: "", email: "", notifyWhen: "SOLD", termsAccepted: false });
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to submit your request");
@@ -37,12 +39,18 @@ export function InquiryForms({ tagCode, orderId, agentName }: InquiryFormsProps)
   return (
     <section className="mt-7 border-y border-slate-200 py-6">
       <div className="grid gap-3 sm:grid-cols-2">
-        <button type="button" onClick={() => setActiveForm(activeForm === "contact" ? null : "contact")} className="rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white">Contact Agent</button>
+        <button type="button" onClick={() => setActiveForm(activeForm === "contact" ? null : "contact")} className="rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white">Contact {contactLabel}</button>
         <button type="button" onClick={() => setActiveForm(activeForm === "reminder" ? null : "reminder")} className="rounded-md border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-slate-800">Remind Me When This Sells</button>
       </div>
 
       {activeForm === "contact" && <form onSubmit={(event) => { event.preventDefault(); void submit("CONTACT"); }} className="mt-5 space-y-3">
         <h2 className="text-lg font-semibold">Contact {agentName}</h2>
+        {units.length > 0 && <label className="block text-sm font-medium text-slate-700">Which unit are you interested in?
+          <select required value={selectedUnit} onChange={(event) => setSelectedUnit(event.target.value)} className="mt-1 block w-full rounded-md border border-slate-300 bg-white px-3 py-2">
+            <option value="">Select a unit</option>
+            {units.map((unit) => <option key={unit} value={unit}>{unit}</option>)}
+          </select>
+        </label>}
         <input required placeholder="Name" value={contact.name} onChange={(event) => setContact({ ...contact, name: event.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2" />
         <div className="grid gap-3 sm:grid-cols-2"><input required type="tel" placeholder="Phone number" value={contact.phone} onChange={(event) => setContact({ ...contact, phone: event.target.value })} className="rounded-md border border-slate-300 px-3 py-2" /><input required type="email" placeholder="Email" value={contact.email} onChange={(event) => setContact({ ...contact, email: event.target.value })} className="rounded-md border border-slate-300 px-3 py-2" /></div>
         <textarea required rows={3} placeholder="Short message" value={contact.message} onChange={(event) => setContact({ ...contact, message: event.target.value })} className="w-full rounded-md border border-slate-300 px-3 py-2" />

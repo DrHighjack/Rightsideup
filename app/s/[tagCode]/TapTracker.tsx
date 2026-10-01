@@ -2,17 +2,21 @@
 
 import { useEffect, useState } from "react";
 
+const pendingVisits = new Set<string>();
+
 export function TapTracker({ tagCode, signId }: { tagCode?: string; signId?: string }) {
   const [locationStatus, setLocationStatus] = useState<"idle" | "sharing" | "shared" | "unavailable">("idle");
   const endpoint = tagCode ? `/api/smart-sign/${encodeURIComponent(tagCode)}/tap` : signId ? `/api/tap/${encodeURIComponent(signId)}/tap` : null;
 
   useEffect(() => {
-    if (!endpoint) return;
+    if (!endpoint || pendingVisits.has(endpoint)) return;
+    pendingVisits.add(endpoint);
+    const isReload = performance.getEntriesByType("navigation").some((entry) => (entry as PerformanceNavigationTiming).type === "reload");
     void fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ deviceType: /Android/i.test(navigator.userAgent) ? "Android" : /iPhone|iPad/i.test(navigator.userAgent) ? "iOS" : "Web" }),
-    });
+      body: JSON.stringify({ deviceType: /Android/i.test(navigator.userAgent) ? "Android" : /iPhone|iPad/i.test(navigator.userAgent) ? "iOS" : "Web", isReload }),
+    }).catch(() => {}).finally(() => pendingVisits.delete(endpoint));
   }, [endpoint]);
 
   const shareLocation = () => {

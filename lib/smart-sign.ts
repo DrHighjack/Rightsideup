@@ -18,6 +18,36 @@ export function getSmartSignUrl(tagCode: string) {
   return `${appUrl}/s/${tagCode}`;
 }
 
+type SmartSignUnit = {
+  label: string;
+  url: string;
+  price?: string;
+  facts?: string[];
+  description?: string;
+  photos?: string[];
+};
+
+export function getSmartSignUnits(notes: string | null): SmartSignUnit[] {
+  const match = notes?.match(/--- Smart Sign Units ---\s*([\s\S]*?)\s*--- End Smart Sign Units ---/);
+  if (!match) return [];
+  try {
+    const units: unknown = JSON.parse(match[1]);
+    if (!Array.isArray(units)) return [];
+    return units.filter((unit): unit is SmartSignUnit =>
+      typeof unit?.label === "string" && typeof unit?.url === "string" && /^https:\/\//.test(unit.url))
+      .map((unit) => ({
+        label: unit.label,
+        url: unit.url,
+        price: typeof unit.price === "string" ? unit.price : undefined,
+        facts: Array.isArray(unit.facts) ? unit.facts.filter((fact: unknown): fact is string => typeof fact === "string") : undefined,
+        description: typeof unit.description === "string" ? unit.description : undefined,
+        photos: Array.isArray(unit.photos) ? unit.photos.filter((photo: unknown): photo is string => typeof photo === "string" && /^https:\/\//.test(photo)) : undefined,
+      }));
+  } catch {
+    return [];
+  }
+}
+
 export function createSmartSignTagCode() {
   return randomBytes(9).toString("base64url").toUpperCase();
 }
@@ -280,6 +310,8 @@ export async function getPublicSmartSignContextBySignId(signId: string) {
 export async function recordSmartSignTap(input: {
   tagCode?: string;
   signId?: string;
+  previousVisitId?: string;
+  isReload?: boolean;
   latitude?: number;
   longitude?: number;
   deviceType?: string;
@@ -345,7 +377,7 @@ export async function recordSmartSignTap(input: {
   const context = await getPublicSmartSignContext(tag.tagCode);
   const isLive = Boolean(context?.isLive);
 
-  await prisma.smartSignTapEvent.create({
+  const event = await prisma.smartSignTapEvent.create({
     data: {
       tagId: tag.id,
       orderId: context?.sign.assignedToOrder?.id || null,
@@ -360,7 +392,32 @@ export async function recordSmartSignTap(input: {
       ipHash: input.ip ? hashIpValue(input.ip) : null,
     },
   });
-  return { recorded: true, isLive };
+  if (!isLive || input.isReload || input.latitude !== undefined || input.longitude !== undefined || !context?.sign.assignedToUser || !context.sign.assignedToOrder) {
+    return { recorded: true, isLive };
+  }
+
+  const previous = input.previousVisitId
+    ? await prisma.smartSignTapEvent.findUnique({ where: { id: input.previousVisitId }, select: { tagId: true, orderId: true, tappedAt: true } })
+    : null;
+  const sameListing = previous?.tagId === tag.id && previous.orderId === context.sign.assignedToOrder.id;
+  const elapsed = sameListing ? event.tappedAt.getTime() - previous.tappedAt.getTime() : Infinity;
+  if (elapsed < 30 * 60 * 1000) return { recorded: true, isLive };
+
+  const isReturn = elapsed < 90 * 24 * 60 * 60 * 1000;
+  const address = context.sign.assignedToOrder.address;
+  const safeAddress = address.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+  try {
+    const sent = await sendEmail({
+      to: context.sign.assignedToUser.email,
+      subject: `${isReturn ? "Return visit" : "Smart Sign opened"} for ${address}`,
+      html: `<p>${isReturn ? "Someone returned to" : "Someone opened"} the Smart Sign page for <strong>${safeAddress}</strong>.</p><p>This is a page visit, not a confirmed physical NFC tap. <a href="${getSmartSignUrl(tag.tagCode)}">View the listing</a>.</p>`,
+    });
+    if (!sent.success) return { recorded: true, isLive };
+  } catch (error) {
+    console.error("[SMART_SIGN] Visit notification failed:", error);
+    return { recorded: true, isLive };
+  }
+  return { recorded: true, isLive, visitId: event.id };
 }
 
 function getTopTag(tags: Awaited<ReturnType<typeof getSmartSignAgentDashboard>>["tags"]) {

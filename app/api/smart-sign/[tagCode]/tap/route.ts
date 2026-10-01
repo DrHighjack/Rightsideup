@@ -6,6 +6,7 @@ const tapSchema = z.object({
   latitude: z.number().finite().min(-90).max(90).optional(),
   longitude: z.number().finite().min(-180).max(180).optional(),
   deviceType: z.string().trim().max(30).optional(),
+  isReload: z.boolean().optional(),
 });
 
 export async function POST(request: NextRequest, { params }: { params: { tagCode: string } }) {
@@ -18,10 +19,15 @@ export async function POST(request: NextRequest, { params }: { params: { tagCode
 
   const result = await recordSmartSignTap({
     tagCode: params.tagCode,
+    previousVisitId: request.cookies.get(`smart-sign-visit-${params.tagCode}`)?.value,
     ...parsed.data,
     userAgent,
     referrer,
     ip,
   });
-  return NextResponse.json(result, { status: 202 });
+  const response = NextResponse.json({ recorded: result.recorded, isLive: result.isLive }, { status: 202 });
+  if ("visitId" in result && result.visitId) {
+    response.cookies.set(`smart-sign-visit-${params.tagCode}`, result.visitId, { httpOnly: true, sameSite: "lax", secure: request.nextUrl.protocol === "https:", path: "/", maxAge: 90 * 24 * 60 * 60 });
+  }
+  return response;
 }

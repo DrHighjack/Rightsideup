@@ -131,6 +131,10 @@ function LoginPageContent() {
         // Fetch the updated session and redirect based on role
         const response = await fetch("/api/auth/session");
         const newSession = await response.json();
+        if (!response.ok || !newSession?.user) {
+          setError("Your sign-in could not be completed. Please try again.");
+          return;
+        }
         if (!newSession?.user?.emailVerifiedAt) {
           router.push(`/verify-email?email=${encodeURIComponent(newSession?.user?.email || email)}&pending=1`);
           return;

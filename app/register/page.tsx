@@ -114,7 +114,9 @@ function RegisterPageContent() {
         throw new Error(data.error || "Registration failed");
       }
 
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&sent=1`);
+      const data = await response.json();
+      const verificationStatus = data.verificationEmailSent ? 'sent=1' : 'pending=1';
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&${verificationStatus}`);
     } catch (err: any) {
       setError(err.message || "An error occurred. Please try again.");
     } finally {

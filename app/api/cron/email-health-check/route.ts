@@ -17,8 +17,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (getLocalHour(new Date()) !== "07") {
-    return NextResponse.json({ skipped: true, reason: "Outside 7 AM Pacific time" });
+  if (getLocalHour(new Date()) !== "05") {
+    return NextResponse.json({ skipped: true, reason: "Outside 5 AM Pacific time" });
   }
 
   const recipient = process.env.ADMIN_ALERT_EMAIL;
@@ -36,8 +36,8 @@ export async function GET(request: NextRequest) {
     const result = await sendEmail({
       to: recipient,
       subject: "Daily email delivery test",
-      text: `This automated test confirms the North Shore Sign Co email service sent successfully at ${sentAt}.`,
-      html: `<p>This automated test confirms the North Shore Sign Co email service sent successfully.</p><p>Sent at ${sentAt}.</p>`,
+      text: `Daily check of the North Shore Sign Co email sender used for account verification. Sent at ${sentAt}. Receiving this email confirms delivery to this inbox; it does not test verification links or delivery to other recipients.`,
+      html: `<p>Daily check of the North Shore Sign Co email sender used for account verification.</p><p>Sent at ${sentAt}.</p><p>Receiving this email confirms delivery to this inbox; it does not test verification links or delivery to other recipients.</p>`,
     });
 
     if (!result.success) {

@@ -1,5 +1,6 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
+import vercelConfig from "../vercel.json";
 
 const { sendEmail } = vi.hoisted(() => ({ sendEmail: vi.fn() }));
 
@@ -16,14 +17,19 @@ function request() {
 describe("email health check cron", () => {
   beforeEach(() => {
     vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-01-15T15:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-01-15T13:00:00.000Z"));
     vi.stubEnv("CRON_SECRET", "test-secret");
     vi.stubEnv("ADMIN_ALERT_EMAIL", "admin@example.com");
     vi.clearAllMocks();
     sendEmail.mockResolvedValue({ success: true });
   });
 
-  it("sends once at 7 AM Pacific during standard time", async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
+
+  it("sends once at 5 AM Pacific during standard time", async () => {
     const response = await GET(request());
 
     expect(response.status).toBe(200);
@@ -34,7 +40,7 @@ describe("email health check cron", () => {
   });
 
   it("sends at the daylight-time UTC schedule too", async () => {
-    vi.setSystemTime(new Date("2026-07-15T14:00:00.000Z"));
+    vi.setSystemTime(new Date("2026-07-15T12:00:00.000Z"));
 
     const response = await GET(request());
 
@@ -42,8 +48,8 @@ describe("email health check cron", () => {
     expect(sendEmail).toHaveBeenCalledTimes(1);
   });
 
-  it("skips the other scheduled UTC hour", async () => {
-    vi.setSystemTime(new Date("2026-01-15T14:00:00.000Z"));
+  it.each(["2026-01-15T12:00:00.000Z", "2026-07-15T13:00:00.000Z"])("skips the other scheduled UTC hour at %s", async (date) => {
+    vi.setSystemTime(new Date(date));
 
     const response = await GET(request());
 
@@ -59,5 +65,27 @@ describe("email health check cron", () => {
     sendEmail.mockResolvedValueOnce({ success: false });
     const failed = await GET(request());
     expect(failed.status).toBe(503);
+  });
+
+  it("configures both UTC schedules for 5 AM Pacific", () => {
+    expect(vercelConfig.crons.filter((cron) => cron.path === "/api/cron/email-health-check").map((cron) => cron.schedule))
+      .toEqual(["0 12 * * *", "0 13 * * *"]);
+  });
+
+  it("does not send without an admin recipient", async () => {
+    vi.stubEnv("ADMIN_ALERT_EMAIL", "");
+    expect((await GET(request())).status).toBe(503);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not allow an unset cron secret", async () => {
+    vi.stubEnv("CRON_SECRET", "");
+    expect((await GET(request())).status).toBe(401);
+    expect(sendEmail).not.toHaveBeenCalled();
+  });
+
+  it("reports an email provider exception", async () => {
+    sendEmail.mockRejectedValueOnce(new Error("Email service unavailable"));
+    expect((await GET(request())).status).toBe(500);
   });
 });

@@ -15,6 +15,14 @@
     {
       "path": "/api/cron/smart-sign",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/email-health-check",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/email-health-check",
+      "schedule": "0 15 * * *"
     }
   ]
 }

@@ -1,7 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { registerSchema } from "@/lib/schemas";
-import { buildSmsConsentData, SMS_CONSENT_DISCLOSURE, SMS_CONSENT_TAG } from "@/lib/sms-consent";
+import {
+  buildSmsConsentData,
+  SMS_CONSENT_DISCLOSURE,
+  SMS_CONSENT_TAG,
+  SMS_PRIVACY_PROCESSOR_DISCLOSURE,
+  SMS_PRIVACY_SHARING_DISCLOSURE,
+} from "@/lib/sms-consent";
 
 const mocks = vi.hoisted(() => ({ auth: vi.fn(), findUnique: vi.fn(), sendSMS: vi.fn() }));
 vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
@@ -16,6 +22,16 @@ const registration = {
 };
 
 describe("registration SMS consent", () => {
+  it("contains Twilio's explicit privacy-policy opt-in data sharing language", () => {
+    expect(SMS_PRIVACY_SHARING_DISCLOSURE).toContain(
+      "Mobile information will not be shared with third parties or affiliates for marketing or promotional purposes."
+    );
+    expect(SMS_PRIVACY_SHARING_DISCLOSURE).toContain(
+      "All the above categories exclude text messaging originator opt-in data and consent; this information will not be shared with any third parties."
+    );
+    expect(SMS_PRIVACY_PROCESSOR_DISCLOSURE).toContain("solely to transmit the messages you request");
+  });
+
   it("defaults to no consent and allows registration without a phone", () => {
     expect(registerSchema.parse(registration).smsOptIn).toBe(false);
     expect(buildSmsConsentData(undefined, false)).toEqual({});

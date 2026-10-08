@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { sendSMS, getNotificationSMS } from "@/lib/sms";
+import { SMS_CONSENT_TAG } from "@/lib/sms-consent";
 
 /**
  * POST /api/admin/users/[id]/send-sms
@@ -30,13 +31,28 @@ export async function POST(
     // Get user details
     const user = await prisma.user.findUnique({
       where: { id: params.id },
-      select: { id: true, firstName: true, phone: true, email: true },
+      select: {
+        id: true, firstName: true, phone: true, email: true, tags: true,
+        activityLogs: {
+          where: { entityType: "SMSConsent" },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { entityId: true },
+        },
+      },
     });
 
     if (!user || !user.phone) {
       return NextResponse.json(
         { error: "User not found or no phone number available" },
         { status: 404 }
+      );
+    }
+
+    if (!user.tags.includes(SMS_CONSENT_TAG) || user.activityLogs[0]?.entityId !== user.phone) {
+      return NextResponse.json(
+        { error: "This phone number has not opted in to SMS notifications" },
+        { status: 403 }
       );
     }
 

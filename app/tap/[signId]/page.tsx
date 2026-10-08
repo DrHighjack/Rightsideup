@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
-import { getPublicSmartSignContextBySignId, getPublicTapMortgageCta } from "@/lib/smart-sign";
+import { getPublicSmartSignContextBySignId, getPublicTapMortgageCta, getSmartSignUnits } from "@/lib/smart-sign";
 import { TapTracker } from "../../s/[tagCode]/TapTracker";
+import { InquiryForms } from "../../s/[tagCode]/InquiryForms";
 
 export const dynamic = "force-dynamic";
 
@@ -59,6 +60,8 @@ export default async function TapLandingPage({ params }: { params: { signId: str
               <a href={`mailto:${agent.email}`} className="inline-flex flex-1 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold text-slate-800">Email</a>
             </div>
           </section>
+
+          <InquiryForms tagCode={tag.tagCode} orderId={order.id} agentName={agentName} units={getSmartSignUnits(order.notes).map((unit) => unit.label)} contactLabel={tag.tagCode === "NS-0006" ? "Landlord" : "Agent"} />
 
           {listingUrl && (
             <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-sky-700 px-3 py-3 text-sm font-semibold text-white">

@@ -3,12 +3,13 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sendEmail } from "@/lib/email";
 import { getSmartSignUnits } from "@/lib/smart-sign";
+import { buildListingSmsConsentMessage } from "@/lib/sms-consent";
 
 const schema = z.object({
   inquiryType: z.enum(["CONTACT", "REMINDER"]), orderId: z.string().min(1), name: z.string().trim().min(2).max(100).optional(),
   phone: z.string().trim().min(7).max(40), email: z.string().trim().email().max(200), message: z.string().trim().min(2).max(1000).optional(),
   unit: z.string().trim().max(100).optional(),
-  notifyWhen: z.enum(["SOLD", "PENDING", "OFF_MARKET"]).optional(), termsAccepted: z.literal(true).optional(),
+  notifyWhen: z.enum(["SOLD", "PENDING", "OFF_MARKET"]).optional(), termsAccepted: z.boolean().optional(),
 });
 
 function escapeHtml(value: string) {
@@ -17,7 +18,7 @@ function escapeHtml(value: string) {
 
 export async function POST(request: NextRequest, { params }: { params: { tagCode: string } }) {
   const parsed = schema.safeParse(await request.json().catch(() => ({})));
-  if (!parsed.success || (parsed.data.inquiryType === "CONTACT" && (!parsed.data.name || !parsed.data.message)) || (parsed.data.inquiryType === "REMINDER" && (!parsed.data.notifyWhen || parsed.data.termsAccepted !== true))) {
+  if (!parsed.success || (parsed.data.inquiryType === "CONTACT" && (!parsed.data.name || !parsed.data.message)) || (parsed.data.inquiryType === "REMINDER" && (!parsed.data.notifyWhen || parsed.data.termsAccepted !== true || !/^\+[1-9]\d{7,14}$/.test(parsed.data.phone)))) {
     return NextResponse.json({ error: "Please complete all required fields and accept the terms." }, { status: 400 });
   }
   const tag = await prisma.smartSignTag.findUnique({ where: { tagCode: params.tagCode }, include: { sign: { include: { assignedToOrder: true, assignedToUser: true } } } });
@@ -27,7 +28,9 @@ export async function POST(request: NextRequest, { params }: { params: { tagCode
     return NextResponse.json({ error: "Please select a listing unit." }, { status: 400 });
   }
   const unit = parsed.data.inquiryType === "CONTACT" && units.length > 0 ? parsed.data.unit : undefined;
-  const inquiryMessage = unit ? `Interested in: ${unit}\n${parsed.data.message}` : parsed.data.message;
+  const inquiryMessage = parsed.data.inquiryType === "REMINDER"
+    ? buildListingSmsConsentMessage(parsed.data.phone)
+    : unit ? `Interested in: ${unit}\n${parsed.data.message}` : parsed.data.message;
   const inquiry = await prisma.smartSignInquiry.create({ data: { tagCode: params.tagCode, orderId: parsed.data.orderId, inquiryType: parsed.data.inquiryType, name: parsed.data.name, phone: parsed.data.phone, email: parsed.data.email, message: inquiryMessage, notifyWhen: parsed.data.notifyWhen, termsAccepted: parsed.data.termsAccepted === true } });
   const destination = tag.sign.assignedToUser.email;
   const name = escapeHtml(parsed.data.name || "Not provided");

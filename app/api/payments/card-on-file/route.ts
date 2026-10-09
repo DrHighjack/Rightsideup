@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRequestUser } from "@/lib/mobile-auth";
 import { prisma } from "@/lib/prisma";
+import { getFluidPayBrowserConfig } from "@/lib/fluidpay-config";
 
 export async function GET(request: NextRequest) {
   try {
@@ -117,16 +118,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const fluidPayConfig = {
-      publicKey:
-        process.env.NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY ||
-        process.env.FLUIDPAY_PUBLIC_KEY ||
-        "pub_3IFJ9AyNLIrn8p5tWxOuu99Wgqa",
-      baseUrl:
-        process.env.NEXT_PUBLIC_FLUIDPAY_BASE_URL ||
-        process.env.FLUIDPAY_BASE_URL ||
-        "https://app.fluidpay.com",
-    };
+    const fluidPayConfig = getFluidPayBrowserConfig();
 
     return NextResponse.json({
       cards: labeledCards,

@@ -2,7 +2,6 @@
 
 import { useSession } from "next-auth/react";
 import { Fragment, useState, useEffect } from "react";
-import Script from "next/script";
 import PageSkeleton from "../../components/PageSkeleton";
 import { describePaymentMethodFailure } from "@/lib/payment-feedback";
 
@@ -212,6 +211,12 @@ export default function AccountPage() {
 
     let isMounted = true;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    let iframeReady = false;
+    let loadTimeout: ReturnType<typeof setTimeout> | undefined;
+
+    setPaymentFormReady(false);
+    setPaymentTokenizer(null);
+    setPaymentError("");
 
     const mountTokenizer = () => {
       if (!window.Tokenizer) {
@@ -234,8 +239,11 @@ export default function AccountPage() {
           container: "#account-payment-form",
           onLoad: () => {
             if (isMounted) {
+              iframeReady = true;
+              if (loadTimeout) clearTimeout(loadTimeout);
               setPaymentFormReady(true);
               setPaymentError("");
+              setPaymentOutcome(null);
             }
           },
           submission: async (response) => {
@@ -281,7 +289,12 @@ export default function AccountPage() {
 
         if (isMounted) {
           setPaymentTokenizer(tokenizer);
-          setPaymentFormReady(Boolean(tokenizer.submit));
+          loadTimeout = setTimeout(() => {
+            if (!isMounted || iframeReady) return;
+            const message = "FluidPay's secure card fields did not finish loading. Refresh the page and try again.";
+            setPaymentError(message);
+            setPaymentOutcome({ title: "Card Form Unavailable", message, success: false });
+          }, 15000);
         }
       } catch (error) {
         console.error("Payment form initialization failed:", error);
@@ -298,6 +311,7 @@ export default function AccountPage() {
     return () => {
       isMounted = false;
       if (retryTimer) clearTimeout(retryTimer);
+      if (loadTimeout) clearTimeout(loadTimeout);
     };
   }, [addingPaymentMethod, cardOnFile, paymentScriptLoaded, fluidPayConfig]);
 
@@ -517,16 +531,6 @@ export default function AccountPage() {
 
         {user.role === "REALTOR" || user.role === "TC" ? (
           <>
-            <Script
-              src={`${fluidPayConfig.baseUrl}/tokenizer/tokenizer.js`}
-              strategy="afterInteractive"
-              onLoad={() => setPaymentScriptLoaded(true)}
-              onError={() => {
-                const message = describePaymentMethodFailure("Failed to load payment form.");
-                setPaymentError(message);
-                setPaymentOutcome({ title: "Card Form Unavailable", message, success: false });
-              }}
-            />
             <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3">
               <p className="text-sm font-medium text-green-900">Available account credit</p>
               <p className="mt-1 text-2xl font-bold text-green-700">${accountCreditAmount.toFixed(2)}</p>
@@ -538,6 +542,9 @@ export default function AccountPage() {
                 {(!cardOnFile || addingPaymentMethod) && (
                   <>
                     <div id="account-payment-form" className="min-h-[220px] rounded-lg border border-slate-200 p-3" />
+                    {!paymentFormReady && !paymentError && (
+                      <p role="status" className="text-sm text-slate-600">Loading secure card fields...</p>
+                    )}
                     <div className="flex flex-wrap items-center gap-3">
                       <button
                         type="button"

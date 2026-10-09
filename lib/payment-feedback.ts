@@ -1,3 +1,9 @@
+export function getSavedCardLabel(nickname?: string | null, last4?: string | null): string {
+  const trimmedNickname = nickname?.trim();
+  if (trimmedNickname) return trimmedNickname;
+  return last4 && /^\d{4}$/.test(last4) ? `ending in ${last4}` : "Saved card";
+}
+
 export function describePaymentMethodFailure(message?: string): string {
   const detail = message?.trim() || "No additional detail was returned.";
   const normalized = detail.toLowerCase();

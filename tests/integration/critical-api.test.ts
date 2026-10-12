@@ -9,6 +9,8 @@ import { POST as createOrder } from "@/app/api/orders/route";
 import { GET as listInvoices } from "@/app/api/invoices/route";
 import { GET as getInvoice } from "@/app/api/invoices/[id]/route";
 import { POST as chargeInvoice } from "@/app/api/payments/charge/route";
+import { GET as getRealtorPolicy } from "@/app/api/realtor/self811-policy/route";
+import { GET as getRealtorTicket } from "@/app/api/realtor/811/[id]/route";
 import { chargeToken, chargeVaultRecord } from "@/lib/fluidpay";
 import { assertDisposableDatabase } from "./database";
 
@@ -88,6 +90,8 @@ beforeEach(async () => {
   vi.stubGlobal("fetch", vi.fn(() => { throw new Error("External HTTP is forbidden in integration tests"); }));
   requestContext.headers = new Headers({ host: "localhost:3000", "x-forwarded-proto": "http" });
   assertDisposableDatabase(process.env.DATABASE_URL!);
+  await prisma.ticket811.deleteMany();
+  await prisma.self811Policy.deleteMany();
   await prisma.user.deleteMany();
   await prisma.inventoryItem.deleteMany();
   await prisma.areaPriceGroup.deleteMany();
@@ -116,6 +120,63 @@ describe("database safety", () => {
     "postgresql://integration:integration@127.0.0.1:5432/rightsignup_integration?host=railway.example",
   ])("refuses unsafe database URL %s", (url) => {
     expect(() => assertDisposableDatabase(url)).toThrow("non-disposable");
+  });
+});
+
+describe("legitimate policy and TC ticket flows", () => {
+  it("lets a REALTOR fetch the stored policy from the new realtor endpoint", async () => {
+    const policy = await prisma.self811Policy.create({ data: {
+      content: "# Self 811 policy\nReview this policy before accepting.", version: "integration-v1",
+    } });
+    const token = await mobileToken();
+    const response = await getRealtorPolicy(request("/api/realtor/self811-policy", undefined, token));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ policy: {
+      id: policy.id, content: policy.content, version: policy.version, updatedAt: policy.updatedAt.toISOString(),
+    } });
+  });
+
+  const ownershipPaths = ["realtor", "order", "matched-order"] as const;
+  type OwnershipPath = typeof ownershipPaths[number];
+
+  async function tcTicketFixture(agentId: string, ownership: OwnershipPath) {
+    const tc = await prisma.user.create({ data: {
+      email: "tc@example.test", firstName: "Test", lastName: "Coordinator", role: "TC",
+      passwordHash: await bcrypt.hash(password, 4), emailVerifiedAt: new Date(),
+    } });
+    await prisma.tCAgentLink.create({ data: { tcUserId: tc.id, agentUserId: userA, grantedBy: "ADMIN" } });
+    const order = ownership === "realtor" ? null : await prisma.order.create({ data: {
+      orderNumber: "TEST-TC-811", realtorId: agentId, type: "INSTALL", address: "123 Integration St",
+    } });
+    const ticket = await prisma.ticket811.create({ data: {
+      ticketNumber: "TEST-811", sourceEmail: "811@example.test", emailSubject: "Test ticket", emailBody: "Fixture ticket",
+      realtorId: ownership === "realtor" ? agentId : null,
+      orderId: ownership === "order" ? order!.id : null,
+      matchedOrderIds: ownership === "matched-order" ? [order!.id] : [],
+      parsedAddress: "123 Integration St", stage: "TICKET_SUBMITTED",
+      utilityLines: [{ name: "Test Utility", status: "CLEAR" }],
+    } });
+    return { ticket, token: await mobileToken(tc.email) };
+  }
+
+  it.each(ownershipPaths)("lets a TC read a linked agent's ticket via %s ownership", async (ownership) => {
+    const { ticket, token } = await tcTicketFixture(userA, ownership);
+    const response = await getRealtorTicket(request(`/api/realtor/811/${ticket.id}`, undefined, token), { params: { id: ticket.id } });
+    expect(response.status).toBe(200);
+    expect((await response.json()).ticket).toMatchObject({
+      id: ticket.id, ticketNumber: "TEST-811", parsedAddress: "123 Integration St", stage: "TICKET_SUBMITTED",
+      utilityLines: [{ name: "Test Utility", status: "CLEAR" }],
+    });
+  });
+
+  it.each(ownershipPaths)("forbids a TC from reading an unlinked agent's ticket via %s ownership", async (ownership) => {
+    const { ticket, token } = await tcTicketFixture(userB, ownership);
+    const response = await getRealtorTicket(request(`/api/realtor/811/${ticket.id}`, undefined, token), { params: { id: ticket.id } });
+    expect(response.status).toBe(403);
+    const body = await response.json();
+    expect(body).toEqual({ error: "Unauthorized" });
+    expect(body).not.toHaveProperty("ticket");
+    expect(await prisma.ticket811.findUnique({ where: { id: ticket.id } })).not.toBeNull();
   });
 });
 

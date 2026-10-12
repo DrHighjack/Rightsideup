@@ -154,3 +154,45 @@ jobs:
 CI has no Railway URL, production-secret references, or deployment migrations.
 Feature pushes are enabled only for `feature/stability-*`, in addition to main
 pushes and all pull requests. Step 3 has not been started.
+
+## Pre-Merge Legitimate-Flow Verification
+
+A workspace-wide source search covered 504 source/configuration/documentation
+files, including 55 iOS files across both iOS project locations. Generated
+dependencies and build artifacts were excluded from the caller inventory;
+the older local `.next` output contains stale endpoint strings.
+
+| Caller | Method | Current Endpoint | Result |
+| --- | --- | --- | --- |
+| `app/dashboard/orders/new/components/Self811PolicyModal.tsx:27` | GET | `/api/realtor/self811-policy` | Realtor-facing read migrated |
+| `app/admin/inventory/components/PolicyTab.tsx:29` | GET | `/api/admin/self811-policy` | Intentionally retained for ADMIN editor |
+| `app/admin/inventory/components/PolicyTab.tsx:59` | PUT | `/api/admin/self811-policy` | Intentionally retained for ADMIN editor |
+| Both iOS project locations | None | None | No policy endpoint callers |
+
+There are no remaining non-admin callers of the old endpoint. The admin
+editor must retain its GET/PUT endpoints: the realtor route is read-only and
+does not authorize ADMIN.
+
+Seven new integration cases use real mobile login tokens, real route handlers,
+and real policy/ticket/TC-link records in disposable Postgres:
+
+```text
+PASS lets a REALTOR fetch the stored policy from the new realtor endpoint
+PASS lets a TC read a linked agent's ticket via realtor ownership
+PASS lets a TC read a linked agent's ticket via order ownership
+PASS lets a TC read a linked agent's ticket via matched-order ownership
+PASS forbids a TC from reading an unlinked agent's ticket via realtor ownership
+PASS forbids a TC from reading an unlinked agent's ticket via order ownership
+PASS forbids a TC from reading an unlinked agent's ticket via matched-order ownership
+
+Test Files  1 passed (1)
+Tests  7 passed | 36 skipped (43)
+```
+
+Linked-agent assertions require HTTP 200 and the expected ticket payload.
+Unlinked-agent assertions require HTTP 403, no ticket payload, and confirmation
+that the denied ticket actually exists. The policy test checks stored content,
+version, ID, and timestamp, not just a non-authentication status.
+
+Complete integration suite after these additions: 779 passed across 2 files.
+Type-check: passed. Railway was not accessed.

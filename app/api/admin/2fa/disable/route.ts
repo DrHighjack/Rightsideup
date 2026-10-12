@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { password } = adminTwoFactorDisableSchema.parse(await request.json());

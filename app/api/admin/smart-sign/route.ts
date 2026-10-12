@@ -11,11 +11,14 @@ const createTagSchema = z.object({
 
 async function requireAdmin() {
   const session = await auth();
-  return session?.user?.id && session.user.role === "ADMIN";
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  return null;
 }
 
 export async function GET() {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const [tags, untaggedSigns] = await Promise.all([
     prisma.smartSignTag.findMany({
@@ -61,7 +64,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const parsed = createTagSchema.safeParse(await request.json());
   if (!parsed.success) return NextResponse.json({ error: "Invalid tag request", details: parsed.error.flatten() }, { status: 400 });
@@ -89,7 +93,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const body = await request.json() as { id?: unknown; isActive?: unknown; notes?: unknown };
   if (typeof body.id !== "string" || typeof body.isActive !== "boolean") {

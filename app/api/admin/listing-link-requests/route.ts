@@ -9,14 +9,10 @@ const reviewSchema = z.object({
   reviewNotes: z.string().trim().max(1000).optional(),
 });
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") return null;
-  return session.user.id;
-}
-
 export async function GET(request: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const requestedStatus = new URL(request.url).searchParams.get("status") || "PENDING";
   const status = ["PENDING", "APPROVED", "REJECTED", "ALL"].includes(requestedStatus) ? requestedStatus : "PENDING";
 
@@ -44,8 +40,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const adminId = await requireAdmin();
-  if (!adminId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const adminId = session.user.id;
 
   const parsed = reviewSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "A valid review decision is required" }, { status: 400 });

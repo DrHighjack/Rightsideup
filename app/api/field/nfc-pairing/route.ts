@@ -10,12 +10,6 @@ const pairSchema = z.object({
   listingUrl: z.string().trim().url().max(2000),
 });
 
-async function requireInstaller() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "FIELD_TECH") return null;
-  return session.user.id;
-}
-
 function parseTagReference(value: string) {
   const trimmed = value.trim();
   try {
@@ -30,8 +24,10 @@ function parseTagReference(value: string) {
 }
 
 export async function GET() {
-  const fieldTechId = await requireInstaller();
-  if (!fieldTechId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "FIELD_TECH") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const fieldTechId = session.user.id;
 
   const assignments = await prisma.jobAssignment.findMany({
     where: {
@@ -62,8 +58,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  const fieldTechId = await requireInstaller();
-  if (!fieldTechId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "FIELD_TECH") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const fieldTechId = session.user.id;
 
   const parsed = pairSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {

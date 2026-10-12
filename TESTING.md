@@ -7,6 +7,73 @@ math (integer cents), zod API input boundaries, rate-limit identifiers, and the
 magic-login redirect guard. Add a test under `tests/` whenever you change money,
 auth, or validation logic.
 
+### Critical API Integration Tests
+
+Run from the project directory with dependencies installed, a generated Prisma
+client (`npm run db:generate`), and a running Docker daemon:
+
+```sh
+npm run test:integration
+```
+
+The suite exercises real NextAuth credentials HTTP handlers, mobile login and
+bearer-token verification, order creation, invoice listing/detail ownership
+(including realtor A attempting to read realtor B's invoice), and invoice
+charges. Route handlers and Prisma queries are real; FluidPay, email, Discord,
+SMS/push notifications, and Sentry are mocked. Unexpected outbound `fetch`
+calls fail. These are handler/database integration tests, not browser or
+running-Next.js-server tests.
+
+Each local run creates its own `postgres:16-alpine` Docker container with a random
+loopback-only port and temporary in-memory storage. It overrides `DATABASE_URL`
+with the container URL and rejects non-disposable URLs before schema creation
+or fixture cleanup. It never uses the Railway URL or an externally supplied
+local test database. `prisma db push --skip-generate` applies the current schema only
+to this empty database; migration-history auditing is a separate task.
+Fixtures reset between tests, and the container is removed on completion or
+setup failure. If the process is forcibly killed, remove any leftover
+`rightsignup-integration-*` container with `docker rm -fv <container-name>`.
+
+`npm test` runs the existing unit suite without Docker. Run both commands for
+the complete automated suite. No live payment credentials are required.
+
+### Pull Request and Main CI
+
+The Stability workflow runs lint, `npm run type-check`, unit tests, integration
+tests, and `npx --no-install next build` on every pull request and push to main.
+It installs dependencies with `npm ci` and generates the Prisma client first.
+
+GitHub Actions supplies a disposable Postgres service container. With `CI=true`,
+the integration harness accepts `INTEGRATION_DATABASE_URL` only for the guarded
+loopback host, integration credentials, and integration database name. It also
+refuses any database that already contains application tables. GitHub Actions
+removes the service after the job. Local runs retain their Docker-managed mode.
+
+CI uses only dummy auth/payment values and its local Postgres URL, never Railway
+or production secrets. It invokes Next.js directly because `npm run build`
+also runs `prisma migrate deploy`; migration deployment is intentionally not a
+CI check. Migration/schema drift auditing remains separate.
+
+### Protected Route Matrix
+
+`tests/integration/route-roles.test.ts` lists every admin, realtor, and field
+route and every HTTP method, including PATCH. It compares that table against
+the actual exported handlers and discovers exclusive realtor/field guards
+outside those directories. Adding an unlisted route or method fails coverage.
+
+Each handler is exercised anonymously and with real encrypted NextAuth session
+cookies for ADMIN, REALTOR, TC, and FIELD_TECH, backed by disposable Postgres
+users. Missing sessions must return 401; disallowed roles must return 403;
+allowed roles must get past authentication/role denial. Positive cases may
+return input-validation or missing-resource errors, so this is authorization
+coverage, not full business-operation coverage. The realtor 811 and policy
+routes intentionally allow both REALTOR and TC. Existing sales/brokerage
+access to specific admin brokerage functions is preserved.
+
+Stability CI also runs on `feature/stability-*` pushes so feature changes can
+be verified without pushing to main. It never consumes GitHub production
+secrets or deployment migrations.
+
 ## Smart Sign / NFC Notes
 
 - Web NFC scanning (installer "Scan NFC Box") requires Android Chrome over HTTPS.

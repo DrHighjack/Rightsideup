@@ -17,6 +17,9 @@ export async function GET(
     if (!requestUser) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (!['REALTOR', 'TC'].includes(requestUser.role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const userId = requestUser.id;
     const userRole = requestUser.role;

@@ -24,7 +24,7 @@ export function Self811PolicyModal({ isOpen, onAccept, onCancel }: Self811Policy
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/admin/self811-policy');
+      const res = await fetch('/api/realtor/self811-policy');
       
       if (!res.ok) {
         throw new Error('Failed to fetch policy');

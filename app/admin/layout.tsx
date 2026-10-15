@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, type ComponentType } from "react";
 import NotificationBell from "@/app/components/NotificationBell";
+import { MobilePageMenu } from "@/app/components/MobilePageMenu";
 import {
   HomeIcon,
   OrdersIcon,
@@ -174,6 +175,11 @@ export default function AdminLayout({
     ...(isSalesmenOnly ? SALESMEN_NAV.map((i) => i.href) : []),
   ];
   const activeHref = useActiveHref(allHrefs);
+  const mobileSections: NavGroup[] = [
+    { title: "Pages", items: [{ href: "/admin", label: "Dashboard", icon: HomeIcon }] },
+    ...(isAdmin ? ADMIN_NAV : []),
+    ...(isSalesmenOnly ? [{ title: "Pages", items: SALESMEN_NAV }] : []),
+  ];
 
   const handleSignOut = async () => {
     await signOut({ redirect: false });
@@ -231,10 +237,16 @@ export default function AdminLayout({
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Top header with notification bell */}
-        <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-4 md:px-8 py-2.5 flex justify-end">
-          <NotificationBell />
+        <div className="flex min-h-12 items-center justify-between border-b border-slate-200 bg-white/80 px-3 py-1.5 backdrop-blur md:px-8 md:py-2.5">
+          <div className="flex min-w-0 items-center gap-3 md:hidden">
+            <MobilePageMenu brand="SignPost Admin" sections={mobileSections} onSignOut={handleSignOut} />
+            <span className="truncate text-sm font-semibold text-slate-900">SignPost Admin</span>
+          </div>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </div>
-        <div className="flex-1 p-4 md:p-8">
+        <div className="flex-1 p-3 md:p-8">
           {children}
         </div>
 

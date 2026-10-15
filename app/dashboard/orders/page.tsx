@@ -91,23 +91,23 @@ export default function OrdersPage() {
   }, [filter, page, search, sortBy]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">My Orders</h1>
           <p className="text-gray-600">Manage and track your orders</p>
         </div>
         {!isSharedAccountant && <Link
           href="/dashboard/orders/new"
-          className="rounded-md bg-primary px-6 py-2 text-white font-medium hover:bg-primary-dark inline-block text-center"
+          className="inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-dark md:w-auto md:px-6"
         >
           Place New Order
         </Link>}
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="space-y-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+        <div className="space-y-3 md:space-y-4">
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
               Search
@@ -121,11 +121,27 @@ export default function OrdersPage() {
                 setPage(1);
               }}
               placeholder="Search by realtor, order number, or address..."
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="min-h-11 w-full rounded-md border border-gray-300 px-3 py-2 text-base md:px-4"
             />
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="md:hidden">
+            <label htmlFor="mobile-order-status" className="mb-1 block text-xs font-medium text-gray-600">Status</label>
+            <select
+              id="mobile-order-status"
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setPage(1);
+              }}
+              className="min-h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-base"
+            >
+              <option value="ALL">All statuses</option>
+              {ORDER_STATUSES.map((status) => <option key={status} value={status}>{formatOrderStatus(status)}</option>)}
+            </select>
+          </div>
+
+          <div className="mb-4 hidden flex-wrap gap-2 md:flex">
             {["ALL", ...ORDER_STATUSES].map(
               (status) => (
                 <button
@@ -154,7 +170,7 @@ export default function OrdersPage() {
               id="sort"
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as "recent" | "agent")}
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="min-h-11 w-full rounded-md border border-gray-300 px-3 py-2 text-base md:px-4"
             >
               <option value="recent">Most Recent</option>
               <option value="agent">Agent Name (then Recent)</option>
@@ -172,7 +188,24 @@ export default function OrdersPage() {
         <div className="text-center text-gray-500 py-8">No orders found</div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-gray-200 md:hidden">
+            {orders.map((order) => (
+              <Link key={order.id} href={`/dashboard/orders/${order.id}`} className="block p-3 hover:bg-gray-50">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="min-w-0 font-semibold text-primary">{order.orderNumber}</span>
+                  <StatusBadge status={order.status} />
+                </div>
+                <p className="mt-1 text-sm font-medium leading-5 text-gray-900">{order.address}</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <span>{order.realtor ? `${order.realtor.firstName} ${order.realtor.lastName}` : "N/A"}</span>
+                  <span>{order.type}</span>
+                  <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                </div>
+              </Link>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -226,11 +259,11 @@ export default function OrdersPage() {
           </div>
 
           {/* Pagination */}
-          <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-gray-200 p-3 md:px-6 md:py-4">
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium disabled:opacity-50"
+              className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium disabled:opacity-50 md:px-4"
             >
               Previous
             </button>
@@ -240,7 +273,7 @@ export default function OrdersPage() {
             <button
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium disabled:opacity-50"
+              className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium disabled:opacity-50 md:px-4"
             >
               Next
             </button>

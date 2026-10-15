@@ -125,7 +125,7 @@ export function InventoryItemsTab() {
       ) : items.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No items found</div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
           {items.map((item) => (
             <ItemCard
               key={item.id}

@@ -80,6 +80,33 @@ secrets or deployment migrations.
   On other browsers, installers must paste the box URL or enter the printed code.
 - QR codes are the volume driver; every tag also supports manual entry.
 
+### Tapbox Discord Visits
+
+Live, assigned Tapbox listing pages send a Discord message for each page open
+(including reloads), using the existing configured Discord webhook. Enable
+`Tapbox Visits` in Admin Settings > Discord notifications. Existing email
+refresh/return deduplication is unchanged; location-sharing requests do not
+generate another Discord visit.
+
+The message includes the listing address, opening time, and Tapbox code.
+Visible-page active time updates that same message every 30 seconds and when
+the browser backgrounds or leaves the page. Hidden time is excluded. This
+measures the hosted Tapbox page, not time on another website or a confirmed
+physical NFC tap. Mobile termination, blocked requests, or closing before the
+first response can prevent a final update; the last observation is best effort.
+
+Duration requests use a 24-hour signed token scoped to the Tapbox URL and a
+specific Discord message. `AUTH_SECRET` (or `NEXTAUTH_SECRET`) must be configured.
+Reported active time is bounded by server elapsed time. No database migration
+is required, webhook credentials are never sent to the browser, and webhook
+failures do not block visit recording or listing access.
+
+Focused checks (HTTP mocked; no real Discord notifications):
+
+```sh
+npx vitest run tests/tapbox-discord.test.ts tests/tapbox-tracking.test.ts tests/smart-sign-visits.test.ts
+```
+
 ## Test Accounts
 
 ### Admin

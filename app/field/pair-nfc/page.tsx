@@ -28,7 +28,8 @@ export default function PairNfcPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [scanning, setScanning] = useState(false);
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string; publicUrl?: string } | null>(null);
+  const [boxUrlCopied, setBoxUrlCopied] = useState(false);
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string; publicUrl?: string; boxUrl?: string } | null>(null);
 
   useEffect(() => {
     void fetch("/api/field/nfc-pairing")
@@ -93,12 +94,21 @@ export default function PairNfcPage() {
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Unable to pair NFC box");
-      setMessage({ type: "success", text: `Paired to ${data.listingAddress}${data.signNumber ? ` on post ${data.signNumber}` : ""}.`, publicUrl: data.publicUrl });
+      setMessage({ type: "success", text: `Paired to ${data.listingAddress}${data.signNumber ? ` on post ${data.signNumber}` : ""}.`, publicUrl: data.publicUrl, boxUrl: data.boxUrl });
       setTagReference("");
     } catch (error) {
       setMessage({ type: "error", text: error instanceof Error ? error.message : "Unable to pair NFC box" });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyBoxUrl(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setBoxUrlCopied(true);
+    } catch {
+      setMessage((current) => current ? { ...current, text: `${current.text} Copy the box URL directly from the screen.` } : current);
     }
   }
 
@@ -113,7 +123,8 @@ export default function PairNfcPage() {
         {message && (
           <div className={`rounded-lg border p-4 text-sm ${message.type === "success" ? "border-green-300 bg-green-50 text-green-900" : "border-red-300 bg-red-50 text-red-900"}`} role="status">
             <p>{message.text}</p>
-            {message.publicUrl && <a href={message.publicUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block font-semibold text-blue-700 underline">Test public page</a>}
+            {message.publicUrl && <a href={message.publicUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block font-semibold text-blue-700 underline">Preview share page</a>}
+            {message.boxUrl && <div className="mt-2"><p className="break-all text-xs"><strong>Program this box tap URL on the NFC/QR tag:</strong> {message.boxUrl}</p><button type="button" onClick={() => void copyBoxUrl(message.boxUrl!)} className="mt-2 font-semibold text-blue-700 underline">{boxUrlCopied ? "Copied box tap URL" : "Copy box tap URL"}</button></div>}
           </div>
         )}
 

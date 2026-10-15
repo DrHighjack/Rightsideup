@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifySmartSignLiveForOrder } from "@/lib/smart-sign";
 import { z } from "zod";
 
 const reviewSchema = z.object({
@@ -59,6 +60,12 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "The submitted link is no longer valid" }, { status: 400 });
   }
 
+  const orderBeforeReview = await prisma.order.findUnique({
+    where: { id: linkRequest.orderId },
+    select: { id: true, rfidListingUrl: true },
+  });
+  if (!orderBeforeReview) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
   await prisma.$transaction(async (transaction) => {
     await transaction.listingLinkRequest.update({
       where: { id: linkRequest.id },
@@ -76,6 +83,10 @@ export async function PATCH(request: NextRequest) {
       });
     }
   });
+
+  if (parsed.data.decision === "APPROVED" && orderBeforeReview.rfidListingUrl !== requestedUrl.toString()) {
+    await notifySmartSignLiveForOrder(orderBeforeReview.id);
+  }
 
   return NextResponse.json({ success: true, status: parsed.data.decision });
 }

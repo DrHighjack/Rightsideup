@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { createSmartSignTagCode, ensureSmartSignTrial, getSmartSignUrl } from "@/lib/smart-sign";
+import { createSmartSignTagCode, ensureSmartSignTrial, getSmartSignBoxUrl, getSmartSignShareUrl } from "@/lib/smart-sign";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 
@@ -56,7 +56,8 @@ export async function GET() {
       notes: tag.notes,
       installedAt: tag.installedAt,
       tapCount: tag._count.tapEvents,
-      url: getSmartSignUrl(tag.tagCode),
+      url: getSmartSignShareUrl(tag.tagCode),
+      boxUrl: getSmartSignBoxUrl(tag.tagCode),
       sign: tag.sign,
     })),
     untaggedSigns,
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
   });
   if (sign.assignedToUserId) await ensureSmartSignTrial(sign.assignedToUserId);
 
-  return NextResponse.json({ tag: { ...tag, url: getSmartSignUrl(tag.tagCode) } }, { status: 201 });
+  return NextResponse.json({ tag: { ...tag, url: getSmartSignShareUrl(tag.tagCode), boxUrl: getSmartSignBoxUrl(tag.tagCode) } }, { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {

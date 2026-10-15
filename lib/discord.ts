@@ -48,7 +48,8 @@ export async function isDiscordNotificationEnabled(category: DiscordNotification
 async function postDiscordEmbed(
   category: DiscordNotificationCategory,
   username: string,
-  embed: Record<string, unknown>
+  embed: Record<string, unknown>,
+  options: { messageId?: string; wait?: boolean } = {}
 ) {
   const [webhookUrl, enabled] = await Promise.all([
     getConfiguredWebhookUrl(),
@@ -56,8 +57,14 @@ async function postDiscordEmbed(
   ]);
   if (!webhookUrl || !enabled) return;
 
-  const response = await fetch(webhookUrl, {
-    method: 'POST',
+  const destination = new URL(webhookUrl);
+  if (options.messageId) {
+    if (!/^\d+$/.test(options.messageId)) throw new Error('Invalid Discord message ID');
+    destination.pathname = `${destination.pathname.replace(/\/$/, '')}/messages/${options.messageId}`;
+  }
+  if (options.wait) destination.searchParams.set('wait', 'true');
+  const response = await fetch(destination.toString(), {
+    method: options.messageId ? 'PATCH' : 'POST',
     headers: { 'Content-Type': 'application/json' },
     signal: AbortSignal.timeout(5000),
     body: JSON.stringify({
@@ -70,6 +77,39 @@ async function postDiscordEmbed(
   if (!response.ok) {
     throw new Error(`Discord webhook returned ${response.status}`);
   }
+  if (options.wait) {
+    const message = await response.json();
+    if (typeof message.id !== 'string' || !/^\d+$/.test(message.id)) {
+      throw new Error('Discord did not return a message ID');
+    }
+    return message.id as string;
+  }
+  return undefined;
+}
+
+export async function sendTapboxVisitDiscordWebhook(visit: {
+  address: string;
+  tagCode: string;
+  visitedAt: Date | string;
+  activeSeconds?: number;
+  messageId?: string;
+}) {
+  const timestamp = new Date(visit.visitedAt);
+  const seconds = Math.max(0, Math.floor(visit.activeSeconds || 0));
+  return postDiscordEmbed('tapboxVisits', 'North Shore Sign Co Tapbox', {
+    title: visit.messageId ? 'Tapbox visit update' : 'Tapbox opened',
+    color: 0x14624b,
+    timestamp: timestamp.toISOString(),
+    fields: [
+      { name: 'Address', value: visit.address.slice(0, 1024) || 'Not assigned' },
+      { name: 'Opened', value: `<t:${Math.floor(timestamp.getTime() / 1000)}:F>`, inline: true },
+      { name: 'Tapbox', value: visit.tagCode.slice(0, 1024), inline: true },
+      { name: 'Time on site', value: visit.activeSeconds === undefined
+        ? 'Tracking active time; an update follows when available.'
+        : `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s (observed active time)` },
+    ],
+    footer: { text: 'Listing page visit, not a confirmed physical NFC tap. Duration reporting is best effort.' },
+  }, { messageId: visit.messageId, wait: !visit.messageId });
 }
 
 function formatAction(action: string) {

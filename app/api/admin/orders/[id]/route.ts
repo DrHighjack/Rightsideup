@@ -6,6 +6,7 @@ import { createNotification } from "@/lib/notifications";
 import { ActivityAction } from "@prisma/client";
 import { sendEmail, getOrderStatusUpdateEmail } from "@/lib/email";
 import { isOrderReadyToSchedule, ORDER_STATUSES } from "@/lib/order-status";
+import { notifySmartSignLiveForOrder } from "@/lib/smart-sign";
 
 export async function GET(
   _request: NextRequest,
@@ -177,6 +178,10 @@ export async function PUT(
         },
       },
     });
+
+    if (typeof updateData.rfidListingUrl === "string" && updateData.rfidListingUrl !== order.rfidListingUrl) {
+      await notifySmartSignLiveForOrder(order.id);
+    }
 
     // Log activity if status changed
     if (body.status && order.status !== body.status) {

@@ -13,10 +13,10 @@ type Subscription = {
 
 type DashboardData = {
   subscription: Subscription | null;
-  tags: Array<{ id: string; tagCode: string; signNumber: string | null; status: string; listingAddress: string; tapCount: number; lastTapAt: string | null; url: string }>;
+  tags: Array<{ id: string; tagCode: string; signNumber: string | null; status: string; listingAddress: string; tapCount: number; boxTapCount: number; sharedViewCount: number; lastTapAt: string | null; url: string; boxUrl: string }>;
   summary: { totalTaps: number; tapsThisWeek: number; trend: number };
   dailyTaps: Array<{ date: string; taps: number }>;
-  listingBreakdown: Array<{ orderId: string | null; address: string; listingUrl: string | null; taps: number; lastTapAt: string }>;
+  listingBreakdown: Array<{ orderId: string | null; address: string; listingUrl: string | null; taps: number; boxTaps: number; sharedViews: number; lastTapAt: string }>;
 };
 
 type Card = { id: string; last4: string | null; nickname: string | null };
@@ -28,6 +28,7 @@ export default function SmartSignDashboardPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [copiedUrlKey, setCopiedUrlKey] = useState("");
 
   const load = async () => {
     try {
@@ -76,6 +77,15 @@ export default function SmartSignDashboardPage() {
     }
   };
 
+  const copyTagUrl = async (tag: DashboardData["tags"][number], kind: "box" | "share") => {
+    try {
+      await navigator.clipboard.writeText(kind === "box" ? tag.boxUrl : tag.url);
+      setCopiedUrlKey(`${tag.id}:${kind}`);
+    } catch {
+      setError("Unable to copy the box tap URL. Open the admin portal to copy it directly.");
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-slate-600">Loading Smart Sign analytics...</div>;
   if (!data) return <div className="p-8 text-red-700">{error || "Smart Sign is unavailable"}</div>;
 
@@ -97,7 +107,7 @@ export default function SmartSignDashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-3">
         <div className="border border-slate-200 bg-white p-5">
-          <p className="text-sm font-medium text-slate-500">Total taps</p>
+          <p className="text-sm font-medium text-slate-500">Total visits</p>
           <p className="mt-2 text-4xl font-semibold text-slate-900">{data.summary.totalTaps}</p>
         </div>
         <div className="border border-slate-200 bg-white p-5">
@@ -154,7 +164,7 @@ export default function SmartSignDashboardPage() {
 
       <section className="border border-slate-200 bg-white p-5">
         <h2 className="text-lg font-semibold text-slate-900">Posts and listings</h2>
-        {data.tags.length === 0 ? <p className="mt-3 text-sm text-slate-600">No Smart Sign tags are assigned to your active posts yet.</p> : <div className="mt-4 divide-y divide-slate-100">{data.tags.map((tag) => <div key={tag.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium text-slate-900">{tag.listingAddress}</p><p className="text-sm text-slate-500">Post {tag.signNumber || "unlabeled"} · {tag.tapCount} taps {tag.lastTapAt ? `· last tap ${new Date(tag.lastTapAt).toLocaleDateString()}` : ""}</p></div><a href={tag.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-sky-700 hover:text-sky-900">Open public page</a></div>)}</div>}
+        {data.tags.length === 0 ? <p className="mt-3 text-sm text-slate-600">No Smart Sign tags are assigned to your active posts yet.</p> : <div className="mt-4 divide-y divide-slate-100">{data.tags.map((tag) => <div key={tag.id} className="flex flex-col gap-2 py-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-medium text-slate-900">{tag.listingAddress}</p><p className="text-sm text-slate-500">Post {tag.signNumber || "unlabeled"} · {tag.boxTapCount} box taps · {tag.sharedViewCount} shared views {tag.lastTapAt ? `· last visit ${new Date(tag.lastTapAt).toLocaleDateString()}` : ""}</p></div><div className="flex flex-wrap items-center gap-4"><a href={tag.url} target="_blank" rel="noreferrer" className="text-sm font-medium text-sky-700 hover:text-sky-900">Open share page</a><button type="button" onClick={() => void copyTagUrl(tag, "share")} className="text-sm font-medium text-slate-700 underline">{copiedUrlKey === `${tag.id}:share` ? "Copied share URL" : "Copy share URL"}</button><button type="button" onClick={() => void copyTagUrl(tag, "box")} className="text-sm font-medium text-slate-700 underline">{copiedUrlKey === `${tag.id}:box` ? "Copied box tap URL" : "Copy box tap URL"}</button></div></div>)}</div>}
       </section>
 
       {data.listingBreakdown.length > 0 && (
@@ -165,7 +175,7 @@ export default function SmartSignDashboardPage() {
               <div key={listing.orderId || listing.address} className="flex items-center justify-between gap-4 py-3">
                 <div>
                   <p className="font-medium text-slate-900">{listing.address}</p>
-                  <p className="text-sm text-slate-500">Last tap {new Date(listing.lastTapAt).toLocaleDateString()}</p>
+                  <p className="text-sm text-slate-500">{listing.boxTaps} box taps · {listing.sharedViews} shared views · last visit {new Date(listing.lastTapAt).toLocaleDateString()}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <span className="font-semibold text-slate-900">{listing.taps} tap{listing.taps === 1 ? "" : "s"}</span>

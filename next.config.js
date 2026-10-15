@@ -11,6 +11,11 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  outputFileTracingIncludes: {
+    "/api/admin/orders/[id]": ["./email-templates/smart-sign-live.html"],
+    "/api/admin/listing-link-requests": ["./email-templates/smart-sign-live.html"],
+    "/api/field/nfc-pairing": ["./email-templates/smart-sign-live.html"],
+  },
   async headers() {
     const csp = [
       "default-src 'self'",

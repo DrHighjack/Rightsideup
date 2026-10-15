@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { ensureSmartSignTrial, getSmartSignUrl } from "@/lib/smart-sign";
+import { ensureSmartSignTrial, getSmartSignBoxUrl, getSmartSignShareUrl, notifySmartSignLiveForOrder } from "@/lib/smart-sign";
 import { z } from "zod";
 
 const pairSchema = z.object({
@@ -84,7 +84,7 @@ export async function POST(request: NextRequest) {
       },
     },
     select: {
-      order: { select: { id: true, address: true, realtorId: true } },
+      order: { select: { id: true, address: true, realtorId: true, rfidListingUrl: true } },
     },
   });
   if (!assignment) return NextResponse.json({ error: "This listing is not assigned to you" }, { status: 403 });
@@ -102,6 +102,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "This NFC box is already paired to another active listing" }, { status: 409 });
   }
 
+  const wasLiveForOrder = tag.sign.status === "DEPLOYED" && tag.sign.assignedToOrderId === assignment.order.id;
   await prisma.$transaction([
     prisma.order.update({
       where: { id: assignment.order.id },
@@ -118,10 +119,14 @@ export async function POST(request: NextRequest) {
     }),
   ]);
   await ensureSmartSignTrial(assignment.order.realtorId);
+  if (!wasLiveForOrder || assignment.order.rfidListingUrl !== listingUrl.toString()) {
+    await notifySmartSignLiveForOrder(assignment.order.id);
+  }
 
   return NextResponse.json({
     success: true,
-    publicUrl: getSmartSignUrl(tag.tagCode),
+    publicUrl: getSmartSignShareUrl(tag.tagCode),
+    boxUrl: getSmartSignBoxUrl(tag.tagCode),
     listingAddress: assignment.order.address,
     signNumber: tag.sign.signNumber,
   });

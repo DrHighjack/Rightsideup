@@ -10,7 +10,7 @@ export async function GET(
     const user = await getRequestUser(request);
 
     if (!user?.id || user.role !== 'FIELD_TECH') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return NextResponse.json({ error: 'Forbidden' }, { status: user?.id ? 403 : 401 });
     }
 
     const fieldTechId = user.id;

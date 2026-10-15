@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import Script from "next/script";
 import PageSkeleton from "../../../components/PageSkeleton";
+import { getSavedCardLabel } from "@/lib/payment-feedback";
 
 declare global {
   interface Window {
@@ -666,7 +667,7 @@ export default function InvoiceDetailPage() {
                               >
                                 {savedCards.map((card) => (
                                   <option key={card.id} value={card.id}>
-                                    {card.ownerType === "SELF" ? "My card" : `${card.ownerName}'s card`}: {card.nickname || `ending in ${card.last4 || "saved"}`}
+                                    {card.ownerType === "SELF" ? "My card" : `${card.ownerName}'s card`}: {getSavedCardLabel(card.nickname, card.last4)}
                                   </option>
                                 ))}
                               </select>

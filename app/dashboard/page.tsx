@@ -398,7 +398,7 @@ export default function DashboardPage() {
     !onboardingBannerHidden;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 md:space-y-8">
       {shouldShowOnboardingBanner && onboardingStatus ? (
         <RealtorOnboardingBanner
           status={onboardingStatus}
@@ -416,7 +416,7 @@ export default function DashboardPage() {
 
       {/* Ready to order CTA */}
       {!isSharedAccountant && !readyCardHidden && (
-        <div className="relative bg-white rounded-xl border border-slate-200 p-6 text-center shadow-sm">
+        <div className="relative bg-white rounded-xl border border-slate-200 p-4 text-center shadow-sm md:p-6">
           <button
             type="button"
             onClick={dismissReadyCard}
@@ -438,24 +438,24 @@ export default function DashboardPage() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Active Orders</p>
-          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.active}</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-4">
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm md:p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 md:text-xs">Active Orders</p>
+          <p className="mt-1 text-2xl font-semibold text-navy-900 tabular-nums md:mt-2 md:text-3xl">{stats.active}</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Completed This Month</p>
-          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.completedThisMonth}</p>
+        <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm md:p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 md:text-xs">Completed This Month</p>
+          <p className="mt-1 text-2xl font-semibold text-navy-900 tabular-nums md:mt-2 md:text-3xl">{stats.completedThisMonth}</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Pending</p>
-          <p className="text-3xl font-semibold text-navy-900 tabular-nums mt-2">{stats.pending}</p>
+        <div className="col-span-2 bg-white rounded-xl border border-slate-200 p-4 shadow-sm md:col-span-1 md:p-5">
+          <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 md:text-xs">Pending</p>
+          <p className="mt-1 text-2xl font-semibold text-navy-900 tabular-nums md:mt-2 md:text-3xl">{stats.pending}</p>
         </div>
       </div>
 
       {/* Orders map */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-4">
+      <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-sm md:p-6">
+        <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between md:mb-4">
           <h2 className="font-display text-lg font-semibold tracking-tight text-slate-900">Post Maps</h2>
           <span className="text-sm text-slate-600">
             {filteredMappedOrders.length} shown / {mappedOrders.length} mapped
@@ -463,11 +463,11 @@ export default function DashboardPage() {
         </div>
 
         {!mapKey ? (
-          <div className="h-[420px] rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 text-sm">
+          <div className="h-[320px] rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 text-sm md:h-[420px]">
             NEXT_PUBLIC_GOOGLE_MAPS_KEY is not configured.
           </div>
         ) : mappedOrders.length === 0 ? (
-          <div className="h-[420px] rounded-lg overflow-hidden border border-slate-200 relative">
+          <div className="relative h-[320px] overflow-hidden rounded-lg border border-slate-200 md:h-[420px]">
             <GoogleMapReact
               bootstrapURLKeys={{ key: mapKey }}
               defaultCenter={SEATTLE_DEFAULT_CENTER}
@@ -479,11 +479,11 @@ export default function DashboardPage() {
             </div>
           </div>
         ) : filteredMappedOrders.length === 0 ? (
-          <div className="h-[420px] rounded-lg border border-slate-200 bg-slate-50 flex items-center justify-center text-slate-600">
+          <div className="flex h-[320px] items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-600 md:h-[420px]">
             No map posts match the selected filters.
           </div>
         ) : (
-          <div className="h-[420px] rounded-lg overflow-hidden border border-slate-200 relative">
+          <div className="relative h-[320px] overflow-hidden rounded-lg border border-slate-200 md:h-[420px]">
             <GoogleMapReact
               bootstrapURLKeys={{ key: mapKey }}
               defaultCenter={mapCenter}

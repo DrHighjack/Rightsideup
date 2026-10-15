@@ -87,7 +87,7 @@ export default function NotificationBell() {
       {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-600 hover:text-gray-900 transition-colors"
+        className="relative inline-flex min-h-11 min-w-11 items-center justify-center p-2 text-gray-600 transition-colors hover:text-gray-900"
         aria-label="Notifications"
       >
         <svg
@@ -114,7 +114,7 @@ export default function NotificationBell() {
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 origin-top-right bg-white rounded-xl shadow-modal z-50 border border-slate-200 animate-scale-in">
+        <div className="absolute right-0 z-50 mt-2 w-[calc(100vw-1.5rem)] max-w-sm origin-top-right animate-scale-in rounded-xl border border-slate-200 bg-white shadow-modal">
           {/* Header */}
           <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
             <h3 className="text-sm font-semibold text-gray-900">Notifications</h3>

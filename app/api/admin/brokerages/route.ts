@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
     const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const matchName = new URL(request.url).searchParams.get("match")?.trim();
@@ -134,7 +134,7 @@ export async function POST(request: NextRequest) {
     const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const requesterUserId = session.user.id;

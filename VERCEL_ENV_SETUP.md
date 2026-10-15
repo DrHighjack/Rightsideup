@@ -47,16 +47,21 @@ To fix the 500 error on Vercel login, ensure these environment variables are set
 
 11. **CRON_SECRET**
    - Generate a long random value and add it to Production
-   - Vercel sends it as a bearer token when invoking the monthly statement cron
+   - Vercel sends it as a bearer token when invoking scheduled cron routes, including the daily email health check at 7:00 AM Pacific
 
-12. **FLUIDPAY_SECRET_KEY** and **FLUIDPAY_BASE_URL**
+12. **ADMIN_ALERT_EMAIL**
+   - Your inbox; receives the daily email delivery test
+   - Required for the daily email health check
+
+13. **FLUIDPAY_SECRET_KEY** and **FLUIDPAY_BASE_URL**
    - Server-side FluidPay credentials and API URL used to charge a saved company card
 
-13. **NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY** and **NEXT_PUBLIC_FLUIDPAY_BASE_URL**
+14. **NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY** and **NEXT_PUBLIC_FLUIDPAY_BASE_URL**
    - Browser-safe tokenizer key and URL used by the brokerage company-card form
 
-14. **BREVO_API_KEY** or SMTP credentials
+15. **BREVO_API_KEY** or SMTP credentials
    - Required to send the monthly statement-ready email
+   - Also required for the daily email delivery test
    - Set `BREVO_FROM_EMAIL` to `noreply@northshoresignco.com`
    - In Brevo, verify the `northshoresignco.com` domain and activate `noreply@northshoresignco.com` as a sender. The app will reject sends rather than fall back to a `@brevosend.com` address.
 

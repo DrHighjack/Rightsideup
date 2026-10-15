@@ -8,6 +8,9 @@ export async function GET(_request: NextRequest) {
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    if (session.user.role !== 'ADMIN') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     // Get the latest policy (there should be only one)
     const policy = await prisma.self811Policy.findFirst({
@@ -35,7 +38,7 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== 'ADMIN') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized' }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const body = await request.json();

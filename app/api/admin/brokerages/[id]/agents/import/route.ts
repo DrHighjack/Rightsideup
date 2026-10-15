@@ -32,7 +32,7 @@ export async function POST(
           })
         : null;
       if (user?.brokerageId !== params.id) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
     }
 

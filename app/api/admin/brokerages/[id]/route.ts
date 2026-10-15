@@ -60,7 +60,7 @@ export async function GET(
 
     const authorized = await canAccessBrokerage(session.user.id, role, params.id);
     if (!authorized) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const brokerage = await prisma.brokerage.findUnique({
@@ -192,7 +192,7 @@ export async function POST(
 
     const authorized = await canAccessBrokerage(session.user.id, role, params.id);
     if (!authorized) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -278,7 +278,7 @@ export async function PUT(
     const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const body = await request.json();
@@ -372,7 +372,7 @@ export async function DELETE(
     const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const existing = await prisma.brokerage.findUnique({

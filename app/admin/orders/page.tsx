@@ -211,23 +211,23 @@ export default function AdminOrdersPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">All Orders</h1>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">All Orders</h1>
           <p className="text-gray-600">Manage orders from all realtors</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2 md:w-auto">
           <button
             onClick={handleExportCSV}
             disabled={exporting}
-            className="rounded-md bg-gray-600 px-6 py-2 text-white font-medium hover:bg-gray-700 disabled:opacity-50"
+            className="min-h-11 flex-1 rounded-md bg-gray-600 px-3 py-2 text-sm font-medium text-white hover:bg-gray-700 disabled:opacity-50 md:flex-none md:px-6"
           >
             {exporting ? "Exporting..." : "Export CSV"}
           </button>
           <Link
             href="/admin/orders/new"
-            className="rounded-md bg-primary px-6 py-2 text-white font-medium hover:bg-primary-dark inline-block text-center"
+            className="inline-flex min-h-11 flex-1 items-center justify-center rounded-md bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-dark md:flex-none md:px-6"
           >
             Create Order
           </Link>
@@ -235,8 +235,8 @@ export default function AdminOrdersPage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
-        <div className="space-y-4">
+      <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-4">
+        <div className="space-y-3 md:space-y-4">
           <div>
             <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-1">
               Search
@@ -250,11 +250,11 @@ export default function AdminOrdersPage() {
                 setPage(1);
               }}
               placeholder="Search by order number or address..."
-              className="w-full rounded-md border border-gray-300 px-4 py-2"
+              className="min-h-11 w-full rounded-md border border-gray-300 px-3 py-2 text-base md:px-4"
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 md:gap-4">
             <div>
               <label htmlFor="dateFrom" className="block text-sm font-medium text-gray-700 mb-1">
                 Date From
@@ -267,7 +267,7 @@ export default function AdminOrdersPage() {
                   setDateFrom(e.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-md border border-gray-300 px-4 py-2"
+                className="min-h-11 w-full rounded-md border border-gray-300 px-2 py-2 text-base md:px-4"
               />
             </div>
             <div>
@@ -282,12 +282,28 @@ export default function AdminOrdersPage() {
                   setDateTo(e.target.value);
                   setPage(1);
                 }}
-                className="w-full rounded-md border border-gray-300 px-4 py-2"
+                className="min-h-11 w-full rounded-md border border-gray-300 px-2 py-2 text-base md:px-4"
               />
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="md:hidden">
+            <label htmlFor="mobile-order-status" className="mb-1 block text-xs font-medium text-gray-600">Status</label>
+            <select
+              id="mobile-order-status"
+              value={filter}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setPage(1);
+              }}
+              className="min-h-11 w-full rounded-md border border-gray-300 bg-white px-3 text-base"
+            >
+              <option value="ALL">All statuses</option>
+              {ORDER_STATUSES.map((status) => <option key={status} value={status}>{formatOrderStatus(status)}</option>)}
+            </select>
+          </div>
+
+          <div className="hidden flex-wrap gap-2 md:flex">
             {["ALL", ...ORDER_STATUSES].map(
               (status) => (
                 <button
@@ -317,7 +333,53 @@ export default function AdminOrdersPage() {
         <div className="text-center text-gray-500 py-8">No orders found</div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="divide-y divide-gray-200 md:hidden">
+            {orders.map((order) => (
+              <article key={order.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <Link href={`/admin/orders/${order.id}`} className="min-h-11 min-w-0 pt-2 font-semibold text-primary">
+                    {order.orderNumber}
+                  </Link>
+                  <StatusBadge status={order.status} />
+                </div>
+                <p className="text-sm font-medium leading-5 text-gray-900">{order.address}</p>
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <span>{order.realtor.firstName} {order.realtor.lastName}</span>
+                  <span>{order.type}</span>
+                  <span>{new Date(order.createdAt).toLocaleDateString()}</span>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {order.status === "IN_GROUND" && (
+                    <button
+                      onClick={() => handleSendCompletionEmail(order.id)}
+                      disabled={sendingId === order.id}
+                      className="min-h-10 rounded-md border border-green-200 px-3 text-sm font-medium text-green-700 disabled:opacity-50"
+                    >
+                      {sendingId === order.id ? "Sending..." : "Send Email"}
+                    </button>
+                  )}
+                  {order.type === "INSTALL" && ["IN_GROUND", "EXTENDED_LISTING"].includes(order.status) && (
+                    <button
+                      onClick={() => {
+                        setRemovalModal({ isOpen: true, orderId: order.id });
+                        setRemovalDate("");
+                        setRemovalNotes("");
+                        setSelectedFieldTech("");
+                      }}
+                      className="min-h-10 rounded-md border border-orange-200 px-3 text-sm font-medium text-orange-700"
+                    >
+                      Schedule Removal
+                    </button>
+                  )}
+                  <Link href={`/admin/orders/${order.id}`} className="inline-flex min-h-10 items-center rounded-md border border-gray-300 px-3 text-sm font-medium text-gray-700">
+                    View Order
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -406,11 +468,11 @@ export default function AdminOrdersPage() {
           </div>
 
           {/* Pagination */}
-          <div className="border-t border-gray-200 px-6 py-4 flex items-center justify-between">
+          <div className="flex items-center justify-between border-t border-gray-200 p-3 md:px-6 md:py-4">
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium disabled:opacity-50"
+              className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium disabled:opacity-50 md:px-4"
             >
               Previous
             </button>
@@ -420,7 +482,7 @@ export default function AdminOrdersPage() {
             <button
               onClick={() => setPage(Math.min(totalPages, page + 1))}
               disabled={page === totalPages}
-              className="px-4 py-2 rounded-md border border-gray-300 text-sm font-medium disabled:opacity-50"
+              className="min-h-11 rounded-md border border-gray-300 px-3 py-2 text-sm font-medium disabled:opacity-50 md:px-4"
             >
               Next
             </button>

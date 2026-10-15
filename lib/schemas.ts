@@ -5,12 +5,16 @@ export const registerSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().optional(),
+  smsOptIn: z.boolean().optional().default(false),
   brokerageName: z.string().optional(),
   password: z.string().min(6, "Password must be at least 6 characters"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
+}).refine((data) => !data.smsOptIn || /^\+[1-9]\d{7,14}$/.test(data.phone || ""), {
+  message: "Enter a mobile number with country code, such as +12065551234, to receive texts",
+  path: ["phone"],
 });
 
 export const orderSchema = z.object({

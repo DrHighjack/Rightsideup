@@ -10,7 +10,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { id } = params;
@@ -60,7 +60,7 @@ export async function DELETE(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { id } = params;
@@ -129,7 +129,7 @@ export async function POST(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { id } = params;

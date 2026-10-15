@@ -120,57 +120,72 @@ export default function AdminInvoicesPage() {
   const currentPage = Math.floor(offset / limit) + 1;
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 flex justify-between items-center">
+        <div className="mb-5 flex flex-col gap-3 md:mb-8 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Invoices</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">Invoices</h1>
+            <p className="mt-1 text-sm text-gray-600 md:mt-2 md:text-base">
               Manage and track all customer invoices
             </p>
           </div>
           <Link
             href="/admin/invoices/new"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg"
+            className="inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 md:w-auto md:text-base"
           >
             + Create Invoice
           </Link>
         </div>
 
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7">
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Total Invoices</p>
-            <p className="mt-2 text-3xl font-bold text-gray-900">{invoiceStats.totalInvoices}</p>
+        <div className="mb-5 grid grid-cols-2 gap-3 md:mb-8 md:grid-cols-3 md:gap-4 xl:grid-cols-7">
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Total Invoices</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 md:mt-2 md:text-3xl">{invoiceStats.totalInvoices}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Amount Paid</p>
-            <p className="mt-2 text-3xl font-bold text-green-600">{formatCurrency(invoiceStats.amountPaid)}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Amount Paid</p>
+            <p className="mt-1 text-xl font-bold text-green-600 md:mt-2 md:text-3xl">{formatCurrency(invoiceStats.amountPaid)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Outstanding</p>
-            <p className="mt-2 text-3xl font-bold text-orange-600">{formatCurrency(invoiceStats.outstandingAmount)}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Outstanding</p>
+            <p className="mt-1 text-xl font-bold text-orange-600 md:mt-2 md:text-3xl">{formatCurrency(invoiceStats.outstandingAmount)}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Paid Invoices</p>
-            <p className="mt-2 text-3xl font-bold text-green-600">{invoiceStats.paidInvoices}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Paid Invoices</p>
+            <p className="mt-1 text-xl font-bold text-green-600 md:mt-2 md:text-3xl">{invoiceStats.paidInvoices}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Unpaid Invoices</p>
-            <p className="mt-2 text-3xl font-bold text-orange-600">{invoiceStats.unpaidInvoices}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Unpaid Invoices</p>
+            <p className="mt-1 text-xl font-bold text-orange-600 md:mt-2 md:text-3xl">{invoiceStats.unpaidInvoices}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Unsent Invoices</p>
-            <p className="mt-2 text-3xl font-bold text-gray-600">{invoiceStats.unsentInvoices}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Unsent Invoices</p>
+            <p className="mt-1 text-xl font-bold text-gray-600 md:mt-2 md:text-3xl">{invoiceStats.unsentInvoices}</p>
           </div>
-          <div className="rounded-lg border border-gray-200 bg-white p-5">
-            <p className="text-sm font-medium text-gray-600">Average Invoice</p>
-            <p className="mt-2 text-3xl font-bold text-blue-600">{formatCurrency(invoiceStats.averageInvoice)}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-5">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Average Invoice</p>
+            <p className="mt-1 text-xl font-bold text-blue-600 md:mt-2 md:text-3xl">{formatCurrency(invoiceStats.averageInvoice)}</p>
           </div>
         </div>
 
         {/* Status Filter */}
-        <div className="mb-6 flex gap-2 flex-wrap">
+        <div className="mb-4 md:hidden">
+          <label htmlFor="mobile-invoice-status" className="mb-1 block text-xs font-medium text-gray-600">Invoice status</label>
+          <select
+            id="mobile-invoice-status"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setOffset(0);
+            }}
+            className="min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base"
+          >
+            <option value="">All statuses</option>
+            {["DRAFT", "SENT", "VIEWED", "PAID", "OVERDUE", "VOIDED"].map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </div>
+        <div className="mb-6 hidden gap-2 md:flex">
           {["", "DRAFT", "SENT", "VIEWED", "PAID", "OVERDUE", "VOIDED"].map(
             (status) => (
               <button
@@ -206,7 +221,33 @@ export default function AdminInvoicesPage() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="divide-y divide-gray-200 md:hidden">
+              {invoices.map((invoice) => {
+                const colors = statusColors[invoice.status];
+                const amount = invoice.amount - invoice.discountAmount + invoice.taxAmount;
+                return (
+                  <article key={invoice.id} className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="font-mono text-sm font-semibold text-gray-900">{invoice.invoiceNumber}</p>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors.bg} ${colors.text}`}>{invoice.status}</span>
+                    </div>
+                    <div className="mt-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-gray-900">{invoice.user.name}</p>
+                        <p className="text-xs text-gray-500">Due {formatDate(invoice.dueDate)}</p>
+                      </div>
+                      <p className="shrink-0 text-sm font-semibold text-gray-900">{formatCurrency(amount)}</p>
+                    </div>
+                    <div className="mt-3 flex gap-2">
+                      {invoice.status === "DRAFT" && <button onClick={() => handleSendInvoice(invoice.id)} disabled={sendingId === invoice.id} className="min-h-10 rounded-md border border-green-200 px-3 text-sm font-medium text-green-700 disabled:opacity-50">{sendingId === invoice.id ? "Sending..." : "Send"}</button>}
+                      <Link href={`/admin/invoices/${invoice.id}`} className="inline-flex min-h-10 items-center rounded-md border border-gray-300 px-3 text-sm font-medium text-blue-700">View</Link>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
@@ -280,17 +321,18 @@ export default function AdminInvoicesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex justify-between items-center">
+          <div className="mt-4 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-gray-600">
               Showing {offset + 1} to {Math.min(offset + limit, totalCount)} of{" "}
               {totalCount} invoices
             </p>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => setOffset(Math.max(0, offset - limit))}
                 disabled={offset === 0}

@@ -361,7 +361,91 @@ export default function NewInvoicePage() {
         </section>
 
         <section className="bg-white">
-          <div className="overflow-x-auto border-y border-gray-200">
+          <div className="space-y-3 border-y border-gray-200 px-3 py-3 md:hidden">
+            {lines.map((line) => {
+              const search = line.description.trim().toLowerCase();
+              const matches = catalog
+                .filter((item) => !search || item.label.toLowerCase().includes(search))
+                .slice(0, 10);
+              const lineTotal = dollarsToCents(line.unitPrice) * line.quantity;
+
+              return (
+                <article key={`mobile-${line.id}`} className="space-y-3 rounded-lg border border-gray-200 p-3">
+                  <div className="relative">
+                    <label htmlFor={`mobile-description-${line.id}`} className="mb-1 block text-xs font-medium text-gray-600">Product or service</label>
+                    <input
+                      id={`mobile-description-${line.id}`}
+                      value={line.description}
+                      onFocus={() => setOpenCatalogLineId(line.id)}
+                      onChange={(event) => {
+                        updateLine(line.id, { description: event.target.value });
+                        setOpenCatalogLineId(line.id);
+                      }}
+                      onBlur={() => window.setTimeout(() => setOpenCatalogLineId(null), 100)}
+                      placeholder="Search or type a custom service"
+                      autoComplete="off"
+                      className="min-h-11 w-full rounded-md border border-gray-300 px-3 py-2 text-base text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                    />
+                    {openCatalogLineId === line.id && (
+                      <div className="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-white shadow-lg">
+                        {catalogLoading ? (
+                          <p className="px-3 py-2 text-sm text-gray-500">Loading services...</p>
+                        ) : matches.length > 0 ? (
+                          matches.map((item) => (
+                            <button key={item.id} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => selectCatalogItem(line.id, item)} className="flex min-h-11 w-full items-center justify-between gap-3 border-b border-gray-100 px-3 py-2 text-left last:border-0 hover:bg-blue-50">
+                              <span className="min-w-0">
+                                <span className="block truncate text-sm font-medium text-gray-900">{item.label}</span>
+                                <span className="block text-xs text-gray-500">{item.category}</span>
+                              </span>
+                              <span className="shrink-0 text-sm font-medium text-gray-700">${(item.priceCents / 100).toFixed(2)}</span>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="px-3 py-2 text-sm text-gray-600">Use “{line.description}” as a custom service</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="text-xs font-medium text-gray-600">Quantity
+                      <input
+                        type="number"
+                        min="1"
+                        max="999"
+                        value={line.quantity}
+                        onChange={(event) => updateLine(line.id, { quantity: Math.max(1, Number(event.target.value) || 1) })}
+                        className="mt-1 min-h-11 w-full rounded-md border border-gray-300 px-3 py-2 text-right text-base text-gray-900"
+                        aria-label={`Quantity for ${line.description || "line item"}`}
+                      />
+                    </label>
+                    <label className="text-xs font-medium text-gray-600">Rate
+                      <span className="relative mt-1 block">
+                        <span className="absolute left-3 top-3 text-gray-500">$</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={line.unitPrice}
+                          onChange={(event) => updateLine(line.id, { unitPrice: event.target.value })}
+                          placeholder="0.00"
+                          className="min-h-11 w-full rounded-md border border-gray-300 py-2 pl-7 pr-3 text-right text-base text-gray-900"
+                          aria-label={`Rate for ${line.description || "line item"}`}
+                        />
+                      </span>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-gray-100 pt-2">
+                    <p className="text-sm text-gray-600">Line amount <span className="ml-1 font-semibold text-gray-900">${(lineTotal / 100).toFixed(2)}</span></p>
+                    <button type="button" onClick={() => setLines((current) => current.filter((item) => item.id !== line.id))} disabled={lines.length === 1} className="min-h-10 rounded-md px-3 text-sm font-medium text-gray-600 hover:bg-red-50 hover:text-red-700 disabled:opacity-30">Remove</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-x-auto border-y border-gray-200 md:block">
             <table className="w-full min-w-[760px] table-fixed">
               <thead className="bg-gray-100 text-left text-xs font-semibold uppercase text-gray-600">
                 <tr>

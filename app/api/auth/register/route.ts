@@ -5,6 +5,7 @@ import { registerSchema } from "@/lib/schemas";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
 import { sendEmail, getAccountVerificationEmail, getWelcomeEmail } from "@/lib/email";
+import { buildSmsConsentData } from "@/lib/sms-consent";
 
 const appUrl =
   process.env.NEXT_PUBLIC_APP_URL ||
@@ -14,7 +15,7 @@ const appUrl =
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, firstName, lastName, phone, brokerageName } = registerSchema.parse(body);
+    const { email, password, firstName, lastName, phone, brokerageName, smsOptIn } = registerSchema.parse(body);
     const inviteToken = typeof body?.inviteToken === "string" ? body.inviteToken.trim() : "";
 
     const normalizedEmail = email.trim().toLowerCase();
@@ -50,6 +51,7 @@ export async function POST(request: NextRequest) {
       phone,
       brokerageName,
       role: "REALTOR" as const,
+      ...buildSmsConsentData(phone, smsOptIn),
       ...(includeVerificationFields
         ? {
             emailVerificationToken,

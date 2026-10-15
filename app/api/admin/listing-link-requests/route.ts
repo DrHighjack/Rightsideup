@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { notifySmartSignLiveForOrder } from "@/lib/smart-sign";
 import { z } from "zod";
 
 const reviewSchema = z.object({
@@ -9,14 +10,10 @@ const reviewSchema = z.object({
   reviewNotes: z.string().trim().max(1000).optional(),
 });
 
-async function requireAdmin() {
-  const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") return null;
-  return session.user.id;
-}
-
 export async function GET(request: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   const requestedStatus = new URL(request.url).searchParams.get("status") || "PENDING";
   const status = ["PENDING", "APPROVED", "REJECTED", "ALL"].includes(requestedStatus) ? requestedStatus : "PENDING";
 
@@ -44,8 +41,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const adminId = await requireAdmin();
-  if (!adminId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  const adminId = session.user.id;
 
   const parsed = reviewSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ error: "A valid review decision is required" }, { status: 400 });
@@ -60,6 +59,12 @@ export async function PATCH(request: NextRequest) {
   if (!["http:", "https:"].includes(requestedUrl.protocol)) {
     return NextResponse.json({ error: "The submitted link is no longer valid" }, { status: 400 });
   }
+
+  const orderBeforeReview = await prisma.order.findUnique({
+    where: { id: linkRequest.orderId },
+    select: { id: true, rfidListingUrl: true },
+  });
+  if (!orderBeforeReview) return NextResponse.json({ error: "Order not found" }, { status: 404 });
 
   await prisma.$transaction(async (transaction) => {
     await transaction.listingLinkRequest.update({
@@ -78,6 +83,10 @@ export async function PATCH(request: NextRequest) {
       });
     }
   });
+
+  if (parsed.data.decision === "APPROVED" && orderBeforeReview.rfidListingUrl !== requestedUrl.toString()) {
+    await notifySmartSignLiveForOrder(orderBeforeReview.id);
+  }
 
   return NextResponse.json({ success: true, status: parsed.data.decision });
 }

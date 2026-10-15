@@ -9,7 +9,7 @@ export async function GET() {
     const session = await auth();
 
     if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const overrides = await prisma.priceOverride.findMany({
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
     const session = await auth();
 
     if (!session?.user || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { serviceType, amountCents, userId, brokerageId, isLocked } =

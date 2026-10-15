@@ -4,15 +4,15 @@ import { prisma } from "@/lib/prisma";
 
 async function requireAdmin() {
   const session = await auth();
-  if (!session?.user?.id || session.user.role !== "ADMIN") {
-    return null;
-  }
-  return session;
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  return null;
 }
 
 export async function GET() {
   try {
-    if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const denied = await requireAdmin();
+    if (denied) return denied;
     const requests = await prisma.printerPartnershipRequest.findMany({
       where: { status: "PENDING" },
       orderBy: { createdAt: "asc" },
@@ -27,7 +27,8 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    if (!await requireAdmin()) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const denied = await requireAdmin();
+    if (denied) return denied;
     const body = (await request.json()) as { requestId?: unknown; decision?: unknown };
     const requestId = typeof body.requestId === "string" ? body.requestId : "";
     const decision = body.decision === "APPROVED" || body.decision === "REJECTED" ? body.decision : "";

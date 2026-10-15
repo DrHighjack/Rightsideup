@@ -152,22 +152,22 @@ export default function Ticket811ListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">811 Ticket Management</h1>
-          <div className="flex gap-4">
+        <div className="mb-5 flex flex-col gap-3 md:mb-8 md:flex-row md:items-center md:justify-between">
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">811 Ticket Management</h1>
+          <div className="flex w-full gap-2 md:w-auto md:gap-4">
             <button
               onClick={handlePoll}
               disabled={polling}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              className="min-h-11 flex-1 rounded-lg bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:bg-gray-400 md:flex-none md:px-4"
             >
               {polling ? 'Polling...' : 'Manual Poll'}
             </button>
             <button
               onClick={() => setShowPdfModal(true)}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              className="min-h-11 flex-1 rounded-lg bg-green-600 px-3 py-2 text-sm text-white hover:bg-green-700 md:flex-none md:px-4"
             >
               Create Ticket
             </button>
@@ -175,27 +175,38 @@ export default function Ticket811ListPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-8">
-          <div className="bg-red-50 rounded-lg p-6 border border-red-200">
-            <div className="text-sm text-gray-600">Active Tickets</div>
-            <div className="text-3xl font-bold text-red-600">{summary.active}</div>
+        <div className="mb-5 grid grid-cols-2 gap-3 md:mb-8 md:grid-cols-4 md:gap-4">
+          <div className="rounded-lg border border-red-200 bg-red-50 p-3 md:p-6">
+            <div className="text-xs text-gray-600 md:text-sm">Active Tickets</div>
+            <div className="text-2xl font-bold text-red-600 md:text-3xl">{summary.active}</div>
           </div>
-          <div className="bg-yellow-50 rounded-lg p-6 border border-yellow-200">
-            <div className="text-sm text-gray-600">Needs Review</div>
-            <div className="text-3xl font-bold text-yellow-600">{summary.needsReview}</div>
+          <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 md:p-6">
+            <div className="text-xs text-gray-600 md:text-sm">Needs Review</div>
+            <div className="text-2xl font-bold text-yellow-600 md:text-3xl">{summary.needsReview}</div>
           </div>
-          <div className="bg-green-50 rounded-lg p-6 border border-green-200">
-            <div className="text-sm text-gray-600">Cleared (This Month)</div>
-            <div className="text-3xl font-bold text-green-600">{summary.clearedThisMonth}</div>
+          <div className="rounded-lg border border-green-200 bg-green-50 p-3 md:p-6">
+            <div className="text-xs text-gray-600 md:text-sm">Cleared (This Month)</div>
+            <div className="text-2xl font-bold text-green-600 md:text-3xl">{summary.clearedThisMonth}</div>
           </div>
-          <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-            <div className="text-sm text-gray-600">Orders on Hold</div>
-            <div className="text-3xl font-bold text-blue-600">{summary.ordersOnHold}</div>
+          <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 md:p-6">
+            <div className="text-xs text-gray-600 md:text-sm">Orders on Hold</div>
+            <div className="text-2xl font-bold text-blue-600 md:text-3xl">{summary.ordersOnHold}</div>
           </div>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
+        <div className="mb-4 md:hidden">
+          <label htmlFor="mobile-ticket-status" className="mb-1 block text-xs font-medium text-gray-600">Ticket status</label>
+          <select
+            id="mobile-ticket-status"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value as typeof filter)}
+            className="min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base"
+          >
+            {(['ALL', 'ACTIVE', 'NEEDS_REVIEW', 'CLEARED'] as const).map((tab) => <option key={tab} value={tab}>{tab === 'ALL' ? 'All tickets' : tab.replace('_', ' ')}</option>)}
+          </select>
+        </div>
+        <div className="mb-6 hidden gap-2 border-b border-gray-200 md:flex">
           {(['ALL', 'ACTIVE', 'NEEDS_REVIEW', 'CLEARED'] as const).map((tab) => (
             <button
               key={tab}
@@ -218,6 +229,28 @@ export default function Ticket811ListPage() {
           <div className="text-center py-8 text-gray-600">No tickets found</div>
         ) : (
           <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="divide-y divide-gray-200 md:hidden">
+              {tickets.map((ticket) => (
+                <article key={ticket.id} className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold text-gray-900">Ticket #{ticket.ticketNumber}</p>
+                    {getStatusBadge(ticket.status)}
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm font-medium text-gray-800">{ticket.emailSubject}</p>
+                  {ticket.parsedAddress && <p className="mt-1 text-sm text-gray-600">{ticket.parsedAddress}</p>}
+                  <p className="mt-2 text-xs text-gray-500">{ticket.matchedOrderIds.length} orders on hold · {new Date(ticket.createdAt).toLocaleDateString()}</p>
+                  <div className="mt-3 flex gap-2">
+                    {ticket.status === 'CLEARED' && (
+                      <button onClick={() => handleSendClearedEmail(ticket.id)} disabled={sendingId === ticket.id} className="min-h-10 rounded-md border border-green-200 px-3 text-sm font-medium text-green-700 disabled:opacity-50">
+                        {sendingId === ticket.id ? 'Sending...' : 'Email'}
+                      </button>
+                    )}
+                    <Link href={`/admin/811/${ticket.id}`} className="inline-flex min-h-10 items-center rounded-md border border-gray-300 px-3 text-sm font-medium text-blue-700">View Details</Link>
+                  </div>
+                </article>
+              ))}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -285,6 +318,7 @@ export default function Ticket811ListPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 

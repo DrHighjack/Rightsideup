@@ -129,7 +129,7 @@ export function PrintersTab() {
           setEditingPrinter(null);
           setShowModal(true);
         }}
-        className="mb-6 px-6 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+        className="mb-5 min-h-11 w-full rounded-lg bg-green-600 px-4 py-2 font-medium text-white transition-colors hover:bg-green-700 sm:w-auto md:mb-6 md:px-6"
       >
         + Add Printer
       </button>
@@ -140,7 +140,30 @@ export function PrintersTab() {
       ) : printers.length === 0 ? (
         <div className="text-center py-12 text-gray-500">No printers found</div>
       ) : (
-        <div className="overflow-x-auto">
+        <div>
+          <div className="divide-y divide-gray-200 md:hidden">
+            {printers.map((printer) => (
+              <article key={printer.id} className="py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="min-w-0 font-semibold text-gray-900">{printer.name}</h3>
+                  <span className={`shrink-0 rounded px-2 py-1 text-xs font-medium ${printer.isActive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {printer.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1 text-sm">
+                  {printer.website && <a href={printer.website} target="_blank" rel="noopener noreferrer" className="block truncate text-blue-700 underline">{printer.website}</a>}
+                  {printer.phone && <a href={`tel:${printer.phone}`} className="block text-gray-700">{printer.phone}</a>}
+                  {printer.email && <a href={`mailto:${printer.email}`} className="block break-all text-gray-700">{printer.email}</a>}
+                  {!printer.website && !printer.phone && !printer.email && <p className="text-gray-500">No contact details</p>}
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <button onClick={() => { setEditingPrinter(printer); setShowModal(true); }} className="min-h-11 flex-1 rounded-md bg-blue-600 px-3 text-sm font-medium text-white">Edit</button>
+                  <button onClick={() => handleDelete(printer.id)} className="min-h-11 flex-1 rounded-md border border-red-200 px-3 text-sm font-medium text-red-700">Delete</button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
           <table className="w-full">
             <thead>
               <tr className="border-b border-gray-200 bg-gray-50">
@@ -216,6 +239,7 @@ export function PrintersTab() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 

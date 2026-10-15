@@ -6,6 +6,7 @@ import { createNotification } from "@/lib/notifications";
 import { ActivityAction } from "@prisma/client";
 import { sendEmail, getOrderStatusUpdateEmail } from "@/lib/email";
 import { isOrderReadyToSchedule, ORDER_STATUSES } from "@/lib/order-status";
+import { notifySmartSignLiveForOrder } from "@/lib/smart-sign";
 
 export async function GET(
   _request: NextRequest,
@@ -15,7 +16,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { id } = params;
@@ -78,7 +79,7 @@ export async function PUT(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const order = await prisma.order.findUnique({
@@ -178,6 +179,10 @@ export async function PUT(
       },
     });
 
+    if (typeof updateData.rfidListingUrl === "string" && updateData.rfidListingUrl !== order.rfidListingUrl) {
+      await notifySmartSignLiveForOrder(order.id);
+    }
+
     // Log activity if status changed
     if (body.status && order.status !== body.status) {
       if (session?.user?.id) {
@@ -240,7 +245,7 @@ export async function DELETE(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const body = await request.json();

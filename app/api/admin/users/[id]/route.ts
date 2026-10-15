@@ -10,7 +10,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -71,7 +71,7 @@ export async function PUT(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const body = await request.json();
@@ -255,7 +255,7 @@ export async function DELETE(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     if (session.user.id === params.id) {

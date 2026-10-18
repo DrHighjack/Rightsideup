@@ -19,7 +19,7 @@ describe("Tapbox browser duration tracking", () => {
     vi.stubGlobal("window", windowEvents);
     vi.stubGlobal("navigator", { userAgent: "iPhone", sendBeacon: beacon });
     vi.stubGlobal("performance", { now: () => Date.now(), getEntriesByType: () => [] });
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ visitToken: "signed-token" }) }));
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: true, json: async () => ({ recorded: true, isLive: true, visitToken: "signed-token" }) }));
   });
   afterEach(() => {
     cleanups.forEach((cleanup) => cleanup());
@@ -27,7 +27,7 @@ describe("Tapbox browser duration tracking", () => {
     vi.useRealTimers();
   });
 
-  function start(options?: { source?: "box" | "share" }) {
+  function start(options?: { source?: "box" | "share"; onBoxVisitRecorded?: () => void }) {
     const cleanup = trackTapboxVisit(endpoint, options);
     cleanups.push(cleanup);
     return cleanup;
@@ -89,5 +89,12 @@ describe("Tapbox browser duration tracking", () => {
   it("marks shared-link visits so they do not notify the realtor", async () => {
     start({ source: "share" });
     expect(JSON.parse(vi.mocked(fetch).mock.calls[0][1]?.body as string)).toMatchObject({ source: "share" });
+  });
+
+  it("signals after a live box visit is recorded so the page can switch its URL", async () => {
+    const onBoxVisitRecorded = vi.fn();
+    start({ source: "box", onBoxVisitRecorded });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(onBoxVisitRecorded).toHaveBeenCalledTimes(1);
   });
 });

@@ -1,7 +1,9 @@
-const pendingVisits = new Map<string, Promise<{ visitToken?: string }>>();
+type TapboxVisitResponse = { recorded?: boolean; isLive?: boolean; visitToken?: string };
+
+const pendingVisits = new Map<string, Promise<TapboxVisitResponse>>();
 export const TAPBOX_TEST_MODE_COOKIE = "tapbox-test-mode";
 
-export function trackTapboxVisit(endpoint: string, options: { source?: "box" | "share" } = {}) {
+export function trackTapboxVisit(endpoint: string, options: { source?: "box" | "share"; onBoxVisitRecorded?: () => void } = {}) {
   if (typeof document !== "undefined" && document.cookie.split(";").some((cookie) => cookie.trim() === `${TAPBOX_TEST_MODE_COOKIE}=1`)) {
     return () => {};
   }
@@ -52,7 +54,9 @@ export function trackTapboxVisit(endpoint: string, options: { source?: "box" | "
     if (document.visibilityState !== "hidden" && visibleSince === null) visibleSince = performance.now();
   };
 
-  let pending = pendingVisits.get(endpoint);
+  const source = options.source || "box";
+  const pendingKey = `${endpoint}:${source}`;
+  let pending = pendingVisits.get(pendingKey);
   if (!pending) {
     const isReload = performance.getEntriesByType("navigation").some((entry) => (entry as PerformanceNavigationTiming).type === "reload");
     pending = fetch(endpoint, {
@@ -60,13 +64,14 @@ export function trackTapboxVisit(endpoint: string, options: { source?: "box" | "
       body: JSON.stringify({
         deviceType: /Android/i.test(navigator.userAgent) ? "Android" : /iPhone|iPad/i.test(navigator.userAgent) ? "iOS" : "Web",
         isReload,
-        source: options.source || "box",
+        source,
       }),
-    }).then(async (response) => response.ok ? await response.json() as { visitToken?: string } : {})
-      .catch(() => ({})).finally(() => pendingVisits.delete(endpoint));
-    pendingVisits.set(endpoint, pending);
+    }).then(async (response) => response.ok ? await response.json() as TapboxVisitResponse : {})
+      .catch(() => ({})).finally(() => pendingVisits.delete(pendingKey));
+    pendingVisits.set(pendingKey, pending);
   }
   void pending.then((visit) => {
+    if (source === "box" && visit.recorded && visit.isLive) options.onBoxVisitRecorded?.();
     if (stopped || typeof visit.visitToken !== "string") return;
     token = visit.visitToken;
     if (document.visibilityState === "hidden") report(true);

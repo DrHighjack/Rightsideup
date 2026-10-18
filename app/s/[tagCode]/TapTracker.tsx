@@ -27,7 +27,16 @@ export function TapTracker({ tagCode, signId }: { tagCode?: string; signId?: str
     setTestMode(isTestMode);
     if (isTestMode) return;
 
-    return trackTapboxVisit(endpoint, { source });
+    return trackTapboxVisit(endpoint, {
+      source,
+      onBoxVisitRecorded: () => {
+        const currentUrl = new URL(window.location.href);
+        if (currentUrl.searchParams.get("source") === "share") return;
+        currentUrl.searchParams.set("source", "share");
+        window.history.replaceState(window.history.state, "", `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`);
+        setVisitSource("share");
+      },
+    });
   }, [endpoint]);
 
   const shareLocation = () => {

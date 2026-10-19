@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import * as Sentry from "@sentry/nextjs";
 import { verifyAdminImpersonationToken } from "@/lib/admin-impersonation";
 import { sendActivityDiscordWebhook } from "@/lib/discord";
+import { verifyLoginToken } from "@/lib/magic-login";
 
 const authSecret =
   process.env.AUTH_SECRET ||
@@ -25,9 +26,14 @@ const impersonationCredentialsSchema = z.object({
   impersonationToken: z.string().min(1),
 });
 
+const magicLoginCredentialsSchema = z.object({
+  magicLoginToken: z.string().min(1),
+});
+
 const credentialsSchema = z.union([
   passwordCredentialsSchema,
   impersonationCredentialsSchema,
+  magicLoginCredentialsSchema,
 ]);
 
 function normalizeEmail(email: string): string {
@@ -40,6 +46,53 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       async authorize(credentials) {
         try {
           const parsedCredentials = credentialsSchema.parse(credentials);
+
+          if ("magicLoginToken" in parsedCredentials) {
+            const userId = await verifyLoginToken(parsedCredentials.magicLoginToken);
+            if (!userId) return null;
+
+            const user = await prisma.user.findUnique({
+              where: { id: userId },
+              select: {
+                id: true,
+                email: true,
+                firstName: true,
+                lastName: true,
+                role: true,
+                brokerageName: true,
+                tags: true,
+                accountStatus: true,
+              },
+            });
+
+            if (
+              !user ||
+              user.tags.includes("INACTIVE") ||
+              ["ADMIN", "SALESMEN"].includes(user.role) ||
+              (["TC", "BROKERAGE"].includes(user.role) && user.accountStatus !== "ACTIVE")
+            ) {
+              return null;
+            }
+
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastLoginAt: new Date() },
+            }).catch(() => null);
+
+            return {
+              id: user.id,
+              email: user.email,
+              name: `${user.firstName} ${user.lastName}`,
+              role: user.role,
+              accountTitle: user.tags.includes("PROPERTY_MANAGER")
+                ? "Property Manager"
+                : user.tags.includes("SHARED_ACCOUNTANT")
+                  ? "Accountant"
+                  : null,
+              brokerageName: user.brokerageName,
+              emailVerifiedAt: new Date().toISOString(),
+            };
+          }
 
           if ("impersonationToken" in parsedCredentials) {
             const impersonation = await verifyAdminImpersonationToken(

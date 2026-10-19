@@ -109,6 +109,7 @@ export async function POST(request: Request) {
           lastName: lastName.trim(),
           passwordHash,
           role: "TC",
+          accountStatus: "PENDING_APPROVAL",
           emailVerifiedAt: null,
           emailVerificationToken,
           emailVerificationExpiresAt,
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
 
     return Response.json(
       {
-        message: "TC account created successfully",
+        message: "TC account request created and awaiting admin approval and activation",
         user: {
           id: newUser.id,
           email: newUser.email,
@@ -158,6 +159,7 @@ export async function POST(request: Request) {
         },
         verificationRequired: true,
         verificationEmailSent,
+        accountApprovalRequired: true,
         ...(verificationEmailSent
           ? {}
           : {

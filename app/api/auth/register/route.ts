@@ -15,8 +15,12 @@ const appUrl =
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, firstName, lastName, phone, brokerageName, smsOptIn } = registerSchema.parse(body);
+    const { accountType, email, password, firstName, lastName, phone, brokerageName, smsOptIn } = registerSchema.parse(body);
     const inviteToken = typeof body?.inviteToken === "string" ? body.inviteToken.trim() : "";
+
+    if (inviteToken && accountType !== "REALTOR") {
+      return NextResponse.json({ error: "Invitations are only valid for Realtor registration" }, { status: 400 });
+    }
 
     const normalizedEmail = email.trim().toLowerCase();
 
@@ -50,7 +54,8 @@ export async function POST(request: NextRequest) {
       lastName,
       phone,
       brokerageName,
-      role: "REALTOR" as const,
+      role: accountType,
+      accountStatus: accountType === "REALTOR" ? "ACTIVE" as const : "PENDING_APPROVAL" as const,
       ...buildSmsConsentData(phone, smsOptIn),
       ...(includeVerificationFields
         ? {
@@ -59,6 +64,26 @@ export async function POST(request: NextRequest) {
           }
         : {}),
     });
+
+    const createUser = async (client: Pick<Prisma.TransactionClient, "user">) => {
+      const select = {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        accountStatus: true,
+      } as const;
+
+      try {
+        return await client.user.create({ data: buildCreateData(true), select });
+      } catch (createError) {
+        if (!hasMissingVerificationColumn(createError)) {
+          throw createError;
+        }
+
+        return client.user.create({ data: buildCreateData(false), select });
+      }
+    };
 
     let user;
 
@@ -114,32 +139,7 @@ export async function POST(request: NextRequest) {
           throw new Error("INVITE_UNAVAILABLE");
         }
 
-        let createdUser;
-        try {
-          createdUser = await tx.user.create({
-            data: buildCreateData(true),
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          });
-        } catch (createError) {
-          if (!hasMissingVerificationColumn(createError)) {
-            throw createError;
-          }
-
-          createdUser = await tx.user.create({
-            data: buildCreateData(false),
-            select: {
-              id: true,
-              email: true,
-              firstName: true,
-              lastName: true,
-            },
-          });
-        }
+        const createdUser = await createUser(tx);
 
         await tx.tCAgentLink.upsert({
           where: {
@@ -158,32 +158,35 @@ export async function POST(request: NextRequest) {
 
         return createdUser;
       });
-    } else {
-      try {
-        user = await prisma.user.create({
-          data: buildCreateData(true),
-          select: {
-            id: true,
-            email: true,
-            firstName: true,
-            lastName: true,
+    } else if (accountType === "BROKERAGE") {
+      user = await prisma.$transaction(async (tx) => {
+        const createdUser = await createUser(tx);
+        const brokerage = await tx.brokerage.create({
+          data: {
+            name: brokerageName!.trim(),
+            phone: phone || null,
+            email: normalizedEmail,
+            billingType: "BROKERAGE",
+            isActive: false,
+            adminId: createdUser.id,
           },
+          select: { id: true },
         });
-      } catch (createError) {
-        if (!hasMissingVerificationColumn(createError)) {
-          throw createError;
-        }
 
-        user = await prisma.user.create({
-          data: buildCreateData(false),
+        return tx.user.update({
+          where: { id: createdUser.id },
+          data: { brokerageId: brokerage.id },
           select: {
             id: true,
             email: true,
             firstName: true,
             lastName: true,
+            accountStatus: true,
           },
         });
-      }
+      });
+    } else {
+      user = await createUser(prisma);
     }
 
     const verificationLink = `${appUrl}/verify-email?token=${encodeURIComponent(emailVerificationToken)}`;
@@ -207,6 +210,19 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      if (user.accountStatus !== "ACTIVE") {
+        return NextResponse.json(
+          {
+            ...user,
+            verificationRequired: true,
+            verificationEmailSent,
+            accountApprovalRequired: true,
+            message: "Your account request was received and is awaiting admin approval and activation.",
+          },
+          { status: 201 }
+        );
+      }
+
       const welcomeEmail = getWelcomeEmail(firstName, `${appUrl}/login`);
       const welcomeResult = await sendEmail({
         to: normalizedEmail,

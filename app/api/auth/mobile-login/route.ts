@@ -38,6 +38,7 @@ export async function POST(request: NextRequest) {
         firstName: true,
         lastName: true,
         role: true,
+        accountStatus: true,
         passwordHash: true,
         tags: true,
         twoFactorEnabled: true,
@@ -55,6 +56,13 @@ export async function POST(request: NextRequest) {
 
     if (user.tags.includes("INACTIVE")) {
       return NextResponse.json({ error: "This account has been deactivated" }, { status: 403 });
+    }
+
+    if (["TC", "BROKERAGE"].includes(user.role) && user.accountStatus !== "ACTIVE") {
+      return NextResponse.json(
+        { error: "This account is awaiting admin approval and activation" },
+        { status: 403 }
+      );
     }
 
     // Admin 2FA isn't part of the iOS surface (Admin stays web-only); block it defensively.

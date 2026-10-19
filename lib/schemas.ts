@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const registerSchema = z.object({
+  accountType: z.enum(["REALTOR", "TC", "BROKERAGE"]).default("REALTOR"),
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
@@ -15,6 +16,9 @@ export const registerSchema = z.object({
 }).refine((data) => !data.smsOptIn || /^\+[1-9]\d{7,14}$/.test(data.phone || ""), {
   message: "Enter a mobile number with country code, such as +12065551234, to receive texts",
   path: ["phone"],
+}).refine((data) => data.accountType !== "BROKERAGE" || Boolean(data.brokerageName?.trim()), {
+  message: "Brokerage name is required",
+  path: ["brokerageName"],
 });
 
 export const orderSchema = z.object({

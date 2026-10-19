@@ -16,9 +16,17 @@ interface InviteData {
   };
 }
 
+type SignupAccountType = "REALTOR" | "TC" | "BROKERAGE";
+
 function RegisterPageContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("inviteToken") || "";
+  const requestedAccountType = searchParams.get("role");
+  const initialAccountType: SignupAccountType =
+    requestedAccountType === "TC" || requestedAccountType === "BROKERAGE"
+      ? requestedAccountType
+      : "REALTOR";
+  const [accountType, setAccountType] = useState<SignupAccountType>(initialAccountType);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -100,6 +108,7 @@ function RegisterPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          accountType,
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
@@ -119,7 +128,8 @@ function RegisterPageContent() {
 
       const data = await response.json();
       const verificationStatus = data.verificationEmailSent ? 'sent=1' : 'pending=1';
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&${verificationStatus}`);
+      const approvalStatus = data.accountApprovalRequired ? "&approval=1" : "";
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&${verificationStatus}${approvalStatus}`);
     } catch (err: any) {
       setError(err.message || "An error occurred. Please try again.");
     } finally {
@@ -132,7 +142,30 @@ function RegisterPageContent() {
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 space-y-8">
         <div className="text-center">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-navy-900 mb-2">SignPost Field</h1>
-          <p className="text-slate-600">Create your realtor account</p>
+          <p className="text-slate-600">
+            {accountType === "REALTOR"
+              ? "Create your realtor account"
+              : accountType === "TC"
+                ? "Transaction Coordinator access"
+                : "Brokerage access"}
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="accountType" className="block text-sm font-medium text-slate-700">
+            Account type
+          </label>
+          <select
+            id="accountType"
+            name="accountType"
+            value={accountType}
+            onChange={(event) => setAccountType(event.target.value as SignupAccountType)}
+            className="mt-1 block h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
+          >
+            <option value="REALTOR">Realtor</option>
+            <option value="TC">Transaction Coordinator</option>
+            <option value="BROKERAGE">Brokerage</option>
+          </select>
         </div>
 
         {inviteLoading && (
@@ -145,6 +178,12 @@ function RegisterPageContent() {
               Invited by {inviteData.invitedByUser.firstName} {inviteData.invitedByUser.lastName}
             </p>
             <p className="mt-1">You will be automatically linked after registration.</p>
+          </div>
+        )}
+
+        {accountType !== "REALTOR" && (
+          <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+            This account requires admin approval and activation before you can sign in.
           </div>
         )}
 
@@ -244,7 +283,7 @@ function RegisterPageContent() {
 
           <div>
             <label htmlFor="brokerageName" className="block text-sm font-medium text-slate-700">
-              Brokerage Name
+              Brokerage Name{accountType === "BROKERAGE" ? " *" : ""}
             </label>
             <input
               type="text"
@@ -252,6 +291,7 @@ function RegisterPageContent() {
               name="brokerageName"
               value={formData.brokerageName}
               onChange={handleChange}
+              required={accountType === "BROKERAGE"}
               className="mt-1 block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             />
           </div>

@@ -124,6 +124,22 @@ describe("email verification link", () => {
     });
   });
 
+  it("reports that a verified TC still needs admin approval and activation", async () => {
+    mocks.findUnique.mockResolvedValue({
+      ...user,
+      role: "TC",
+      accountStatus: "PENDING_APPROVAL",
+    });
+
+    const response = await GET(new NextRequest("https://app.northshoresignco.com/api/auth/verify-email?token=existing-token"));
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      verified: true,
+      accountApprovalRequired: true,
+    });
+  });
+
   it("rejects expired links without verifying the account", async () => {
     mocks.findUnique.mockResolvedValue({ ...user, emailVerificationExpiresAt: new Date(0) });
     expect((await GET(new NextRequest("https://app.northshoresignco.com/api/auth/verify-email?token=existing-token"))).status).toBe(410);

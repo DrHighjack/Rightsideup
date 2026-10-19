@@ -80,6 +80,8 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         firstName: true,
+        role: true,
+        accountStatus: true,
         emailVerifiedAt: true,
         emailVerificationExpiresAt: true,
       },
@@ -89,8 +91,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid verification token" }, { status: 404 });
     }
 
+    const accountApprovalRequired =
+      ["TC", "BROKERAGE"].includes(user.role) && user.accountStatus !== "ACTIVE";
+
     if (user.emailVerifiedAt) {
-      return NextResponse.json({ verified: true, alreadyVerified: true });
+      return NextResponse.json({ verified: true, alreadyVerified: true, accountApprovalRequired });
     }
 
     if (!user.emailVerificationExpiresAt || user.emailVerificationExpiresAt < new Date()) {
@@ -106,7 +111,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ verified: true });
+    return NextResponse.json({ verified: true, accountApprovalRequired });
   } catch (error) {
     console.error("Email verification error:", error);
     return NextResponse.json({ error: "Failed to verify email" }, { status: 500 });

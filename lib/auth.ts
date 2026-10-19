@@ -109,6 +109,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               firstName: true,
               lastName: true,
               role: true,
+              accountStatus: true,
               brokerageName: true,
               passwordHash: true,
               tags: true,
@@ -126,6 +127,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 firstName: true,
                 lastName: true,
                 role: true,
+                accountStatus: true,
                 brokerageName: true,
                 passwordHash: true,
                 tags: true,
@@ -149,6 +151,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 firstName: true,
                 lastName: true,
                 role: true,
+                accountStatus: true,
                 brokerageName: true,
                 passwordHash: true,
                 tags: true,
@@ -175,6 +178,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
           if (user.tags.includes("INACTIVE")) {
             console.error("[AUTH] Inactive account blocked:", email);
+            return null;
+          }
+
+          if (["TC", "BROKERAGE"].includes(user.role) && user.accountStatus !== "ACTIVE") {
+            console.error("[AUTH] Account awaiting approval or activation:", email);
             return null;
           }
 

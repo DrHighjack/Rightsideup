@@ -12,6 +12,7 @@ function VerifyEmailPageContent() {
   const email = searchParams.get('email') || '';
   const sent = searchParams.get('sent') === '1';
   const pending = searchParams.get('pending') === '1';
+  const [approvalRequired, setApprovalRequired] = useState(searchParams.get('approval') === '1');
   const [loading, setLoading] = useState(Boolean(token));
   const [error, setError] = useState('');
   const [verified, setVerified] = useState(false);
@@ -60,6 +61,7 @@ function VerifyEmailPageContent() {
           return;
         }
 
+        setApprovalRequired(Boolean(data.accountApprovalRequired) || approvalRequired);
         setVerified(true);
         setLoading(false);
       } catch (_error) {
@@ -105,7 +107,9 @@ function VerifyEmailPageContent() {
 
         {verified && (
           <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
-            Your email has been verified. You can now sign in and place orders.
+            {approvalRequired
+              ? "Your email is verified. Your account is waiting for admin approval and activation before you can sign in."
+              : "Your email has been verified. You can now sign in and place orders."}
           </div>
         )}
 

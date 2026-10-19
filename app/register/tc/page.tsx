@@ -126,7 +126,7 @@ function RegisterTCContent() {
       }
 
       // Success - redirect to verification page
-      router.push(`/verify-email?email=${encodeURIComponent(inviteData.email)}&sent=1`);
+      router.push(`/verify-email?email=${encodeURIComponent(inviteData.email)}&sent=1&approval=1`);
     } catch (err) {
       console.error("Registration error:", err);
       setError("Registration failed. Please try again.");

@@ -17,6 +17,13 @@ enum Role {
   FIELD_TECH
 }
 
+enum AccountStatus {
+  PENDING_APPROVAL
+  APPROVED
+  ACTIVE
+  REJECTED
+}
+
 enum OrderStatus {
   PENDING
   CONFIRMED
@@ -104,6 +111,7 @@ model User {
   brokerageId    String?
   brokerage      Brokerage? @relation(fields: [brokerageId], references: [id], onDelete: SetNull)
   role           Role       @default(REALTOR)
+  accountStatus  AccountStatus @default(ACTIVE)
   emailVerifiedAt DateTime?
   emailVerificationToken String? @unique
   emailVerificationExpiresAt DateTime?

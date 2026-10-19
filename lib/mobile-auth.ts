@@ -63,9 +63,10 @@ export async function getRequestUser(request: NextRequest): Promise<RequestUser 
     // Re-check the user still exists/active on every request; tokens are long-lived.
     const user = await prisma.user.findUnique({
       where: { id: payload.sub },
-      select: { id: true, role: true, email: true, tags: true },
+      select: { id: true, role: true, email: true, tags: true, accountStatus: true },
     });
     if (!user || user.tags.includes("INACTIVE")) return null;
+    if (["TC", "BROKERAGE"].includes(user.role) && user.accountStatus !== "ACTIVE") return null;
 
     return { id: user.id, role: user.role, email: user.email };
   }

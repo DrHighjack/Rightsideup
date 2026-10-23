@@ -112,16 +112,16 @@ export default function InvoicesPage() {
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-6">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">My Invoices</h1>
-          <p className="text-gray-600 mt-2">View and manage your invoices</p>
+        <div className="mb-5 md:mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">My Invoices</h1>
+          <p className="mt-1 text-sm text-gray-600 md:mt-2 md:text-base">View and manage your invoices</p>
         </div>
 
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <h2 className="text-lg font-semibold text-gray-900">Invoice summary</h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3 md:mb-6">
+          <h2 className="text-base font-semibold text-gray-900 md:text-lg">Invoice summary</h2>
           <label className="flex items-center gap-2 text-sm text-gray-600">
             Period
             <select
@@ -130,7 +130,7 @@ export default function InvoicesPage() {
                 setPeriod(event.target.value as InvoicePeriod);
                 setOffset(0);
               }}
-              className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900"
+              className="min-h-11 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base text-gray-900"
             >
               <option value="month">Month</option>
               <option value="day">Day</option>
@@ -142,51 +142,66 @@ export default function InvoicesPage() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-1 gap-4 mb-8 md:grid-cols-4 lg:grid-cols-7">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Total Invoices</p>
-            <p className="text-3xl font-bold text-gray-900 mt-2">{totalCount}</p>
+        <div className="mb-5 grid grid-cols-2 gap-3 md:mb-8 md:grid-cols-4 md:gap-4 lg:grid-cols-7">
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Total Invoices</p>
+            <p className="mt-1 text-xl font-bold text-gray-900 md:mt-2 md:text-3xl">{totalCount}</p>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Amount Paid</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Amount Paid</p>
+            <p className="mt-1 text-xl font-bold text-green-600 md:mt-2 md:text-3xl">
               {formatCurrency(paidAmount)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Outstanding</p>
-            <p className="text-3xl font-bold text-orange-600 mt-2">
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Outstanding</p>
+            <p className="mt-1 text-xl font-bold text-orange-600 md:mt-2 md:text-3xl">
               {formatCurrency(outstandingAmount)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Available Credit</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Available Credit</p>
+            <p className="mt-1 text-xl font-bold text-blue-600 md:mt-2 md:text-3xl">
               ${availableCreditAmount.toFixed(2)}
             </p>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Paid Invoices</p>
-            <p className="text-3xl font-bold text-green-600 mt-2">{invoiceStats.paidInvoices}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Paid Invoices</p>
+            <p className="mt-1 text-xl font-bold text-green-600 md:mt-2 md:text-3xl">{invoiceStats.paidInvoices}</p>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Unpaid Invoices</p>
-            <p className="text-3xl font-bold text-orange-600 mt-2">{invoiceStats.unpaidInvoices}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Unpaid Invoices</p>
+            <p className="mt-1 text-xl font-bold text-orange-600 md:mt-2 md:text-3xl">{invoiceStats.unpaidInvoices}</p>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
-            <p className="text-gray-600 text-sm font-medium">Average Invoice</p>
-            <p className="text-3xl font-bold text-blue-600 mt-2">{formatCurrency(invoiceStats.averageInvoice)}</p>
+          <div className="rounded-lg border border-gray-200 bg-white p-3 md:p-6">
+            <p className="text-xs font-medium text-gray-600 md:text-sm">Average Invoice</p>
+            <p className="mt-1 text-xl font-bold text-blue-600 md:mt-2 md:text-3xl">{formatCurrency(invoiceStats.averageInvoice)}</p>
           </div>
         </div>
 
         {/* Status Filter */}
-        <div className="mb-6 flex gap-2 flex-wrap">
+        <div className="mb-4 md:hidden">
+          <label htmlFor="mobile-invoice-status" className="mb-1 block text-xs font-medium text-gray-600">Invoice status</label>
+          <select
+            id="mobile-invoice-status"
+            value={statusFilter}
+            onChange={(event) => {
+              setStatusFilter(event.target.value);
+              setOffset(0);
+            }}
+            className="min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base"
+          >
+            <option value="">All statuses</option>
+            {["PAID", "SENT", "OVERDUE", "VIEWED"].map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+        </div>
+        <div className="mb-6 hidden gap-2 md:flex">
           {["", "PAID", "SENT", "OVERDUE", "VIEWED"].map((status) => (
             <button
               key={status || "all"}
@@ -228,7 +243,30 @@ export default function InvoicesPage() {
               <p>No invoices yet</p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <>
+            <div className="divide-y divide-gray-200 md:hidden">
+              {invoices.map((invoice) => {
+                const colors = statusColors[invoice.status];
+                const balance = invoice.amount - invoice.discountAmount + invoice.taxAmount - (invoice.paidAmount || 0);
+                return (
+                  <Link key={invoice.id} href={`/dashboard/invoices/${invoice.id}`} className="block p-3 hover:bg-gray-50">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="font-mono text-sm font-semibold text-blue-700">{invoice.invoiceNumber}</span>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${colors.bg} ${colors.text}`}>{invoice.status}</span>
+                    </div>
+                    <div className="mt-2 flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        {isTC && <p className="truncate text-sm font-medium text-gray-900">{invoice.user ? `${invoice.user.firstName} ${invoice.user.lastName}`.trim() : "Unknown agent"}</p>}
+                        <p className="text-xs text-gray-500">Due {formatDate(invoice.dueDate)} · Paid {invoice.paidAmount ? formatCurrency(invoice.paidAmount) : "—"}</p>
+                      </div>
+                      <p className={`shrink-0 text-sm font-semibold ${balance > 0 ? "text-orange-600" : "text-green-600"}`}>{formatCurrency(balance)}</p>
+                    </div>
+                    <p className="mt-1 text-xs text-gray-500">Invoice total {formatCurrency(invoice.amount - invoice.discountAmount + invoice.taxAmount)}</p>
+                  </Link>
+                );
+              })}
+            </div>
+            <div className="hidden overflow-x-auto md:block">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-200 bg-gray-50">
@@ -321,17 +359,18 @@ export default function InvoicesPage() {
                 </tbody>
               </table>
             </div>
+            </>
           )}
         </div>
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="mt-6 flex justify-between items-center">
+          <div className="mt-4 flex flex-col gap-3 sm:mt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-gray-600">
               Showing {offset + 1} to {Math.min(offset + limit, totalCount)} of{" "}
               {totalCount} invoices
             </p>
-            <div className="flex gap-2">
+            <div className="flex items-center justify-between gap-2">
               <button
                 onClick={() => setOffset(Math.max(0, offset - limit))}
                 disabled={offset === 0}

@@ -8,6 +8,16 @@ type Section = {
 
 const sections: Section[] = [
   {
+    id: "sms-notifications",
+    title: "SMS Notification Terms",
+    paragraphs: [
+      "By checking the optional SMS consent box during registration, you agree to receive automated transactional text messages from North Shore Sign Co at the mobile number you provide about your orders, installation and removal scheduling, and account service updates. If you instead request texts through a Smart Sign tap menu and check its consent box, consent is limited to that property's listing status and your requested updates. Neither consent authorizes marketing messages.",
+      "Message frequency varies based on your service activity. Message and data rates may apply. Consent to receive SMS messages is not a condition of purchase or account registration.",
+      "Reply STOP to opt out of SMS notifications. Reply HELP for help, or contact billing@northshoresignco.com or (206) 659-6323. Carriers are not liable for delayed or undelivered messages.",
+      "Your mobile information and SMS consent are handled as described in our Privacy Policy at /privacy#sms-privacy.",
+    ],
+  },
+  {
     id: "811-dig-law-compliance",
     title: "811 Dig Law Compliance",
     paragraphs: [
@@ -162,7 +172,7 @@ export default function TermsPage() {
         <header className="mb-8 border-b border-gray-200 pb-6">
           <p className="text-sm font-semibold tracking-wide text-gray-600">North Shore Sign Co</p>
           <h1 className="mt-2 text-3xl font-bold">Terms & Conditions</h1>
-          <p className="mt-2 text-sm text-gray-600">Last Updated: June 2026</p>
+          <p className="mt-2 text-sm text-gray-600">Last Updated: October 7, 2026</p>
         </header>
 
         <section className="mb-8 rounded-lg border border-gray-200 bg-gray-50 p-5">

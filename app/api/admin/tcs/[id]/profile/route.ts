@@ -16,7 +16,7 @@ export async function GET(
     const session = await auth();
 
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const tc = await prisma.user.findFirst({
@@ -127,7 +127,7 @@ export async function PUT(
 
     const role = session?.user?.role;
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const body = await request.json();

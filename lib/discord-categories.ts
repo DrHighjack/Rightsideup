@@ -11,6 +11,7 @@ export type DiscordNotificationCategory =
   | 'lowInventory'
   | 'signReports'
   | 'reorderRequests'
+  | 'tapboxVisits'
   | 'fieldIssues';
 
 export const DISCORD_NOTIFICATION_CATEGORIES: { key: DiscordNotificationCategory; label: string }[] = [
@@ -22,6 +23,7 @@ export const DISCORD_NOTIFICATION_CATEGORIES: { key: DiscordNotificationCategory
   { key: 'lowInventory', label: 'Low Inventory Alerts' },
   { key: 'signReports', label: 'Sign Lost/Damaged Reports' },
   { key: 'reorderRequests', label: 'Reorder Requests' },
+  { key: 'tapboxVisits', label: 'Tapbox Visits' },
   { key: 'fieldIssues', label: 'Field Job Issues' },
   { key: 'activityLog', label: 'Activity Log (Logins, etc.)' },
 ];

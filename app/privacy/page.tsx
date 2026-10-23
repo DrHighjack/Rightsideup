@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SMS_PRIVACY_PROCESSOR_DISCLOSURE, SMS_PRIVACY_SHARING_DISCLOSURE } from "@/lib/sms-consent";
 
 type Section = {
   id: string;
@@ -7,6 +8,16 @@ type Section = {
 };
 
 const sections: Section[] = [
+  {
+    id: "sms-privacy",
+    title: "SMS Privacy and Consent",
+    paragraphs: [
+      "When you opt in to North Shore Sign Co SMS notifications, we collect your mobile number and record your consent, including the time, source, and disclosure shown. Depending on your request, messages relate to transactional order updates, installation and removal scheduling, account service updates, or listing status updates requested through a Smart Sign tap menu.",
+      SMS_PRIVACY_SHARING_DISCLOSURE,
+      SMS_PRIVACY_PROCESSOR_DISCLOSURE,
+      "SMS consent is optional and is not a condition of purchase. Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help. You can also contact billing@northshoresignco.com or (206) 659-6323 for assistance.",
+    ],
+  },
   {
     id: "information-we-collect",
     title: "Information We Collect",
@@ -112,7 +123,7 @@ export default function PrivacyPage() {
         <header className="mb-8 border-b border-gray-200 pb-6">
           <p className="text-sm font-semibold tracking-wide text-gray-600">North Shore Sign Co</p>
           <h1 className="mt-2 text-3xl font-bold">Privacy Policy</h1>
-          <p className="mt-2 text-sm text-gray-600">Last Updated: June 2026</p>
+          <p className="mt-2 text-sm text-gray-600">Last Updated: October 8, 2026</p>
         </header>
 
         <section className="mb-8 rounded-lg border border-gray-200 bg-gray-50 p-5">

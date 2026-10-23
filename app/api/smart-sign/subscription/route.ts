@@ -17,7 +17,7 @@ async function resolvePaymentMethod(agentId: string, id: string) {
 export async function PATCH(request: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || session.user.role !== "REALTOR") {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
   }
 
   const body = await request.json() as { action?: unknown; savedPaymentMethodId?: unknown };

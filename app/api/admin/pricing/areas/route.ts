@@ -13,11 +13,14 @@ const areaPriceGroupSchema = z.object({
 
 async function requireAdmin() {
   const session = await auth();
-  return session?.user?.id && session.user.role === "ADMIN";
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  return null;
 }
 
 export async function GET() {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const groups = await prisma.areaPriceGroup.findMany({
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
@@ -26,7 +29,8 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
-  if (!(await requireAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const parsed = areaPriceGroupSchema.safeParse(await request.json());
   if (!parsed.success) {

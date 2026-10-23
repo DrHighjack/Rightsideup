@@ -16,7 +16,7 @@ export async function POST(
     const role = session?.user?.role;
 
     if (!session?.user?.id || (role !== "ADMIN" && role !== "SALESMEN")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const { realtorId } = attachAgentSchema.parse(await request.json());

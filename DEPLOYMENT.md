@@ -134,10 +134,16 @@ RESEND_FROM_EMAIL=orders@your-domain.com
 
 ### 3.4 Post-Deployment
 
+Vercel builds generate the Prisma client and build the app; they do not apply database migrations.
+For a database that already has tables but no Prisma migration history, baseline it against the
+existing schema before applying migrations. Do not run `migrate deploy` until that baseline has
+been verified against the actual database schema.
+
 ```bash
-# Run migrations on production
+# Check migration status before a controlled production migration
 vercel env pull .env.production.local
-npm run db:push -- --skip-generate
+npx prisma migrate status
+npm run db:migrate:deploy
 ```
 
 ## Step 4: Configure PWA

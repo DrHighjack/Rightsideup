@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 type UntaggedSign = { id: string; signNumber: string | null; type: string; status: string; deployedAddress: string | null; assignedToUser: { id: string; firstName: string; lastName: string } | null };
-type Tag = { id: string; tagCode: string; isActive: boolean; notes: string | null; installedAt: string; tapCount: number; url: string; sign: { signNumber: string | null; status: string; deployedAddress: string | null; assignedToUser: { firstName: string; lastName: string; email: string } | null; assignedToOrder: { orderNumber: string; address: string } | null } };
+type Tag = { id: string; tagCode: string; isActive: boolean; notes: string | null; installedAt: string; tapCount: number; url: string; boxUrl: string; sign: { signNumber: string | null; status: string; deployedAddress: string | null; assignedToUser: { firstName: string; lastName: string; email: string } | null; assignedToOrder: { orderNumber: string; address: string } | null } };
 
 export default function AdminSmartSignPage() {
   const [tags, setTags] = useState<Tag[]>([]);
@@ -13,6 +13,7 @@ export default function AdminSmartSignPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [copiedBoxUrl, setCopiedBoxUrl] = useState("");
 
   const load = async () => {
     try {
@@ -63,6 +64,15 @@ export default function AdminSmartSignPage() {
     }
   };
 
+  const copyBoxUrl = async (tag: Tag) => {
+    try {
+      await navigator.clipboard.writeText(tag.boxUrl);
+      setCopiedBoxUrl(tag.id);
+    } catch {
+      setError("Unable to copy the box tap URL. Copy it directly from the table.");
+    }
+  };
+
   if (loading) return <div className="p-8 text-center text-slate-600">Loading Smart Sign inventory...</div>;
 
   return <div className="space-y-6">
@@ -82,6 +92,6 @@ export default function AdminSmartSignPage() {
         <button type="button" onClick={() => void provision()} disabled={saving || !signId} className="rounded-md bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 disabled:opacity-50">{saving ? "Provisioning..." : "Create QR / NFC URL"}</button>
       </div>
     </section>
-    <section className="border border-slate-200 bg-white p-5"><h2 className="text-lg font-semibold text-slate-900">Tagged posts</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[760px] text-sm"><thead className="border-b text-left text-xs uppercase text-slate-500"><tr><th className="py-3 pr-4">Post</th><th className="py-3 pr-4">Current listing / agent</th><th className="py-3 pr-4">Public URL</th><th className="py-3 pr-4 text-right">Taps</th><th className="py-3 text-right">Routing</th></tr></thead><tbody>{tags.map((tag) => <tr key={tag.id} className="border-b border-slate-100"><td className="py-4 pr-4 font-medium">{tag.sign.signNumber || "Unlabeled post"}<p className="text-xs font-normal text-slate-500">{tag.tagCode}</p></td><td className="py-4 pr-4">{tag.sign.assignedToOrder?.address || tag.sign.deployedAddress || "No active listing"}<p className="text-xs text-slate-500">{tag.sign.assignedToUser ? `${tag.sign.assignedToUser.firstName} ${tag.sign.assignedToUser.lastName}` : "Unassigned"}</p></td><td className="py-4 pr-4"><a href={tag.url} target="_blank" rel="noreferrer" className="font-medium text-sky-700 hover:text-sky-900">Open landing page</a></td><td className="py-4 pr-4 text-right font-semibold">{tag.tapCount}</td><td className="py-4 text-right"><button type="button" onClick={() => void toggle(tag)} disabled={saving} className={`rounded-md px-3 py-1.5 font-medium ${tag.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{tag.isActive ? "Live" : "Paused"}</button></td></tr>)}</tbody></table>{tags.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No physical posts have been tagged yet.</p>}</div></section>
+    <section className="border border-slate-200 bg-white p-5"><h2 className="text-lg font-semibold text-slate-900">Tagged posts</h2><div className="mt-4 overflow-x-auto"><table className="w-full min-w-[900px] text-sm"><thead className="border-b text-left text-xs uppercase text-slate-500"><tr><th className="py-3 pr-4">Post</th><th className="py-3 pr-4">Current listing / agent</th><th className="py-3 pr-4">Box / share URLs</th><th className="py-3 pr-4 text-right">Visits</th><th className="py-3 text-right">Routing</th></tr></thead><tbody>{tags.map((tag) => <tr key={tag.id} className="border-b border-slate-100"><td className="py-4 pr-4 font-medium">{tag.sign.signNumber || "Unlabeled post"}<p className="text-xs font-normal text-slate-500">{tag.tagCode}</p></td><td className="py-4 pr-4">{tag.sign.assignedToOrder?.address || tag.sign.deployedAddress || "No active listing"}<p className="text-xs text-slate-500">{tag.sign.assignedToUser ? `${tag.sign.assignedToUser.firstName} ${tag.sign.assignedToUser.lastName}` : "Unassigned"}</p></td><td className="max-w-sm py-4 pr-4"><a href={tag.url} target="_blank" rel="noreferrer" className="font-medium text-sky-700 hover:text-sky-900">Open share page</a><p className="mt-2 break-all text-xs text-slate-500">{tag.boxUrl}</p><button type="button" onClick={() => void copyBoxUrl(tag)} className="mt-1 text-xs font-semibold text-slate-700 underline">{copiedBoxUrl === tag.id ? "Copied box tap URL" : "Copy box tap URL"}</button></td><td className="py-4 pr-4 text-right font-semibold">{tag.tapCount}</td><td className="py-4 text-right"><button type="button" onClick={() => void toggle(tag)} disabled={saving} className={`rounded-md px-3 py-1.5 font-medium ${tag.isActive ? "bg-emerald-100 text-emerald-800" : "bg-slate-100 text-slate-700"}`}>{tag.isActive ? "Live" : "Paused"}</button></td></tr>)}</tbody></table>{tags.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No physical posts have been tagged yet.</p>}</div></section>
   </div>;
 }

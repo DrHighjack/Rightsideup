@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import NotificationBell from "@/app/components/NotificationBell";
+import { MobilePageMenu } from "@/app/components/MobilePageMenu";
 import {
   HomeIcon,
   OrdersIcon,
@@ -122,31 +123,18 @@ export default function DashboardLayout({
       {/* Main content */}
       <div className="flex-1 flex flex-col overflow-y-auto">
         {/* Top header with notification bell */}
-        <div className="bg-white/80 backdrop-blur border-b border-slate-200 px-4 md:px-8 py-2.5 flex justify-end">
-          <NotificationBell />
+        <div className="flex min-h-12 items-center justify-between border-b border-slate-200 bg-white/80 px-3 py-1.5 backdrop-blur md:px-8 md:py-2.5">
+          <div className="flex min-w-0 items-center gap-3 md:hidden">
+            <MobilePageMenu brand="SignPost Field" sections={[{ title: "Pages", items: navItems }]} onSignOut={handleSignOut} />
+            <span className="truncate text-sm font-semibold text-slate-900">SignPost Field</span>
+          </div>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </div>
-        <div className="flex-1 p-4 md:p-8">
+        <div className="flex-1 p-3 md:p-8">
           {children}
         </div>
-
-        {/* Mobile bottom nav */}
-        <nav className="md:hidden border-t border-slate-200 bg-white flex px-1 py-1.5 overflow-x-auto">
-          {navItems.map(({ href, short, icon: Icon }) => {
-            const active = href === activeHref;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex flex-1 flex-col items-center gap-0.5 rounded-lg px-2 py-1.5 text-[11px] font-medium whitespace-nowrap transition-colors ${
-                  active ? "text-primary-600" : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                <Icon className="w-5 h-5" />
-                {short}
-              </Link>
-            );
-          })}
-        </nav>
 
         {/* Compliance Footer */}
         <footer className="bg-white border-t border-slate-200 px-4 py-6 text-center text-xs text-slate-500 space-y-2">

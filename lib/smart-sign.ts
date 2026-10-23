@@ -1,7 +1,8 @@
 import { createHash, randomBytes } from "crypto";
 import { chargeVaultRecord } from "@/lib/fluidpay";
 import { prisma } from "@/lib/prisma";
-import { getSmartSignTrialReminderEmail, sendEmail } from "@/lib/email";
+import { getSmartSignLiveEmail, getSmartSignTrialReminderEmail, sendEmail } from "@/lib/email";
+import { startTapboxDiscordVisit } from "@/lib/tapbox-visit";
 
 function hashIpValue(value: string) {
   const salt = process.env.SMART_SIGN_TAP_SALT || "northshore-smart-sign";
@@ -14,8 +15,85 @@ export const SMART_SIGN_TRIAL_DAYS = 90;
 export const SMART_SIGN_REMINDER_DAY = 75;
 
 export function getSmartSignUrl(tagCode: string) {
+  return getSmartSignBoxUrl(tagCode);
+}
+
+export function getSmartSignBoxUrl(tagCode: string) {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://app.northshoresignco.com";
-  return `${appUrl}/s/${tagCode}`;
+  return `${appUrl}/s/${tagCode}?source=box`;
+}
+
+export function getSmartSignShareUrl(tagCode: string) {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "https://app.northshoresignco.com";
+  return `${appUrl}/s/${tagCode}?source=share`;
+}
+
+export async function notifySmartSignLiveForOrder(orderId: string) {
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: {
+        id: true,
+        address: true,
+        rfidListingUrl: true,
+        realtor: { select: { firstName: true, email: true } },
+        assignedSigns: {
+          select: {
+            status: true,
+            smartSignTag: { select: { tagCode: true, isActive: true } },
+          },
+        },
+      },
+    });
+    if (!order?.rfidListingUrl) return false;
+
+    const tag = order.assignedSigns.find((sign) => sign.status === "DEPLOYED" && sign.smartSignTag?.isActive)?.smartSignTag;
+    if (!tag) return false;
+
+    const context = await getPublicSmartSignContext(tag.tagCode);
+    if (!context?.isLive || context.sign.assignedToOrder?.id !== order.id) return false;
+
+    const email = getSmartSignLiveEmail({
+      firstName: order.realtor.firstName,
+      address: order.address,
+      viewUrl: getSmartSignShareUrl(tag.tagCode),
+    });
+    const result = await sendEmail({ to: order.realtor.email, subject: email.subject, html: email.html });
+    return result.success;
+  } catch (error) {
+    console.error("[SMART_SIGN] Live notification failed:", error);
+    return false;
+  }
+}
+
+type SmartSignUnit = {
+  label: string;
+  url: string;
+  price?: string;
+  facts?: string[];
+  description?: string;
+  photos?: string[];
+};
+
+export function getSmartSignUnits(notes: string | null): SmartSignUnit[] {
+  const match = notes?.match(/--- Smart Sign Units ---\s*([\s\S]*?)\s*--- End Smart Sign Units ---/);
+  if (!match) return [];
+  try {
+    const units: unknown = JSON.parse(match[1]);
+    if (!Array.isArray(units)) return [];
+    return units.filter((unit): unit is SmartSignUnit =>
+      typeof unit?.label === "string" && typeof unit?.url === "string" && /^https:\/\//.test(unit.url))
+      .map((unit) => ({
+        label: unit.label,
+        url: unit.url,
+        price: typeof unit.price === "string" ? unit.price : undefined,
+        facts: Array.isArray(unit.facts) ? unit.facts.filter((fact: unknown): fact is string => typeof fact === "string") : undefined,
+        description: typeof unit.description === "string" ? unit.description : undefined,
+        photos: Array.isArray(unit.photos) ? unit.photos.filter((photo: unknown): photo is string => typeof photo === "string" && /^https:\/\//.test(photo)) : undefined,
+      }));
+  } catch {
+    return [];
+  }
 }
 
 export function createSmartSignTagCode() {
@@ -137,8 +215,8 @@ export async function getSmartSignAgentDashboard(agentId: string) {
       orderBy: { tappedAt: "asc" },
     }),
     prisma.smartSignTapEvent.findMany({
-      where: { agentId },
-      select: { orderId: true, listingAddress: true, listingUrl: true, tappedAt: true },
+      where: attributedTapWhere,
+      select: { tagId: true, orderId: true, listingAddress: true, listingUrl: true, tappedAt: true, referrer: true },
       orderBy: { tappedAt: "desc" },
     }),
   ]);
@@ -156,12 +234,21 @@ export async function getSmartSignAgentDashboard(agentId: string) {
     const key = tap.tappedAt.toISOString().slice(0, 10);
     dailyMap.set(key, (dailyMap.get(key) || 0) + 1);
   });
-  const listingMap = new Map<string, { orderId: string | null; address: string; listingUrl: string | null; taps: number; lastTapAt: Date }>();
+  const listingMap = new Map<string, { orderId: string | null; address: string; listingUrl: string | null; taps: number; boxTaps: number; sharedViews: number; lastTapAt: Date }>();
+  const sourceCounts = new Map<string, { boxTaps: number; sharedViews: number }>();
   listingEvents.forEach((tap) => {
     const key = tap.orderId || tap.listingAddress || "unknown";
+    const isSharedView = tap.referrer?.includes("tapbox-source=share") || false;
+    const sourceCount = sourceCounts.get(tap.tagId) || { boxTaps: 0, sharedViews: 0 };
+    if (isSharedView) sourceCount.sharedViews += 1;
+    else sourceCount.boxTaps += 1;
+    sourceCounts.set(tap.tagId, sourceCount);
+
     const existing = listingMap.get(key);
     if (existing) {
       existing.taps += 1;
+      if (isSharedView) existing.sharedViews += 1;
+      else existing.boxTaps += 1;
       return;
     }
     listingMap.set(key, {
@@ -169,6 +256,8 @@ export async function getSmartSignAgentDashboard(agentId: string) {
       address: tap.listingAddress || "Unknown listing",
       listingUrl: tap.listingUrl,
       taps: 1,
+      boxTaps: isSharedView ? 0 : 1,
+      sharedViews: isSharedView ? 1 : 0,
       lastTapAt: tap.tappedAt,
     });
   });
@@ -183,8 +272,11 @@ export async function getSmartSignAgentDashboard(agentId: string) {
       listingAddress: tag.sign.assignedToOrder?.address || tag.sign.deployedAddress || "No active listing",
       listingUrl: tag.sign.assignedToOrder ? getOrderListingUrl(tag.sign.assignedToOrder) : null,
       tapCount: tag._count.tapEvents,
+      boxTapCount: sourceCounts.get(tag.id)?.boxTaps || 0,
+      sharedViewCount: sourceCounts.get(tag.id)?.sharedViews || 0,
       lastTapAt: tag.tapEvents[0]?.tappedAt || null,
-      url: getSmartSignUrl(tag.tagCode),
+      url: getSmartSignShareUrl(tag.tagCode),
+      boxUrl: getSmartSignBoxUrl(tag.tagCode),
     })),
     summary: { totalTaps, tapsThisWeek, trend },
     dailyTaps: Array.from(dailyMap, ([date, taps]) => ({ date, taps })),
@@ -280,9 +372,12 @@ export async function getPublicSmartSignContextBySignId(signId: string) {
 export async function recordSmartSignTap(input: {
   tagCode?: string;
   signId?: string;
+  previousVisitId?: string;
+  isReload?: boolean;
   latitude?: number;
   longitude?: number;
   deviceType?: string;
+  source?: "box" | "share";
   userAgent?: string;
   referrer?: string;
   ip?: string;
@@ -333,7 +428,7 @@ export async function recordSmartSignTap(input: {
         longitude: input.longitude,
         deviceType: input.deviceType?.slice(0, 30),
         userAgent: input.userAgent?.slice(0, 500) || null,
-        referrer: input.referrer?.slice(0, 500) || null,
+        referrer: `tapbox-source=${input.source || "box"}${input.referrer ? `; ${input.referrer}` : ""}`.slice(0, 500),
         ipHash: input.ip ? hashIpValue(input.ip) : null,
       },
     });
@@ -345,7 +440,7 @@ export async function recordSmartSignTap(input: {
   const context = await getPublicSmartSignContext(tag.tagCode);
   const isLive = Boolean(context?.isLive);
 
-  await prisma.smartSignTapEvent.create({
+  const event = await prisma.smartSignTapEvent.create({
     data: {
       tagId: tag.id,
       orderId: context?.sign.assignedToOrder?.id || null,
@@ -356,11 +451,45 @@ export async function recordSmartSignTap(input: {
       longitude: input.longitude,
       deviceType: input.deviceType?.slice(0, 30),
       userAgent: input.userAgent?.slice(0, 500) || null,
-      referrer: input.referrer?.slice(0, 500) || null,
+      referrer: `tapbox-source=${input.source || "box"}${input.referrer ? `; ${input.referrer}` : ""}`.slice(0, 500),
       ipHash: input.ip ? hashIpValue(input.ip) : null,
     },
   });
-  return { recorded: true, isLive };
+  if (!isLive || input.latitude !== undefined || input.longitude !== undefined || !context?.sign.assignedToUser || !context.sign.assignedToOrder) {
+    return { recorded: true, isLive };
+  }
+  if (input.source === "share") return { recorded: true, isLive };
+
+  const visitToken = await startTapboxDiscordVisit({
+    address: context.sign.assignedToOrder.address,
+    tagCode: tag.tagCode,
+    visitedAt: event.tappedAt,
+    scope: input.tagCode ? `tag:${input.tagCode}` : `sign:${input.signId}`,
+  });
+  if (input.isReload) return { recorded: true, isLive, visitToken };
+
+  const previous = input.previousVisitId
+    ? await prisma.smartSignTapEvent.findUnique({ where: { id: input.previousVisitId }, select: { tagId: true, orderId: true, tappedAt: true } })
+    : null;
+  const sameListing = previous?.tagId === tag.id && previous.orderId === context.sign.assignedToOrder.id;
+  const elapsed = sameListing ? event.tappedAt.getTime() - previous.tappedAt.getTime() : Infinity;
+  if (elapsed < 30 * 60 * 1000) return { recorded: true, isLive, visitToken };
+
+  const isReturn = elapsed < 90 * 24 * 60 * 60 * 1000;
+  const address = context.sign.assignedToOrder.address;
+  const safeAddress = address.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+  try {
+    const sent = await sendEmail({
+      to: context.sign.assignedToUser.email,
+      subject: `${isReturn ? "Return visit" : "Smart Sign opened"} for ${address}`,
+      html: `<p>${isReturn ? "Someone returned to" : "Someone opened"} the Smart Sign page for <strong>${safeAddress}</strong>.</p><p>This is a page visit, not a confirmed physical NFC tap. <a href="${getSmartSignShareUrl(tag.tagCode)}">View the listing</a>.</p>`,
+    });
+    if (!sent.success) return { recorded: true, isLive, visitToken };
+  } catch (error) {
+    console.error("[SMART_SIGN] Visit notification failed:", error);
+    return { recorded: true, isLive, visitToken };
+  }
+  return { recorded: true, isLive, visitId: event.id, visitToken };
 }
 
 function getTopTag(tags: Awaited<ReturnType<typeof getSmartSignAgentDashboard>>["tags"]) {

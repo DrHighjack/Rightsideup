@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useRef, useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
@@ -14,8 +14,14 @@ const getPortalPath = (user: { role?: string; accountTitle?: string | null } | n
   return "/dashboard";
 };
 
+const getSafeRedirectPath = (path: string | null) =>
+  path && path.startsWith("/") && !path.startsWith("//") && !path.includes("://")
+    ? path
+    : null;
+
 function LoginPageContent() {
   const [email, setEmail] = useState("");
+  const emailInputRef = useRef<HTMLInputElement>(null);
   const [password, setPassword] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [backupCode, setBackupCode] = useState("");
@@ -23,11 +29,18 @@ function LoginPageContent() {
   const [useBackupCode, setUseBackupCode] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [magicLinkLoading, setMagicLinkLoading] = useState(false);
+  const [magicLinkMessage, setMagicLinkMessage] = useState("");
+  const [magicLinkError, setMagicLinkError] = useState("");
+  const [magicLoginTried, setMagicLoginTried] = useState(false);
   const [impersonationTried, setImpersonationTried] = useState(false);
   const router = useRouter();
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const impersonationToken = searchParams.get("impersonationToken");
+  const magicLoginToken = searchParams.get("magicLoginToken");
+  const magicLoginRedirect = getSafeRedirectPath(searchParams.get("redirect"));
+  const magicLoginError = searchParams.get("magicLoginError") === "1";
 
   // If already logged in, redirect to appropriate dashboard
   useEffect(() => {
@@ -35,6 +48,12 @@ function LoginPageContent() {
       router.push(getPortalPath(session.user));
     }
   }, [session, router]);
+
+  useEffect(() => {
+    if (magicLoginError) {
+      setError("This sign-in link is invalid, expired, or unavailable. Request a new link.");
+    }
+  }, [magicLoginError]);
 
   useEffect(() => {
     if (!impersonationToken || session?.user || impersonationTried) return;
@@ -68,6 +87,74 @@ function LoginPageContent() {
 
     void runImpersonationLogin();
   }, [impersonationToken, session, router, impersonationTried]);
+
+  useEffect(() => {
+    if (!magicLoginToken || session?.user || magicLoginTried) return;
+
+    const completeMagicLogin = async () => {
+      setMagicLoginTried(true);
+      setError("");
+      setLoading(true);
+
+      try {
+        const result = await signIn("credentials", {
+          magicLoginToken,
+          redirect: false,
+        });
+
+        if (result?.error) {
+          setError("This sign-in link is invalid, expired, or unavailable. Request a new link.");
+          router.replace("/login?magicLoginError=1");
+          return;
+        }
+
+        const response = await fetch("/api/auth/session");
+        const newSession = await response.json();
+        if (!response.ok || !newSession?.user) {
+          setError("Your sign-in could not be completed. Please request a new link.");
+          router.replace("/login?magicLoginError=1");
+          return;
+        }
+
+        router.replace(magicLoginRedirect || getPortalPath(newSession.user));
+      } catch {
+        setError("Your sign-in could not be completed. Please request a new link.");
+        router.replace("/login?magicLoginError=1");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void completeMagicLogin();
+  }, [magicLoginToken, magicLoginRedirect, session, router, magicLoginTried]);
+
+  async function handleSendMagicLink() {
+    const emailInput = emailInputRef.current;
+    if (!emailInput?.reportValidity()) {
+      setMagicLinkError("Enter your email address to request a sign-in link.");
+      emailInput?.focus();
+      return;
+    }
+
+    setMagicLinkLoading(true);
+    setMagicLinkMessage("");
+    setMagicLinkError("");
+
+    try {
+      const response = await fetch("/api/auth/magic-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Unable to send a sign-in link");
+      setMagicLinkMessage(data.message);
+    } catch (requestError) {
+      setMagicLinkError(requestError instanceof Error ? requestError.message : "Unable to send a sign-in link");
+    } finally {
+      setMagicLinkLoading(false);
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -131,6 +218,10 @@ function LoginPageContent() {
         // Fetch the updated session and redirect based on role
         const response = await fetch("/api/auth/session");
         const newSession = await response.json();
+        if (!response.ok || !newSession?.user) {
+          setError("Your sign-in could not be completed. Please try again.");
+          return;
+        }
         if (!newSession?.user?.emailVerifiedAt) {
           router.push(`/verify-email?email=${encodeURIComponent(newSession?.user?.email || email)}&pending=1`);
           return;
@@ -180,6 +271,7 @@ function LoginPageContent() {
               <input
                 type="email"
                 id="email"
+                ref={emailInputRef}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -270,6 +362,18 @@ function LoginPageContent() {
             >
               {loading ? "Signing in..." : "Sign in"}
             </button>
+
+            <button
+              type="button"
+              onClick={() => void handleSendMagicLink()}
+              disabled={magicLinkLoading}
+              className="w-full rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 transition"
+            >
+              {magicLinkLoading ? "Sending link..." : "Email me a sign-in link"}
+            </button>
+
+            {magicLinkMessage && <p role="status" className="text-sm text-emerald-700">{magicLinkMessage}</p>}
+            {magicLinkError && <p role="alert" className="text-sm text-red-700">{magicLinkError}</p>}
           </form>
         </div>
 

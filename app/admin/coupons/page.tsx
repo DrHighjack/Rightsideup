@@ -134,32 +134,32 @@ export default function CouponsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
+    <div className="min-h-screen bg-gray-50 p-3 md:p-8">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="mb-5 flex flex-col gap-3 md:mb-8 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Coupons/Credits</h1>
-            <p className="text-gray-600 mt-2">Manage discount coupons and realtor account credits</p>
+            <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">Coupons/Credits</h1>
+            <p className="mt-1 text-sm text-gray-600 md:mt-2 md:text-base">Manage discount coupons and realtor account credits</p>
           </div>
-          <div className="flex gap-2">
+          <div className="grid w-full grid-cols-2 gap-2 md:w-auto">
             <button
               onClick={() => { setFormMode('coupon'); setShowForm(true); }}
-              className="bg-white text-blue-700 border border-blue-200 px-4 py-2 rounded-lg hover:bg-blue-50"
+              className="min-h-11 rounded-lg border border-blue-200 bg-white px-2 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 md:px-4"
             >
-              + New Coupon
+              New Coupon
             </button>
             <button
               onClick={() => { setFormMode('credit'); setShowForm(true); }}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="min-h-11 rounded-lg bg-blue-600 px-2 py-2 text-sm font-medium text-white hover:bg-blue-700 md:px-4"
             >
-              + Give Credit
+              Give Credit
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-8">
+            <div className="mb-5 rounded-lg border border-red-200 bg-red-50 p-3 md:mb-8 md:p-4">
             <p className="text-red-800">{error}</p>
             <button
               onClick={() => setError(null)}
@@ -171,8 +171,8 @@ export default function CouponsPage() {
         )}
 
         {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
+        {stats && !showForm && (
+          <div className="mb-5 grid grid-cols-2 gap-3 md:mb-8 md:grid-cols-5 md:gap-4">
             <StatBox label="Coupons/Credits" value={stats.total} icon="🎟️" />
             <StatBox label="Active" value={stats.active} icon="✅" />
             <StatBox label="Expired" value={stats.expired} icon="⏰" />
@@ -183,8 +183,8 @@ export default function CouponsPage() {
 
         {/* Create Form */}
         {showForm && (
-          <div className="bg-white rounded-lg shadow p-6 mb-8">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+          <div className="mb-5 rounded-lg bg-white p-4 shadow md:mb-8 md:p-6">
+            <h2 className="mb-4 text-lg font-semibold text-gray-900 md:text-xl">
               {formMode === 'credit' ? 'Give Account Credit' : 'Create New Coupon'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -200,7 +200,7 @@ export default function CouponsPage() {
                       setFormData({ ...formData, code: e.target.value })
                     }
                     placeholder="e.g., SUMMER20"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>}
@@ -214,7 +214,7 @@ export default function CouponsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, type: e.target.value })
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="FIXED">Fixed Amount ($)</option>
                     <option value="PERCENTAGE">Percentage (%)</option>
@@ -229,7 +229,7 @@ export default function CouponsPage() {
                     <select
                       value={formData.assignedUserId}
                       onChange={(e) => setFormData({ ...formData, assignedUserId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                       required
                     >
                       <option value="">Select a realtor...</option>
@@ -257,7 +257,7 @@ export default function CouponsPage() {
                     }
                     step={formMode === 'credit' || formData.type === 'FIXED' ? '0.01' : '1'}
                     min="0.01"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   />
                 </div>
@@ -274,7 +274,7 @@ export default function CouponsPage() {
                     }
                     placeholder="Leave empty for unlimited"
                     min="1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>}
 
@@ -308,17 +308,17 @@ export default function CouponsPage() {
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2">
+              <div className="grid grid-cols-2 gap-2 md:flex md:justify-end">
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="min-h-11 rounded-lg border border-gray-300 px-3 py-2 hover:bg-gray-50 md:px-4"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="min-h-11 rounded-lg bg-blue-600 px-3 py-2 text-white hover:bg-blue-700 md:px-4"
                 >
                   {formMode === 'credit' ? 'Give Credit' : 'Create Coupon'}
                 </button>
@@ -328,8 +328,34 @@ export default function CouponsPage() {
         )}
 
         {/* Coupons List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="overflow-x-auto">
+        {!showForm && <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="divide-y divide-gray-200 md:hidden">
+            {coupons.length === 0 ? (
+              <p className="p-4 text-center text-sm text-gray-500">No coupons or credits yet.</p>
+            ) : coupons.map((coupon) => (
+              <article key={coupon.id} className="p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="min-w-0 break-all font-mono text-sm font-semibold text-gray-900">{coupon.code}</p>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${coupon.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    {coupon.isActive ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+                <div className="mt-2 flex items-start justify-between gap-3 text-sm">
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-700">{coupon.isCredit ? 'Account Credit' : coupon.type === 'FIXED' ? 'Fixed Discount' : 'Percentage Discount'}</p>
+                    {coupon.isCredit && <p className="break-words text-xs text-gray-500">{coupon.assignedUser ? `${coupon.assignedUser.firstName} ${coupon.assignedUser.lastName} · ${coupon.assignedUser.email}` : 'Unassigned'}</p>}
+                  </div>
+                  <p className="shrink-0 text-right font-semibold text-gray-900">{coupon.isCredit ? `$${((coupon.remainingValue || 0) / 100).toFixed(2)} left` : coupon.type === 'FIXED' ? `$${(coupon.value / 100).toFixed(2)}` : `${coupon.value}%`}</p>
+                </div>
+                {coupon.description && <p className="mt-2 text-xs text-gray-600">{coupon.description}</p>}
+                <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
+                  <span>{coupon.usedCount} used{coupon.maxUses ? ` / ${coupon.maxUses}` : ' / unlimited'}</span>
+                  <span>Expires {coupon.expiresAt ? format(new Date(coupon.expiresAt), 'MMM d, yyyy') : 'never'}</span>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -411,7 +437,7 @@ export default function CouponsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </div>}
       </div>
     </div>
   );

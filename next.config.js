@@ -11,6 +11,11 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  outputFileTracingIncludes: {
+    "/api/admin/orders/[id]": ["./email-templates/smart-sign-live.html"],
+    "/api/admin/listing-link-requests": ["./email-templates/smart-sign-live.html"],
+    "/api/field/nfc-pairing": ["./email-templates/smart-sign-live.html"],
+  },
   async headers() {
     const csp = [
       "default-src 'self'",
@@ -25,7 +30,7 @@ const nextConfig = {
       "frame-src 'self' https://sandbox.fluidpay.com https://app.fluidpay.com https://www.google.com https://www.youtube.com https://player.vimeo.com",
       "child-src 'self' https://sandbox.fluidpay.com https://app.fluidpay.com https://www.google.com https://www.youtube.com https://player.vimeo.com",
       "form-action 'self'",
-      "upgrade-insecure-requests",
+      ...(process.env.NODE_ENV === 'production' ? ["upgrade-insecure-requests"] : []),
     ].join('; ');
 
     return [
@@ -33,7 +38,7 @@ const nextConfig = {
         source: '/:path*',
         headers: [
           { key: 'Content-Security-Policy', value: csp },
-          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          ...(process.env.NODE_ENV === 'production' ? [{ key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' }] : []),
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },

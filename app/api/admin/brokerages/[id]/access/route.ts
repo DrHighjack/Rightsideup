@@ -7,13 +7,14 @@ const accessSchema = z.object({ email: z.string().trim().email() });
 
 async function requireAdmin() {
   const session = await auth();
-  return session?.user?.id && session.user.role === "ADMIN";
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  return null;
 }
 
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   const brokerage = await prisma.brokerage.findUnique({
     where: { id: params.id },
@@ -40,9 +41,8 @@ export async function GET(_request: NextRequest, { params }: { params: { id: str
 }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
 
   try {
     const { email } = accessSchema.parse(await request.json());
@@ -73,9 +73,8 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-  if (!(await requireAdmin())) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
+  const denied = await requireAdmin();
+  if (denied) return denied;
   const userId = new URL(request.url).searchParams.get("userId");
   if (!userId) return NextResponse.json({ error: "Account is required" }, { status: 400 });
 

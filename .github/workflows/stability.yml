@@ -1,0 +1,55 @@
+name: Stability
+
+on:
+  pull_request:
+  push:
+    branches: [main, "feature/stability-*"]
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: integration
+          POSTGRES_PASSWORD: integration
+          POSTGRES_DB: rightsignup_integration
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U integration -d rightsignup_integration"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://integration:integration@127.0.0.1:5432/rightsignup_integration
+      INTEGRATION_DATABASE_URL: postgresql://integration:integration@127.0.0.1:5432/rightsignup_integration
+      AUTH_SECRET: ci-only-dummy-auth-secret-not-for-production
+      AUTH_TRUST_HOST: "true"
+      NEXTAUTH_URL: http://127.0.0.1:3000
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3000
+      FLUIDPAY_SECRET_KEY: ci-only-dummy-payment-key
+      FLUIDPAY_BASE_URL: http://127.0.0.1:9
+      NEXT_PUBLIC_FLUIDPAY_PUBLIC_KEY: ci-only-dummy-public-key
+      NEXT_PUBLIC_FLUIDPAY_BASE_URL: http://127.0.0.1:9
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run db:generate
+      - run: npm run lint
+      - run: npm run type-check
+      - run: npm test
+      - run: npm run test:integration
+      - run: npx --no-install next build

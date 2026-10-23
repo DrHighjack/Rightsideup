@@ -1,0 +1,8 @@
+DO $$ BEGIN
+	CREATE TYPE "AccountStatus" AS ENUM ('PENDING_APPROVAL', 'APPROVED', 'ACTIVE', 'REJECTED');
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
+
+ALTER TABLE "users"
+ADD COLUMN IF NOT EXISTS "accountStatus" "AccountStatus" NOT NULL DEFAULT 'ACTIVE';

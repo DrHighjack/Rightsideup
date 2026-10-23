@@ -170,21 +170,21 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5 md:space-y-8">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
-          <p className="text-gray-600 mt-2">Real-time business metrics and insights</p>
+          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">Analytics Dashboard</h1>
+          <p className="mt-1 text-sm text-gray-600 md:mt-2 md:text-base">Real-time business metrics and insights</p>
         </div>
 
         {/* Date Range Picker */}
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2 md:w-auto">
           {(['7', '30', '90'] as const).map((range) => (
             <button
               key={range}
               onClick={() => setDateRange(range)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`min-h-11 flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors md:flex-none md:px-4 ${
                 dateRange === range
                   ? 'bg-blue-600 text-white'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -198,7 +198,7 @@ export default function AdminDashboardPage() {
 
       {/* Summary Metrics - 8 Cards */}
       {metrics && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 md:gap-4">
           <MetricCard
             label="Revenue Today"
             value={formatCentsAsCurrency(metrics.revenueToday)}
@@ -247,10 +247,10 @@ export default function AdminDashboardPage() {
       )}
 
       {/* Charts Row 1 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 md:gap-6">
         {/* Revenue Line Chart */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Trend</h3>
+        <div className="bg-white rounded-lg border border-gray-200 p-3 md:p-6">
+          <h3 className="mb-3 text-base font-semibold text-gray-900 md:mb-4 md:text-lg">Revenue Trend</h3>
           {revenueData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={revenueData}>
@@ -284,8 +284,8 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* Order Status Donut Chart */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Orders by Status</h3>
+        <div className="bg-white rounded-lg border border-gray-200 p-3 md:p-6">
+          <h3 className="mb-3 text-base font-semibold text-gray-900 md:mb-4 md:text-lg">Orders by Status</h3>
           {statusData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
@@ -317,8 +317,8 @@ export default function AdminDashboardPage() {
       {/* Charts Row 2 */}
       <div className="grid grid-cols-1 gap-6">
         {/* Orders Bar Chart */}
-        <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Orders by Type (Weekly)</h3>
+        <div className="bg-white rounded-lg border border-gray-200 p-3 md:p-6">
+          <h3 className="mb-3 text-base font-semibold text-gray-900 md:mb-4 md:text-lg">Orders by Type (Weekly)</h3>
           {ordersData.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={ordersData}>
@@ -464,9 +464,9 @@ function MetricCard({
   color: string;
 }) {
   return (
-    <div className={`rounded-lg border p-6 ${color}`}>
-      <p className="text-sm font-medium opacity-75">{label}</p>
-      <p className="text-2xl font-bold mt-2">{value}</p>
+    <div className={`min-w-0 rounded-lg border p-3 md:p-6 ${color}`}>
+      <p className="text-xs font-medium opacity-75 md:text-sm">{label}</p>
+      <p className="mt-1 text-xl font-bold md:mt-2 md:text-2xl">{value}</p>
     </div>
   );
 }

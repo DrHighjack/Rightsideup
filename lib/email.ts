@@ -1,4 +1,6 @@
 ﻿import nodemailer from "nodemailer";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const brevoApiKey = process.env.BREVO_API_KEY || "";
 const brevoSmtpHost = process.env.BREVO_SMTP_HOST || "smtp-relay.brevo.com";
@@ -3638,6 +3640,21 @@ export function getSmartSignTrialReminderEmail(input: {
                 </div>
                 <p style="margin:24px 0 0"><a href="${escapeHtml(input.dashboardUrl)}" style="display:inline-block;background:#047857;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:700">Open Smart Sign Dashboard</a></p>`,
         }),
+    };
+}
+
+export function getSmartSignLiveEmail(input: { firstName: string; address: string; viewUrl: string }) {
+    const replacements = {
+        first_name: escapeHtml(input.firstName || "there"),
+        property_address: escapeHtml(input.address),
+        view_url: escapeHtml(input.viewUrl),
+    };
+    const html = readFileSync(join(process.cwd(), "email-templates", "smart-sign-live.html"), "utf8")
+        .replace(/\{\{(first_name|property_address|view_url)\}\}/g, (_match, key: keyof typeof replacements) => replacements[key]);
+
+    return {
+        subject: `Your Smart Sign box is live for ${input.address}`,
+        html,
     };
 }
 

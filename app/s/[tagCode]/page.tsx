@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getPublicSmartSignContext } from "@/lib/smart-sign";
+import { getPublicSmartSignContext, getSmartSignUnits } from "@/lib/smart-sign";
 import { TapTracker } from "./TapTracker";
 import { InquiryForms } from "./InquiryForms";
 
@@ -86,18 +86,36 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
   const order = sign.assignedToOrder!;
   const agent = sign.assignedToUser!;
   const listingDetails = getListingDetails(order.address, order.notes);
+  const units = getSmartSignUnits(order.notes);
   const images = photoUrls(order.photos).length > 0 ? photoUrls(order.photos) : (listingDetails ? twinBrooksPhotos : []);
   const heroImage = images[0];
   const agentName = `${agent.firstName} ${agent.lastName}`.trim();
+  const isGaryRental = params.tagCode === "NS-0006";
 
   return (
     <main className="min-h-screen bg-slate-50 text-slate-900">
       <div className="mx-auto max-w-3xl px-5 py-8 sm:py-12">
         <p className="text-xs font-semibold uppercase tracking-[0.2em] text-sky-700">North Shore Sign Co</p>
         <h1 className="mt-3 text-3xl font-semibold leading-tight sm:text-5xl">{order.address}</h1>
-        <p className="mt-3 text-base text-slate-600">Listing details shared by {agentName}</p>
+        <p className="mt-3 text-base text-slate-600">{isGaryRental ? "Rental details shared by landlord" : "Listing details shared by"} {agentName}</p>
 
-        {heroImage ? (
+        {units.length > 0 ? (
+          <section className="mt-7 grid gap-5 sm:grid-cols-2" aria-label="Available units">
+            {units.map((unit) => <article key={unit.label} className="overflow-hidden rounded-md border border-slate-200 bg-white">
+              {unit.photos?.[0] && <img src={unit.photos[0]} alt={`${unit.label} at ${order.address}`} className="aspect-[4/3] w-full object-cover" />}
+              <div className="p-4">
+                <h2 className="text-xl font-semibold">{unit.label}</h2>
+                {unit.price && <p className="mt-1 text-lg font-semibold text-slate-800">{unit.price}</p>}
+                {unit.facts && <p className="mt-2 text-sm text-slate-600">{unit.facts.join(" · ")}</p>}
+                {unit.description && <p className="mt-3 text-sm leading-6 text-slate-700">{unit.description}</p>}
+                {unit.photos && unit.photos.length > 1 && <div className="mt-4 grid grid-cols-2 gap-2">
+                  {unit.photos.slice(1, 3).map((photo, index) => <img key={photo} src={photo} alt={`${unit.label} photo ${index + 2}`} className="aspect-[4/3] w-full rounded-sm object-cover" />)}
+                </div>}
+                <a href={unit.url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex text-sm font-semibold text-sky-700 underline">View {unit.label} listing on Zillow</a>
+              </div>
+            </article>)}
+          </section>
+        ) : heroImage ? (
           <img src={heroImage} alt={`Listing at ${order.address}`} className="mt-7 aspect-[16/10] w-full rounded-lg object-cover shadow-sm" />
         ) : (
           <div className="mt-7 flex aspect-[16/10] items-center justify-center rounded-lg bg-slate-200 text-sm text-slate-500">Listing details available from the agent</div>
@@ -120,13 +138,13 @@ export default async function SmartSignLandingPage({ params }: { params: { tagCo
         )}
 
         <section className="mt-7 border-y border-slate-200 py-6">
-          <p className="text-sm font-medium text-slate-500">Your listing agent</p>
+          <p className="text-sm font-medium text-slate-500">{isGaryRental ? "The Landlord" : "Your listing agent"}</p>
           <p className="mt-1 text-xl font-semibold">{agentName}</p>
           {agent.phone && <a href={`tel:${agent.phone}`} className="mt-3 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Call {agentName}</a>}
           {!agent.phone && <a href={`mailto:${agent.email}`} className="mt-3 inline-flex rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white">Contact {agentName}</a>}
         </section>
 
-        <InquiryForms tagCode={params.tagCode} orderId={order.id} agentName={agentName} />
+        <InquiryForms tagCode={params.tagCode} orderId={order.id} agentName={agentName} units={units.map((unit) => unit.label)} contactLabel={isGaryRental ? "Landlord" : "Agent"} />
 
         {listingUrl && (
           <a href={listingUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-slate-900 px-4 py-3 text-sm font-semibold text-white">

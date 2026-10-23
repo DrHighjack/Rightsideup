@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { SMS_CONSENT_DISCLOSURE } from "@/lib/sms-consent";
 
 interface InviteData {
   id: string;
@@ -15,9 +16,17 @@ interface InviteData {
   };
 }
 
+type SignupAccountType = "REALTOR" | "TC" | "BROKERAGE";
+
 function RegisterPageContent() {
   const searchParams = useSearchParams();
   const inviteToken = searchParams.get("inviteToken") || "";
+  const requestedAccountType = searchParams.get("role");
+  const initialAccountType: SignupAccountType =
+    requestedAccountType === "TC" || requestedAccountType === "BROKERAGE"
+      ? requestedAccountType
+      : "REALTOR";
+  const [accountType, setAccountType] = useState<SignupAccountType>(initialAccountType);
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -29,6 +38,7 @@ function RegisterPageContent() {
     confirmPassword: "",
   });
   const [error, setError] = useState("");
+  const [smsOptIn, setSmsOptIn] = useState(false);
   const [loading, setLoading] = useState(false);
   const [inviteLoading, setInviteLoading] = useState(false);
   const [inviteData, setInviteData] = useState<InviteData | null>(null);
@@ -98,10 +108,12 @@ function RegisterPageContent() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          accountType,
           firstName: formData.firstName,
           lastName: formData.lastName,
           email: formData.email,
           phone: formData.phone || undefined,
+          smsOptIn,
           brokerageName: formData.brokerageName || undefined,
           password: formData.password,
           confirmPassword: formData.confirmPassword,
@@ -114,7 +126,10 @@ function RegisterPageContent() {
         throw new Error(data.error || "Registration failed");
       }
 
-      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&sent=1`);
+      const data = await response.json();
+      const verificationStatus = data.verificationEmailSent ? 'sent=1' : 'pending=1';
+      const approvalStatus = data.accountApprovalRequired ? "&approval=1" : "";
+      router.push(`/verify-email?email=${encodeURIComponent(formData.email)}&${verificationStatus}${approvalStatus}`);
     } catch (err: any) {
       setError(err.message || "An error occurred. Please try again.");
     } finally {
@@ -127,7 +142,30 @@ function RegisterPageContent() {
       <div className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8 space-y-8">
         <div className="text-center">
           <h1 className="font-display text-3xl font-semibold tracking-tight text-navy-900 mb-2">SignPost Field</h1>
-          <p className="text-slate-600">Create your realtor account</p>
+          <p className="text-slate-600">
+            {accountType === "REALTOR"
+              ? "Create your realtor account"
+              : accountType === "TC"
+                ? "Transaction Coordinator access"
+                : "Brokerage access"}
+          </p>
+        </div>
+
+        <div>
+          <label htmlFor="accountType" className="block text-sm font-medium text-slate-700">
+            Account type
+          </label>
+          <select
+            id="accountType"
+            name="accountType"
+            value={accountType}
+            onChange={(event) => setAccountType(event.target.value as SignupAccountType)}
+            className="mt-1 block h-12 w-full rounded-lg border border-slate-300 bg-white px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
+          >
+            <option value="REALTOR">Realtor</option>
+            <option value="TC">Transaction Coordinator</option>
+            <option value="BROKERAGE">Brokerage</option>
+          </select>
         </div>
 
         {inviteLoading && (
@@ -140,6 +178,12 @@ function RegisterPageContent() {
               Invited by {inviteData.invitedByUser.firstName} {inviteData.invitedByUser.lastName}
             </p>
             <p className="mt-1">You will be automatically linked after registration.</p>
+          </div>
+        )}
+
+        {accountType !== "REALTOR" && (
+          <div role="status" className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm leading-6 text-blue-900">
+            This account requires admin approval and activation before you can sign in.
           </div>
         )}
 
@@ -207,13 +251,39 @@ function RegisterPageContent() {
               name="phone"
               value={formData.phone}
               onChange={handleChange}
+              placeholder="+12065551234"
+              required={smsOptIn}
+              pattern={smsOptIn ? "\\+[1-9][0-9]{7,14}" : undefined}
               className="mt-1 block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             />
           </div>
 
+          <fieldset id="sms-consent" className="space-y-2">
+            <legend className="text-sm font-semibold text-slate-800">SMS notifications (optional)</legend>
+            <div className="flex items-start gap-3">
+              <input
+                id="smsOptIn"
+                name="smsOptIn"
+                type="checkbox"
+                checked={smsOptIn}
+                onChange={(event) => setSmsOptIn(event.target.checked)}
+                aria-describedby="sms-disclosure sms-policy-links"
+                className="mt-1 h-5 w-5 shrink-0 rounded border-slate-300 accent-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              />
+              <label htmlFor="smsOptIn" className="text-sm font-medium leading-6 text-slate-800">Allow NSSC to text you</label>
+            </div>
+            <p id="sms-disclosure" className="pl-8 text-sm leading-6 text-slate-700">{SMS_CONSENT_DISCLOSURE}</p>
+            <p id="sms-policy-links" className="pl-8 text-sm text-slate-700">
+              <Link href="/terms#sms-notifications" className="font-medium text-navy-900 underline">SMS Terms &amp; Conditions</Link>
+              {" and "}
+              <Link href="/privacy#sms-privacy" className="font-medium text-navy-900 underline">Privacy Policy</Link>.
+              {" For help, contact billing@northshoresignco.com or (206) 659-6323."}
+            </p>
+          </fieldset>
+
           <div>
             <label htmlFor="brokerageName" className="block text-sm font-medium text-slate-700">
-              Brokerage Name
+              Brokerage Name{accountType === "BROKERAGE" ? " *" : ""}
             </label>
             <input
               type="text"
@@ -221,6 +291,7 @@ function RegisterPageContent() {
               name="brokerageName"
               value={formData.brokerageName}
               onChange={handleChange}
+              required={accountType === "BROKERAGE"}
               className="mt-1 block h-12 w-full rounded-lg border border-slate-300 px-4 text-base text-slate-900 focus:border-navy-900 focus:outline-none focus:ring-2 focus:ring-navy-900/30"
             />
           </div>

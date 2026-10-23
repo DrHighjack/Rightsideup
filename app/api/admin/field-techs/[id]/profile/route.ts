@@ -16,7 +16,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const fieldTech = await prisma.user.findFirst({
@@ -131,7 +131,7 @@ export async function PATCH(
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const input = updateInstallSchema.parse(await request.json());

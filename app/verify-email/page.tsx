@@ -12,9 +12,37 @@ function VerifyEmailPageContent() {
   const email = searchParams.get('email') || '';
   const sent = searchParams.get('sent') === '1';
   const pending = searchParams.get('pending') === '1';
+  const [approvalRequired, setApprovalRequired] = useState(searchParams.get('approval') === '1');
   const [loading, setLoading] = useState(Boolean(token));
   const [error, setError] = useState('');
   const [verified, setVerified] = useState(false);
+  const [resending, setResending] = useState(false);
+  const [resendMessage, setResendMessage] = useState('');
+  const [resendEmail, setResendEmail] = useState(email);
+
+  async function resendVerification(event: React.FormEvent) {
+    event.preventDefault();
+    setResending(true);
+    setError('');
+    setResendMessage('');
+    try {
+      const response = await fetch('/api/auth/verify-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error || 'Unable to send verification email. Please try again.');
+        return;
+      }
+      setResendMessage(data.message);
+    } catch {
+      setError('Unable to send verification email. Please try again.');
+    } finally {
+      setResending(false);
+    }
+  }
 
   useEffect(() => {
     if (!token) {
@@ -33,6 +61,7 @@ function VerifyEmailPageContent() {
           return;
         }
 
+        setApprovalRequired(Boolean(data.accountApprovalRequired) || approvalRequired);
         setVerified(true);
         setLoading(false);
       } catch (_error) {
@@ -62,21 +91,25 @@ function VerifyEmailPageContent() {
           <p className="mt-1 text-sm text-gray-600">Confirm your account before placing orders.</p>
         </div>
 
-        {(sent || pending) && !verified && !error && (
+        {(sent || pending) && !verified && !error && !resendMessage && (
           <div className="rounded-md bg-blue-50 p-4 text-sm text-blue-800">
-            {email ? (
+            {sent && email ? (
               <>
                 We sent a verification link to <span className="font-medium">{email}</span>.
               </>
-            ) : (
+            ) : sent ? (
               <>We sent a verification link to your email address.</>
+            ) : (
+              <>Your email still needs verification. Request a verification link below.</>
             )}
           </div>
         )}
 
         {verified && (
           <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
-            Your email has been verified. You can now sign in and place orders.
+            {approvalRequired
+              ? "Your email is verified. Your account is waiting for admin approval and activation before you can sign in."
+              : "Your email has been verified. You can now sign in and place orders."}
           </div>
         )}
 
@@ -84,6 +117,30 @@ function VerifyEmailPageContent() {
           <div className="rounded-md bg-red-50 p-4 text-sm text-red-800">
             {error}
           </div>
+        )}
+
+        {resendMessage && (
+          <div role="status" className="rounded-md bg-blue-50 p-4 text-sm text-blue-800">
+            {resendMessage}
+          </div>
+        )}
+
+        {!verified && (
+          <form onSubmit={resendVerification} className="space-y-3">
+            <label htmlFor="verification-email" className="block text-sm font-medium text-gray-700">Email address</label>
+            <input
+              id="verification-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={resendEmail}
+              onChange={(event) => setResendEmail(event.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-gray-900"
+            />
+            <button type="submit" disabled={resending} className="w-full rounded-md bg-primary px-4 py-2 font-medium text-white hover:bg-primary-dark disabled:opacity-50">
+              {resending ? 'Sending...' : 'Resend verification email'}
+            </button>
+          </form>
         )}
 
         <div className="flex gap-3">

@@ -16,7 +16,7 @@ export async function GET(
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const invoice = await prisma.invoice.findUnique({
@@ -68,7 +68,7 @@ export async function PUT(
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const {
@@ -166,7 +166,7 @@ export async function DELETE(
   try {
     const session = await auth();
     if (!session?.user?.id || session.user.role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: session?.user?.id ? 403 : 401 });
     }
 
     const invoice = await prisma.invoice.findUnique({

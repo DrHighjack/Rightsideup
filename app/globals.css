@@ -96,6 +96,42 @@ table {
   font-variant-numeric: tabular-nums;
 }
 
+@keyframes menu-slide-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes menu-slide-out {
+  from { transform: translateX(0); }
+  to { transform: translateX(-100%); }
+}
+
+@keyframes menu-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes menu-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.menu-panel {
+  animation: menu-slide-in 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.menu-panel.is-closing {
+  animation: menu-slide-out 180ms ease-in forwards;
+}
+
+.menu-backdrop {
+  animation: menu-fade-in 200ms ease-out;
+}
+
+.menu-backdrop.is-closing {
+  animation: menu-fade-out 180ms ease-in forwards;
+}
+
 /* Respect users who opt out of motion */
 @media (prefers-reduced-motion: reduce) {
   *,
